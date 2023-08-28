@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import * as Tone from "tone";
 
-const Player = () => {
+const Player = (): JSX.Element => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [startPosition, setStartPosition] = useState("0:0:0");
   const [playerPosition, setPlayerPosition] = useState("0:0:0");

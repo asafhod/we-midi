@@ -7,7 +7,7 @@ type TrackProps = {
   trackID: number;
 };
 
-const Track = ({ trackID }: TrackProps) => {
+const Track = ({ trackID }: TrackProps): JSX.Element => {
   // TODO: change to use Redux state instead of context API
   const { tracks, setTracks } = useContext(TracksContext)!;
 

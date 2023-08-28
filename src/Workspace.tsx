@@ -5,13 +5,14 @@ import { NoteType, TrackType } from "./types";
 import createInstrument from "./instruments/createInstrument";
 import TracksContext from "./TracksContext";
 import Player from "./Player";
+import Ruler from "./Ruler";
 import TrackList from "./TrackList";
 
 type WorkspaceProps = {
   midiURL: string;
 };
 
-const Workspace = ({ midiURL }: WorkspaceProps) => {
+const Workspace = ({ midiURL }: WorkspaceProps): JSX.Element => {
   const [loading, setLoading] = useState(true);
   const [tracks, setTracks] = useState<TrackType[]>([]);
 
@@ -67,6 +68,7 @@ const Workspace = ({ midiURL }: WorkspaceProps) => {
       ) : (
         <div>
           <Player />
+          <Ruler zoomFactor={1} />
           <TracksContext.Provider value={{ tracks, setTracks }}>
             <TrackList numTracks={tracks.length} />
           </TracksContext.Provider>

@@ -4,7 +4,7 @@ type TrackListProps = {
   numTracks: number;
 };
 
-const TrackList = ({ numTracks }: TrackListProps) => {
+const TrackList = ({ numTracks }: TrackListProps): JSX.Element => {
   // Figure out exactly how to set up the Track components. Redux/ContextAPI may help clarify.
   //   How to prevent list from re-rendering when a single track is edited (none are added/removed)
   let trackComponents: JSX.Element[] = [];
