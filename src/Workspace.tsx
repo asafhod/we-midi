@@ -15,6 +15,11 @@ type WorkspaceProps = {
 const Workspace = ({ midiURL }: WorkspaceProps): JSX.Element => {
   const [loading, setLoading] = useState(true);
   const [tracks, setTracks] = useState<TrackType[]>([]);
+  const [zoom, setZoom] = useState(1);
+
+  const zoomFactor: number = 1.067;
+  const zoomMin: number = 0.104;
+  const zoomMax: number = 67.708;
 
   useEffect(() => {
     // clear it in a cleanup function for unmount and in case url changes
@@ -62,19 +67,35 @@ const Workspace = ({ midiURL }: WorkspaceProps): JSX.Element => {
   }, [midiURL]);
 
   return (
-    <>
+    <div>
       {loading ? (
         <p>Loading...</p>
       ) : (
-        <div>
+        <div className="workspace">
           <Player />
-          <Ruler zoomFactor={1} />
-          <TracksContext.Provider value={{ tracks, setTracks }}>
-            <TrackList numTracks={tracks.length} />
-          </TracksContext.Provider>
+          <button
+            className="zoom-button"
+            type="button"
+            onClick={() => setZoom(Math.max(Math.round((zoom / zoomFactor) * 1000) / 1000, zoomMin))}
+          >
+            -
+          </button>
+          <button
+            className="zoom-button"
+            type="button"
+            onClick={() => setZoom(Math.min(Math.round(zoom * zoomFactor * 1000) / 1000, zoomMax))}
+          >
+            +
+          </button>
+          <div className="track-editor">
+            <Ruler zoom={zoom} />
+            <TracksContext.Provider value={{ tracks, setTracks }}>
+              <TrackList numTracks={tracks.length} />
+            </TracksContext.Provider>
+          </div>
         </div>
       )}
-    </>
+    </div>
   );
 };
 
