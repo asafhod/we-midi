@@ -5,8 +5,7 @@ import { NoteType, TrackType } from "./types";
 import createInstrument from "./instruments/createInstrument";
 import TracksContext from "./TracksContext";
 import Player from "./Player";
-import Ruler from "./Ruler";
-import TrackList from "./TrackList";
+import TrackEditor from "./TrackEditor";
 
 type WorkspaceProps = {
   midiURL: string;
@@ -15,11 +14,6 @@ type WorkspaceProps = {
 const Workspace = ({ midiURL }: WorkspaceProps): JSX.Element => {
   const [loading, setLoading] = useState(true);
   const [tracks, setTracks] = useState<TrackType[]>([]);
-  const [zoom, setZoom] = useState(1);
-
-  const zoomFactor: number = 1.067;
-  const zoomMin: number = 0.104;
-  const zoomMax: number = 67.708;
 
   useEffect(() => {
     // clear it in a cleanup function for unmount and in case url changes
@@ -27,7 +21,7 @@ const Workspace = ({ midiURL }: WorkspaceProps): JSX.Element => {
       const midi: MidiJSON = await MidiLoad.fromUrl(midiURL);
       if (!midi || !Object.keys(midi).length) throw new Error("Cannot schedule notes: Invalid MIDI file");
 
-      // console.log(midi);
+      console.log(midi);
 
       await Tone.start();
 
@@ -44,12 +38,12 @@ const Workspace = ({ midiURL }: WorkspaceProps): JSX.Element => {
 
         const notes: NoteType[] = [];
 
-        for (const { name, duration, time: noteTime, velocity } of track.notes) {
+        for (const { midi, duration, time: noteTime, velocity } of track.notes) {
           const noteID: number = Tone.Transport.schedule((time) => {
-            instrument.triggerAttackRelease(name, duration, time, velocity);
+            instrument.triggerAttackRelease(midi, duration, time, velocity);
           }, noteTime);
 
-          notes.push({ noteID, name, duration, noteTime, velocity });
+          notes.push({ noteID, midi, duration, noteTime, velocity });
         }
 
         tracks.push({ name: track.name, instrument, notes });
@@ -73,26 +67,10 @@ const Workspace = ({ midiURL }: WorkspaceProps): JSX.Element => {
       ) : (
         <div className="workspace">
           <Player />
-          <button
-            className="zoom-button"
-            type="button"
-            onClick={() => setZoom(Math.max(Math.round((zoom / zoomFactor) * 1000) / 1000, zoomMin))}
-          >
-            -
-          </button>
-          <button
-            className="zoom-button"
-            type="button"
-            onClick={() => setZoom(Math.min(Math.round(zoom * zoomFactor * 1000) / 1000, zoomMax))}
-          >
-            +
-          </button>
-          <div className="track-editor">
-            <Ruler zoom={zoom} />
-            <TracksContext.Provider value={{ tracks, setTracks }}>
-              <TrackList numTracks={tracks.length} />
-            </TracksContext.Provider>
-          </div>
+
+          <TracksContext.Provider value={{ tracks, setTracks }}>
+            <TrackEditor numTracks={tracks.length} />
+          </TracksContext.Provider>
         </div>
       )}
     </div>

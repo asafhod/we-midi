@@ -1,64 +1,93 @@
 type RulerProps = {
-  zoom: number;
+  numSegments: number;
+  segmentWidth: number;
+  measuresPerSegment: number;
+  segmentIsBeat: boolean;
+  divisions: number;
+  markerPatternWidth: number;
+  totalWidth: number;
 };
 
-const Ruler = ({ zoom }: RulerProps): JSX.Element => {
-  const numMeasures: number = 450;
-  const measureWidthFactor: number = 6.402;
-
-  let increment: number = 1;
-
-  if (zoom < 0.678) {
-    if (zoom > 0.311) {
-      increment = 2;
-    } else if (zoom > 0.211) {
-      increment = 3;
-    } else if (zoom > 0.153) {
-      increment = 4;
-    } else if (zoom > 0.126) {
-      increment = 5;
-    } else if (zoom > 0.104) {
-      increment = 6;
-    } else {
-      increment = 7;
-    }
-  }
-
-  const measures: JSX.Element[] = [];
-  const measureWidth = Math.round(zoom * measureWidthFactor * increment * 1000) / 1000;
-
-  for (let i = 0; i < numMeasures; i += increment) {
-    const measureNum: number = i + 1;
-    measures.push(<Measure key={measureNum} measureNum={measureNum} width={measureWidth} />);
-  }
-
+const Ruler = ({
+  numSegments,
+  segmentWidth,
+  measuresPerSegment,
+  segmentIsBeat,
+  divisions,
+  markerPatternWidth,
+  totalWidth,
+}: RulerProps): JSX.Element => {
   return (
     <div className="ruler">
-      <div>{measures}</div>
+      <Labling
+        numSegments={numSegments}
+        segmentWidth={segmentWidth}
+        measuresPerSegment={measuresPerSegment}
+        segmentIsBeat={segmentIsBeat}
+        totalWidth={totalWidth}
+      />
+      <Markers divisions={divisions} markerPatternWidth={markerPatternWidth} />
     </div>
   );
 };
 
-type MeasureProps = {
-  measureNum: number;
-  width: number;
+type LablingProps = {
+  numSegments: number;
+  segmentWidth: number;
+  measuresPerSegment: number;
+  segmentIsBeat: boolean;
+  totalWidth: number;
 };
 
-const Measure = ({ measureNum, width }: MeasureProps): JSX.Element => {
-  const showBeatsCutoff: number = 16.927;
+const Labling = ({ numSegments, segmentWidth, measuresPerSegment, segmentIsBeat, totalWidth }: LablingProps): JSX.Element => {
+  const segments: JSX.Element[] = [];
+
+  for (let i = 0; i < numSegments; i++) {
+    const offset: number = segmentWidth * i;
+    let labelNum: number = i * measuresPerSegment + 1;
+
+    if (segmentIsBeat) {
+      const beat: number = (i % 4) / 10;
+      labelNum = Math.floor(labelNum) + beat;
+    }
+
+    segments.push(
+      <span key={i} className="ruler-label" style={{ left: offset }}>
+        {labelNum}
+      </span>
+    );
+  }
 
   return (
-    <div className="measure" style={{ width: `${width}em` }}>
-      <span className="beat">{`${measureNum} `}</span>
-
-      {width >= showBeatsCutoff && (
-        <>
-          <span className="beat" style={{ left: `${width * 0.25}em` }}>{`${measureNum}.2 `}</span>
-          <span className="beat" style={{ left: `${width * 0.5}em` }}>{`${measureNum}.3 `}</span>
-          <span className="beat" style={{ left: `${width * 0.75}em` }}>{`${measureNum}.4 `}</span>
-        </>
-      )}
+    <div className="ruler-labels" style={{ width: totalWidth }}>
+      {segments}
     </div>
+  );
+};
+
+type MarkersProps = {
+  divisions: number;
+  markerPatternWidth: number;
+};
+
+const Markers = ({ divisions, markerPatternWidth }: MarkersProps): JSX.Element => {
+  const markers: JSX.Element[] = [];
+
+  for (let i = 1; i < divisions; i++) {
+    const offset: number = i * Math.round(markerPatternWidth / divisions) + 1;
+    markers.push(<line key={i} x1={offset} y1="75%" x2={offset} y2="100%" stroke="black" strokeWidth="0.6" />);
+  }
+
+  return (
+    <svg className="ruler-markers" width="100%" height="100%">
+      <defs>
+        <pattern id="marker-pattern" width={markerPatternWidth} height="100%" patternUnits="userSpaceOnUse">
+          <line x1="1" y1="0" x2="1" y2="100%" stroke="black" strokeWidth="0.6" />
+          {markers}
+        </pattern>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#marker-pattern)" />
+    </svg>
   );
 };
 

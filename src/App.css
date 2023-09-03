@@ -17,25 +17,52 @@
 
 .track-editor {
   overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0px 5px;
+  /* height: 500px; */
+  text-align: left;
 }
 
 .ruler {
   width: fit-content;
-  border: 1px solid black;
-  white-space: nowrap;
-  padding: 0px 5px;
+  border-top: 1px solid black;
+  border-bottom: 1px solid black;
+  height: 2.25em;
 }
 
-.measure {
+.ruler-labels {
   white-space: nowrap;
-  display: inline-block;
-  font-size: 0.75em;
-  border-left: 1px solid black;
-  text-align: left;
   position: relative;
-  height: 2em;
 }
 
-.beat {
+.ruler-label {
+  font-size: 0.75em;
+  text-align: left;
+  position: absolute;
+  top: -1px;
+  margin-left: 4px;
+}
+
+.track-list {
+  width: 100%;
+  border-bottom: 1px solid black;
+  position: relative;
+}
+
+.tracks {
+  position: absolute;
+  top: 0px;
+}
+
+.track {
+  height: 100px;
+  border-bottom: 2px solid black;
+  position: relative;
+}
+
+.note {
+  display: inline-block;
+  background-color: green;
+  height: 5px;
   position: absolute;
 }

@@ -2,7 +2,7 @@ import * as Tone from "tone";
 
 export type NoteType = {
   noteID: number;
-  name: string;
+  midi: number;
   duration: string | number;
   noteTime: number;
   velocity: number;
