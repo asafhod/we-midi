@@ -8,10 +8,14 @@ type TrackEditorProps = {
 
 const TrackEditor = ({ numTracks }: TrackEditorProps): JSX.Element => {
   const [zoom, setZoom] = useState(1);
+  const [trackHeight, setTrackHeight] = useState(78);
 
   const zoomFactor: number = 1.067;
   const zoomMin: number = 0.104;
   const zoomMax: number = 67.708;
+
+  const trackHeightMin: number = 30;
+  const trackHeightMax: number = 200;
 
   const numMeasures: number = 450;
   const widthFactor: number = 76.824;
@@ -40,10 +44,10 @@ const TrackEditor = ({ numTracks }: TrackEditorProps): JSX.Element => {
   const numSegments: number = Math.ceil(numMeasures / measuresPerSegment);
 
   const segmentWidth: number = Math.round(zoom * widthFactor * measuresPerSegment);
-  const markerPatternWidth: number = segmentIsBeat ? segmentWidth * 4 : segmentWidth;
+  const gridPatternWidth: number = segmentIsBeat ? segmentWidth * 4 : segmentWidth;
 
+  const scaleWidth: number = zoom * 38.4;
   const totalWidth: number = segmentWidth * numSegments;
-  const scaleWidth: number = zoom;
 
   const zoomIn = () => {
     setZoom(Math.min(Math.round(zoom * zoomFactor * 1000) / 1000, zoomMax));
@@ -63,10 +67,18 @@ const TrackEditor = ({ numTracks }: TrackEditorProps): JSX.Element => {
 
   return (
     <div className="track-editor" onWheel={(e) => scrollWheelZoom(e)}>
+      Zoom:
       <button className="zoom-button" type="button" onClick={zoomOut}>
         -
       </button>
       <button className="zoom-button" type="button" onClick={zoomIn}>
+        +
+      </button>
+      Track Height:
+      <button className="zoom-button" type="button" onClick={() => setTrackHeight(Math.max(trackHeight - 5, trackHeightMin))}>
+        -
+      </button>
+      <button className="zoom-button" type="button" onClick={() => setTrackHeight(Math.min(trackHeight + 5, trackHeightMax))}>
         +
       </button>
       <Ruler
@@ -75,13 +87,14 @@ const TrackEditor = ({ numTracks }: TrackEditorProps): JSX.Element => {
         measuresPerSegment={measuresPerSegment}
         segmentIsBeat={segmentIsBeat}
         divisions={divisions}
-        markerPatternWidth={markerPatternWidth}
+        markerPatternWidth={gridPatternWidth}
         totalWidth={totalWidth}
       />
       <TrackList
         numTracks={numTracks}
+        trackHeight={trackHeight}
         divisions={divisions}
-        gridPatternWidth={markerPatternWidth}
+        gridPatternWidth={gridPatternWidth}
         totalWidth={totalWidth}
         scaleWidth={scaleWidth}
       />

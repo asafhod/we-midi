@@ -37,16 +37,21 @@ const Workspace = ({ midiURL }: WorkspaceProps): JSX.Element => {
         await Tone.loaded();
 
         const notes: NoteType[] = [];
+        let minNote: number = 128;
+        let maxNote: number = -1;
 
-        for (const { midi, duration, time: noteTime, velocity } of track.notes) {
+        for (const { name, midi: midiNum, duration, time: noteTime, velocity } of track.notes) {
           const noteID: number = Tone.Transport.schedule((time) => {
-            instrument.triggerAttackRelease(midi, duration, time, velocity);
+            instrument.triggerAttackRelease(name, duration, time, velocity);
           }, noteTime);
 
-          notes.push({ noteID, midi, duration, noteTime, velocity });
+          notes.push({ noteID, name, midiNum, duration, noteTime, velocity });
+
+          minNote = Math.min(minNote, midiNum);
+          maxNote = Math.max(maxNote, midiNum);
         }
 
-        tracks.push({ name: track.name, instrument, notes });
+        tracks.push({ name: track.name, instrument, notes, minNote, maxNote });
       }
 
       setTracks(tracks);

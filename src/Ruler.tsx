@@ -47,8 +47,8 @@ const Labling = ({ numSegments, segmentWidth, measuresPerSegment, segmentIsBeat,
     let labelNum: number = i * measuresPerSegment + 1;
 
     if (segmentIsBeat) {
-      const beat: number = (i % 4) / 10;
-      labelNum = Math.floor(labelNum) + beat;
+      const beat: number = i % 4;
+      if (beat !== 0) labelNum = Math.floor(labelNum) + (beat / 10 + 0.1);
     }
 
     segments.push(
@@ -74,7 +74,7 @@ const Markers = ({ divisions, markerPatternWidth }: MarkersProps): JSX.Element =
   const markers: JSX.Element[] = [];
 
   for (let i = 1; i < divisions; i++) {
-    const offset: number = i * Math.round(markerPatternWidth / divisions) + 1;
+    const offset: number = Math.round((i * markerPatternWidth) / divisions) + 1;
     markers.push(<line key={i} x1={offset} y1="75%" x2={offset} y2="100%" stroke="black" strokeWidth="0.6" />);
   }
 

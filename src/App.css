@@ -55,14 +55,12 @@
 }
 
 .track {
-  height: 100px;
   border-bottom: 2px solid black;
   position: relative;
 }
 
-.note {
+.track-note {
   display: inline-block;
   background-color: green;
-  height: 5px;
   position: absolute;
 }
