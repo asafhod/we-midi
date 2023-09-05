@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
+import * as Tone from "tone";
+import Player from "./Player";
 import Ruler from "./Ruler";
 import TrackList from "./TrackList";
 
@@ -7,7 +9,13 @@ type TrackEditorProps = {
 };
 
 const TrackEditor = ({ numTracks }: TrackEditorProps): JSX.Element => {
+  const trackEditorRef = useRef<HTMLDivElement>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [startPosition, setStartPosition] = useState(0);
+  const [playerPosition, setPlayerPosition] = useState(0);
+
   const [zoom, setZoom] = useState(1);
+
   const [trackHeight, setTrackHeight] = useState(78);
 
   const zoomFactor: number = 1.067;
@@ -43,11 +51,11 @@ const TrackEditor = ({ numTracks }: TrackEditorProps): JSX.Element => {
 
   const numSegments: number = Math.ceil(numMeasures / measuresPerSegment);
 
-  const segmentWidth: number = Math.round(zoom * widthFactor * measuresPerSegment);
+  const segmentWidth: number = zoom * widthFactor * measuresPerSegment;
   const gridPatternWidth: number = segmentIsBeat ? segmentWidth * 4 : segmentWidth;
 
-  const scaleWidth: number = zoom * 38.4;
-  const totalWidth: number = segmentWidth * numSegments;
+  const scaleWidth: number = (zoom * widthFactor) / 2;
+  const totalWidth: number = Math.ceil(segmentWidth * numSegments);
 
   const zoomIn = () => {
     setZoom(Math.min(Math.round(zoom * zoomFactor * 1000) / 1000, zoomMax));
@@ -65,40 +73,110 @@ const TrackEditor = ({ numTracks }: TrackEditorProps): JSX.Element => {
     }
   };
 
+  const changeStartPosition = (newStartPosition: number) => {
+    setStartPosition(newStartPosition);
+
+    if (!isPlaying) {
+      Tone.Transport.seconds = newStartPosition;
+      setPlayerPosition(newStartPosition);
+    }
+  };
+
+  const changePlayerPosition = (newPlayerPosition: number) => {
+    if (isPlaying) {
+      Tone.Transport.seconds = newPlayerPosition;
+      setPlayerPosition(newPlayerPosition);
+    }
+  };
+
+  const clickChangePosition = (e: React.MouseEvent<HTMLDivElement, MouseEvent>, alsoChangePlayerPos?: boolean) => {
+    const target = e.target as HTMLDivElement;
+
+    const x: number = e.clientX - target.getBoundingClientRect().left;
+    const newPosition: number = x / scaleWidth;
+
+    changeStartPosition(newPosition);
+
+    if (alsoChangePlayerPos) changePlayerPosition(newPosition);
+  };
+
+  const autoscroll = (x: number) => {
+    if (trackEditorRef.current) {
+      trackEditorRef.current.scrollBy(x, 0);
+    }
+  };
+
   return (
-    <div className="track-editor" onWheel={(e) => scrollWheelZoom(e)}>
-      Zoom:
-      <button className="zoom-button" type="button" onClick={zoomOut}>
-        -
-      </button>
-      <button className="zoom-button" type="button" onClick={zoomIn}>
-        +
-      </button>
-      Track Height:
-      <button className="zoom-button" type="button" onClick={() => setTrackHeight(Math.max(trackHeight - 5, trackHeightMin))}>
-        -
-      </button>
-      <button className="zoom-button" type="button" onClick={() => setTrackHeight(Math.min(trackHeight + 5, trackHeightMax))}>
-        +
-      </button>
-      <Ruler
-        numSegments={numSegments}
-        segmentWidth={segmentWidth}
-        measuresPerSegment={measuresPerSegment}
-        segmentIsBeat={segmentIsBeat}
-        divisions={divisions}
-        markerPatternWidth={gridPatternWidth}
-        totalWidth={totalWidth}
-      />
-      <TrackList
-        numTracks={numTracks}
-        trackHeight={trackHeight}
-        divisions={divisions}
-        gridPatternWidth={gridPatternWidth}
-        totalWidth={totalWidth}
-        scaleWidth={scaleWidth}
-      />
-    </div>
+    <>
+      <div className="track-editor-controls">
+        <Player
+          isPlaying={isPlaying}
+          setIsPlaying={setIsPlaying}
+          startPosition={startPosition}
+          playerPosition={playerPosition}
+          setPlayerPosition={setPlayerPosition}
+        />
+        <span className="control-block">
+          {"Zoom: "}
+          <button className="plus-minus-button" type="button" onClick={zoomOut}>
+            -
+          </button>
+          <button className="plus-minus-button" type="button" onClick={zoomIn}>
+            +
+          </button>
+        </span>
+        <span className="control-block">
+          {"Track Height: "}
+          <button
+            className="plus-minus-button"
+            type="button"
+            onClick={() => setTrackHeight(Math.max(trackHeight - 5, trackHeightMin))}
+          >
+            -
+          </button>
+          <button
+            className="plus-minus-button"
+            type="button"
+            onClick={() => setTrackHeight(Math.min(trackHeight + 5, trackHeightMax))}
+          >
+            +
+          </button>
+        </span>
+        <span className="control-block">
+          {"Autoscroll Test: "}
+          <button className="plus-minus-button" type="button" onClick={() => autoscroll(-1000)}>
+            -
+          </button>
+          <button className="plus-minus-button" type="button" onClick={() => autoscroll(1000)}>
+            +
+          </button>
+        </span>
+      </div>
+      <div className="track-editor" ref={trackEditorRef} onWheel={scrollWheelZoom}>
+        <Ruler
+          numSegments={numSegments}
+          segmentWidth={segmentWidth}
+          measuresPerSegment={measuresPerSegment}
+          segmentIsBeat={segmentIsBeat}
+          divisions={divisions}
+          markerPatternWidth={gridPatternWidth}
+          totalWidth={totalWidth}
+          onClick={(e) => clickChangePosition(e, true)}
+        />
+        <TrackList
+          numTracks={numTracks}
+          trackHeight={trackHeight}
+          divisions={divisions}
+          gridPatternWidth={gridPatternWidth}
+          totalWidth={totalWidth}
+          scaleWidth={scaleWidth}
+          isPlaying={isPlaying}
+          startPosition={startPosition}
+          playerPosition={playerPosition}
+          onClick={clickChangePosition}
+        />
+      </div>
+    </>
   );
 };
 

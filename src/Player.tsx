@@ -1,63 +1,57 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import * as Tone from "tone";
 
-const Player = (): JSX.Element => {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [startPosition, setStartPosition] = useState("0:0:0");
-  const [playerPosition, setPlayerPosition] = useState("0:0:0");
+type playerProps = {
+  isPlaying: boolean;
+  setIsPlaying: React.Dispatch<React.SetStateAction<boolean>>;
+  startPosition: number;
+  playerPosition: number;
+  setPlayerPosition: React.Dispatch<React.SetStateAction<number>>;
+};
 
-  const formatPosition = (position: string) => {
-    const [whole] = position.split(".");
+const Player = ({ isPlaying, setIsPlaying, startPosition, playerPosition, setPlayerPosition }: playerProps): JSX.Element => {
+  const formatPositionBars = (position: number) => {
+    const posBars: string = Tone.TransportTime(position).toBarsBeatsSixteenths();
+    const [whole] = posBars.split(".");
     const [measures, beats] = whole.split(":");
 
-    return `${Number(measures) + 1}:${Number(beats) + 1}`;
+    return `${Number(measures) + 1} bar ${Number(beats) + 1} beat`;
+  };
+
+  const formatPosition = (position: number): string => {
+    const posRoundedToSec: number = Math.round(position);
+
+    const minutes: number = Math.floor(posRoundedToSec / 60);
+    const seconds: number = posRoundedToSec % 60;
+
+    return `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
   };
 
   const togglePlay = () => {
     if (isPlaying) {
       Tone.Transport.stop();
-      Tone.Transport.position = startPosition;
+      Tone.Transport.seconds = startPosition;
       setIsPlaying(false);
-      setPlayerPosition(Tone.Transport.position);
+      setPlayerPosition(startPosition);
     } else {
       Tone.Transport.start();
       setIsPlaying(true);
     }
   };
 
-  const changeStartPosition = (newStartPosition: string) => {
-    setStartPosition(newStartPosition);
-
-    if (!isPlaying) {
-      Tone.Transport.position = newStartPosition;
-      setPlayerPosition(Tone.Transport.position);
-    }
-  };
-
-  const changePlayerPosition = (newPlayerPosition: string) => {
-    if (isPlaying) {
-      Tone.Transport.position = newPlayerPosition;
-      setPlayerPosition(newPlayerPosition);
-    }
-  };
-
   useEffect(() => {
     Tone.Transport.scheduleRepeat(() => {
-      setPlayerPosition(String(Tone.Transport.position));
-    }, "4n"); // can use smaller note duration if need to update more frequently
+      setPlayerPosition(Tone.Transport.seconds);
+    }, "32n"); // can use smaller note duration if need to update more frequently
     // clear it in a cleanup function?
   }, [setPlayerPosition]);
 
   return (
     <>
-      <button type="button" onClick={togglePlay}>
+      <button type="button" className="play-button" onClick={togglePlay}>
         {isPlaying ? "Stop" : "Play"}
       </button>
-      <input type="text" value={startPosition} onChange={(e) => changeStartPosition(e.target.value)} />
-      {formatPosition(playerPosition)}
-      <button type="button" onClick={() => changePlayerPosition("2:0:0")}>
-        Test
-      </button>
+      {`${formatPosition(playerPosition)} / ${formatPositionBars(playerPosition)}`}
     </>
   );
 };

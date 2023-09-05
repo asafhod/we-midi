@@ -6,6 +6,7 @@ type RulerProps = {
   divisions: number;
   markerPatternWidth: number;
   totalWidth: number;
+  onClick: (e: React.MouseEvent<HTMLDivElement, MouseEvent>, alsoChangePlayerPos?: boolean) => void;
 };
 
 const Ruler = ({
@@ -16,9 +17,10 @@ const Ruler = ({
   divisions,
   markerPatternWidth,
   totalWidth,
+  onClick,
 }: RulerProps): JSX.Element => {
   return (
-    <div className="ruler">
+    <div className="ruler" onClick={onClick}>
       <Labling
         numSegments={numSegments}
         segmentWidth={segmentWidth}
@@ -43,7 +45,7 @@ const Labling = ({ numSegments, segmentWidth, measuresPerSegment, segmentIsBeat,
   const segments: JSX.Element[] = [];
 
   for (let i = 0; i < numSegments; i++) {
-    const offset: number = segmentWidth * i;
+    const offset: number = Math.round(segmentWidth * i);
     let labelNum: number = i * measuresPerSegment + 1;
 
     if (segmentIsBeat) {

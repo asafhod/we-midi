@@ -19,17 +19,23 @@ const Track = ({ trackID, width, height, scaleWidth }: TrackProps): JSX.Element 
 
   if (tracks[trackID].notes.length) {
     const { minNote, maxNote } = tracks[trackID];
+
     const noteRange: number = maxNote - minNote;
+
     const heightWithoutBorder: number = height - 2;
-    const noteHeight: number = Math.min(Math.round(noteRange === 0 ? heightWithoutBorder / 20 : heightWithoutBorder / noteRange), 10);
-    const availableTrackHeight: number = heightWithoutBorder - noteHeight;
+    const heightScale: number = noteRange <= 10 && noteRange !== 0 ? 0.6 : 1;
+    const scaledHeight: number = Math.round(heightWithoutBorder * heightScale);
+    const heightOffset: number = Math.round((heightWithoutBorder - scaledHeight) / 2);
+
+    const noteHeight: number = noteRange === 0 ? 5 : Math.min(Math.round((scaledHeight / noteRange) * heightScale), 5);
+    const availableTrackHeight: number = scaledHeight - noteHeight;
 
     for (const note of tracks[trackID].notes) {
-      const noteLeft: number = Math.round(note.noteTime * scaleWidth);
+      const noteLeft: number = Math.round(note.noteTime * scaleWidth) + 1;
       const noteWidth: number = Math.round(Number(note.duration) * scaleWidth);
 
       const normalizedNotePosition: number = noteRange === 0 ? 0.5 : 1 - (note.midiNum - minNote) / noteRange;
-      const noteTop: number = Math.round(normalizedNotePosition * availableTrackHeight);
+      const noteTop: number = Math.round(normalizedNotePosition * availableTrackHeight) + heightOffset;
 
       notes.push(<TrackNote key={note.noteID} left={noteLeft} top={noteTop} width={noteWidth} height={noteHeight} />);
     }
@@ -117,7 +123,7 @@ type TrackNoteProps = {
 };
 
 const TrackNote = ({ left, top, width, height }: TrackNoteProps): JSX.Element => {
-  return <div className="track-note" style={{ left, top, width, height }} onClick={() => console.log(left, width)} />;
+  return <div className="track-note" style={{ left, top, width, height }} />;
 };
 
 export default Track;

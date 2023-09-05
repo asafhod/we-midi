@@ -11,16 +11,16 @@
   overflow-x: hidden;
 }
 
-.zoom-button {
-  width: 25px;
+.track-editor-controls {
+  margin-top: 7px;
 }
 
 .track-editor {
   overflow-x: auto;
   overflow-y: hidden;
   padding: 0px 5px;
-  /* height: 500px; */
   text-align: left;
+  margin-top: 7px;
 }
 
 .ruler {
@@ -63,4 +63,30 @@
   display: inline-block;
   background-color: green;
   position: absolute;
+}
+
+.position-marker {
+  position: absolute;
+  top: 0px;
+  width: 2px;
+  border-left: 2px solid blue;
+}
+
+.player-position-marker {
+  position: absolute;
+  top: 0px;
+  width: 2px;
+  border-left: 2px solid orange;
+}
+
+.play-button {
+  margin-right: 5px;
+}
+
+.control-block {
+  margin-left: 30px;
+}
+
+.plus-minus-button {
+  width: 25px;
 }

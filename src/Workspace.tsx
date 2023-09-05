@@ -4,7 +4,6 @@ import * as Tone from "tone";
 import { NoteType, TrackType } from "./types";
 import createInstrument from "./instruments/createInstrument";
 import TracksContext from "./TracksContext";
-import Player from "./Player";
 import TrackEditor from "./TrackEditor";
 
 type WorkspaceProps = {
@@ -71,8 +70,6 @@ const Workspace = ({ midiURL }: WorkspaceProps): JSX.Element => {
         <p>Loading...</p>
       ) : (
         <div className="workspace">
-          <Player />
-
           <TracksContext.Provider value={{ tracks, setTracks }}>
             <TrackEditor numTracks={tracks.length} />
           </TracksContext.Provider>
