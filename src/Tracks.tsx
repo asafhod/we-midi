@@ -1,6 +1,6 @@
 import Track from "./Track";
 
-type TrackListProps = {
+type TracksProps = {
   numTracks: number;
   trackHeight: number;
   divisions: number;
@@ -8,12 +8,12 @@ type TrackListProps = {
   totalWidth: number;
   scaleWidth: number;
   isPlaying: boolean;
-  startPosition: number;
-  playerPosition: number;
+  scaledStartPosition: number;
+  scaledPlayerPosition: number;
   onClick: (e: React.MouseEvent<HTMLDivElement, MouseEvent>, alsoChangePlayerPos?: boolean) => void;
 };
 
-const TrackList = ({
+const Tracks = ({
   numTracks,
   trackHeight,
   divisions,
@@ -21,16 +21,14 @@ const TrackList = ({
   totalWidth,
   scaleWidth,
   isPlaying,
-  startPosition,
-  playerPosition,
+  scaledStartPosition,
+  scaledPlayerPosition,
   onClick,
-}: TrackListProps): JSX.Element => {
+}: TracksProps): JSX.Element => {
   // Figure out exactly how to set up the Track components. Redux/ContextAPI may help clarify.
-  //   How to prevent list from re-rendering when a single track is edited (none are added/removed)
+  //   How to prevent all tracks from re-rendering when a single track is edited (none are added/removed)
   const totalHeight: number = numTracks * trackHeight;
   const playerPositionMarkerDisplay: string = isPlaying ? "inline" : "none";
-  const scaledStartPosition: number = Math.round(startPosition * scaleWidth);
-  const scaledPlayerPosition: number = Math.round(playerPosition * scaleWidth);
 
   let trackComponents: JSX.Element[] = [];
 
@@ -47,12 +45,20 @@ const TrackList = ({
   }
 
   return (
-    <div className="track-list" style={{ width: totalWidth, height: totalHeight }} onClick={onClick}>
-      <span className="position-marker" style={{ height: totalHeight, left: scaledStartPosition }}></span>
+    <div className="tracks-wrapper" style={{ width: totalWidth, height: totalHeight }} onClick={onClick}>
+      <span className="position-marker" style={{ height: totalHeight, left: scaledStartPosition }}>
+        <svg className="position-marker-head-container">
+          <circle className="position-marker-head" cx="50%" cy="50%" r="50%" />
+        </svg>
+      </span>
       <span
         className="player-position-marker"
         style={{ height: totalHeight, left: scaledPlayerPosition, display: playerPositionMarkerDisplay }}
-      ></span>
+      >
+        <svg className="position-marker-head-container">
+          <circle className="player-position-marker-head" cx="50%" cy="50%" r="50%" />
+        </svg>
+      </span>
       <svg className="tracks-grid" width="100%" height={totalHeight}>
         <defs>
           <pattern id="grid-pattern" width={gridPatternWidth} height="100%" patternUnits="userSpaceOnUse">
@@ -67,4 +73,4 @@ const TrackList = ({
   );
 };
 
-export default TrackList;
+export default Tracks;

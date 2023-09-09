@@ -15,10 +15,14 @@
   margin-top: 7px;
 }
 
+.track-list {
+  height: 100%;
+  width: 20%;
+}
+
 .track-editor {
   overflow-x: auto;
   overflow-y: hidden;
-  padding: 0px 5px;
   text-align: left;
   margin-top: 7px;
 }
@@ -41,9 +45,10 @@
   position: absolute;
   top: -1px;
   margin-left: 4px;
+  user-select: none;
 }
 
-.track-list {
+.tracks-wrapper {
   width: 100%;
   border-bottom: 1px solid black;
   position: relative;
@@ -67,16 +72,30 @@
 
 .position-marker {
   position: absolute;
-  top: 0px;
   width: 2px;
   border-left: 2px solid blue;
 }
 
+.position-marker-head-container {
+  position: absolute;
+  top: -10px;
+  left: -6px;
+  width: 10px;
+  height: 10px;
+}
+
+.position-marker-head {
+  fill: blue;
+}
+
 .player-position-marker {
   position: absolute;
-  top: 0px;
   width: 2px;
   border-left: 2px solid orange;
+}
+
+.player-position-marker-head {
+  fill: orange;
 }
 
 .play-button {
@@ -89,4 +108,38 @@
 
 .plus-minus-button {
   width: 25px;
+}
+
+.custom-scrollbar-h {
+  position: relative;
+  height: 17px;
+  background-color: #f1f1f1;
+}
+
+.custom-scrollbar-v {
+  position: relative;
+  width: 17px;
+  background-color: #f1f1f1;
+}
+
+.custom-scrollbar-h .scroll-thumb {
+  position: absolute;
+  top: 2px;
+  height: 13px;
+  background-color: #9d9d9d;
+}
+
+.custom-scrollbar-v .scroll-thumb {
+  position: absolute;
+  left: 2px;
+  width: 13px;
+  background-color: #9d9d9d;
+}
+
+.scroll-thumb:hover {
+  background-color: #c1c1c1;
+}
+
+.scroll-thumb:active {
+  background-color: #787878;
 }

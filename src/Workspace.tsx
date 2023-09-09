@@ -11,7 +11,7 @@ type WorkspaceProps = {
 };
 
 const Workspace = ({ midiURL }: WorkspaceProps): JSX.Element => {
-  const [loading, setLoading] = useState(true);
+  const [midiLoading, setMidiLoading] = useState(true);
   const [tracks, setTracks] = useState<TrackType[]>([]);
 
   useEffect(() => {
@@ -54,7 +54,7 @@ const Workspace = ({ midiURL }: WorkspaceProps): JSX.Element => {
       }
 
       setTracks(tracks);
-      setLoading(false);
+      setMidiLoading(false);
     };
 
     try {
@@ -65,15 +65,13 @@ const Workspace = ({ midiURL }: WorkspaceProps): JSX.Element => {
   }, [midiURL]);
 
   return (
-    <div>
-      {loading ? (
+    <div className="workspace">
+      {midiLoading ? (
         <p>Loading...</p>
       ) : (
-        <div className="workspace">
-          <TracksContext.Provider value={{ tracks, setTracks }}>
-            <TrackEditor numTracks={tracks.length} />
-          </TracksContext.Provider>
-        </div>
+        <TracksContext.Provider value={{ tracks, setTracks }}>
+          <TrackEditor numTracks={tracks.length} />
+        </TracksContext.Provider>
       )}
     </div>
   );

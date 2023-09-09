@@ -1,8 +1,10 @@
-import { useState, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import * as Tone from "tone";
+import useResizeObserver from "use-resize-observer";
 import Player from "./Player";
 import Ruler from "./Ruler";
-import TrackList from "./TrackList";
+import Tracks from "./Tracks";
+import CustomScrollbar from "./CustomScrollbar";
 
 type TrackEditorProps = {
   numTracks: number;
@@ -10,9 +12,11 @@ type TrackEditorProps = {
 
 const TrackEditor = ({ numTracks }: TrackEditorProps): JSX.Element => {
   const trackEditorRef = useRef<HTMLDivElement>(null);
+  const { width: editorWidth = 0 } = useResizeObserver<HTMLDivElement>({ ref: trackEditorRef }); // can get height too if needed later
   const [isPlaying, setIsPlaying] = useState(false);
   const [startPosition, setStartPosition] = useState(0);
   const [playerPosition, setPlayerPosition] = useState(0);
+  const [autoscrollBlocked, setAutoscrollBlocked] = useState(false);
 
   const [zoom, setZoom] = useState(1);
 
@@ -57,6 +61,9 @@ const TrackEditor = ({ numTracks }: TrackEditorProps): JSX.Element => {
   const scaleWidth: number = (zoom * widthFactor) / 2;
   const totalWidth: number = Math.ceil(segmentWidth * numSegments);
 
+  const scaledStartPosition: number = Math.round(startPosition * scaleWidth);
+  const scaledPlayerPosition: number = Math.round(playerPosition * scaleWidth);
+
   const zoomIn = () => {
     setZoom(Math.min(Math.round(zoom * zoomFactor * 1000) / 1000, zoomMax));
   };
@@ -71,6 +78,8 @@ const TrackEditor = ({ numTracks }: TrackEditorProps): JSX.Element => {
     } else if (e.deltaY < 0) {
       zoomIn();
     }
+
+    if (e.deltaX !== 0) blockAutoscroll();
   };
 
   const changeStartPosition = (newStartPosition: number) => {
@@ -90,21 +99,39 @@ const TrackEditor = ({ numTracks }: TrackEditorProps): JSX.Element => {
   };
 
   const clickChangePosition = (e: React.MouseEvent<HTMLDivElement, MouseEvent>, alsoChangePlayerPos?: boolean) => {
-    const target = e.target as HTMLDivElement;
+    const target = e.currentTarget as HTMLDivElement;
 
     const x: number = e.clientX - target.getBoundingClientRect().left;
     const newPosition: number = x / scaleWidth;
 
     changeStartPosition(newPosition);
 
-    if (alsoChangePlayerPos) changePlayerPosition(newPosition);
-  };
-
-  const autoscroll = (x: number) => {
-    if (trackEditorRef.current) {
-      trackEditorRef.current.scrollBy(x, 0);
+    if (alsoChangePlayerPos) {
+      changePlayerPosition(newPosition);
+    } else {
+      blockAutoscroll();
     }
   };
+
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
+    if (e.button === 1) blockAutoscroll();
+  };
+
+  const blockAutoscroll = () => {
+    if (isPlaying && !autoscrollBlocked) setAutoscrollBlocked(true);
+  };
+
+  useEffect(() => {
+    if (isPlaying && !autoscrollBlocked && trackEditorRef.current) {
+      const minPositionVisible: number = trackEditorRef.current.scrollLeft;
+
+      const maxPositionVisible: number = minPositionVisible + editorWidth - 1;
+
+      if (scaledPlayerPosition > maxPositionVisible || scaledPlayerPosition < minPositionVisible) {
+        trackEditorRef.current.scrollTo(scaledPlayerPosition, 0);
+      }
+    }
+  }, [scaledPlayerPosition, isPlaying, autoscrollBlocked, editorWidth]);
 
   return (
     <>
@@ -115,6 +142,8 @@ const TrackEditor = ({ numTracks }: TrackEditorProps): JSX.Element => {
           startPosition={startPosition}
           playerPosition={playerPosition}
           setPlayerPosition={setPlayerPosition}
+          autoscrollBlocked={autoscrollBlocked}
+          setAutoscrollBlocked={setAutoscrollBlocked}
         />
         <span className="control-block">
           {"Zoom: "}
@@ -142,17 +171,9 @@ const TrackEditor = ({ numTracks }: TrackEditorProps): JSX.Element => {
             +
           </button>
         </span>
-        <span className="control-block">
-          {"Autoscroll Test: "}
-          <button className="plus-minus-button" type="button" onClick={() => autoscroll(-1000)}>
-            -
-          </button>
-          <button className="plus-minus-button" type="button" onClick={() => autoscroll(1000)}>
-            +
-          </button>
-        </span>
       </div>
-      <div className="track-editor" ref={trackEditorRef} onWheel={scrollWheelZoom}>
+      {/* <div className="track-list"></div> */}
+      <div className="track-editor" ref={trackEditorRef} onWheel={scrollWheelZoom} onMouseDown={handleMouseDown}>
         <Ruler
           numSegments={numSegments}
           segmentWidth={segmentWidth}
@@ -163,7 +184,7 @@ const TrackEditor = ({ numTracks }: TrackEditorProps): JSX.Element => {
           totalWidth={totalWidth}
           onClick={(e) => clickChangePosition(e, true)}
         />
-        <TrackList
+        <Tracks
           numTracks={numTracks}
           trackHeight={trackHeight}
           divisions={divisions}
@@ -171,10 +192,13 @@ const TrackEditor = ({ numTracks }: TrackEditorProps): JSX.Element => {
           totalWidth={totalWidth}
           scaleWidth={scaleWidth}
           isPlaying={isPlaying}
-          startPosition={startPosition}
-          playerPosition={playerPosition}
+          scaledStartPosition={scaledStartPosition}
+          scaledPlayerPosition={scaledPlayerPosition}
           onClick={clickChangePosition}
         />
+      </div>
+      <div className="scrollbar-container" onMouseDown={blockAutoscroll}>
+        <CustomScrollbar size={editorWidth} contentSelector=".track-editor" contentFullSize={totalWidth} />
       </div>
     </>
   );

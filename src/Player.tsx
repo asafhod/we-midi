@@ -7,9 +7,19 @@ type playerProps = {
   startPosition: number;
   playerPosition: number;
   setPlayerPosition: React.Dispatch<React.SetStateAction<number>>;
+  autoscrollBlocked: boolean;
+  setAutoscrollBlocked: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
-const Player = ({ isPlaying, setIsPlaying, startPosition, playerPosition, setPlayerPosition }: playerProps): JSX.Element => {
+const Player = ({
+  isPlaying,
+  setIsPlaying,
+  startPosition,
+  playerPosition,
+  setPlayerPosition,
+  autoscrollBlocked,
+  setAutoscrollBlocked,
+}: playerProps): JSX.Element => {
   const formatPositionBars = (position: number) => {
     const posBars: string = Tone.TransportTime(position).toBarsBeatsSixteenths();
     const [whole] = posBars.split(".");
@@ -33,6 +43,8 @@ const Player = ({ isPlaying, setIsPlaying, startPosition, playerPosition, setPla
       Tone.Transport.seconds = startPosition;
       setIsPlaying(false);
       setPlayerPosition(startPosition);
+
+      if (autoscrollBlocked) setAutoscrollBlocked(false);
     } else {
       Tone.Transport.start();
       setIsPlaying(true);
@@ -40,9 +52,9 @@ const Player = ({ isPlaying, setIsPlaying, startPosition, playerPosition, setPla
   };
 
   useEffect(() => {
-    Tone.Transport.scheduleRepeat(() => {
-      setPlayerPosition(Tone.Transport.seconds);
-    }, "32n"); // can use smaller note duration if need to update more frequently
+    Tone.Transport.scheduleRepeat((time) => {
+      Tone.Draw.schedule(() => setPlayerPosition(Math.max(Tone.Transport.seconds - 0.085, 0)), time); // offset is compromise between desktop and mobile
+    }, "32n");
     // clear it in a cleanup function?
   }, [setPlayerPosition]);
 
