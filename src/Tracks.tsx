@@ -3,6 +3,7 @@ import Track from "./Track";
 type TracksProps = {
   numTracks: number;
   trackHeight: number;
+  totalHeight: number;
   divisions: number;
   gridPatternWidth: number;
   totalWidth: number;
@@ -16,6 +17,7 @@ type TracksProps = {
 const Tracks = ({
   numTracks,
   trackHeight,
+  totalHeight,
   divisions,
   gridPatternWidth,
   totalWidth,
@@ -27,7 +29,6 @@ const Tracks = ({
 }: TracksProps): JSX.Element => {
   // Figure out exactly how to set up the Track components. Redux/ContextAPI may help clarify.
   //   How to prevent all tracks from re-rendering when a single track is edited (none are added/removed)
-  const totalHeight: number = numTracks * trackHeight;
   const playerPositionMarkerDisplay: string = isPlaying ? "inline" : "none";
 
   let trackComponents: JSX.Element[] = [];
@@ -46,6 +47,16 @@ const Tracks = ({
 
   return (
     <div className="tracks-wrapper" style={{ width: totalWidth, height: totalHeight }} onClick={onClick}>
+      <svg className="tracks-grid" width="100%" height={totalHeight}>
+        <defs>
+          <pattern id="grid-pattern" width={gridPatternWidth} height="100%" patternUnits="userSpaceOnUse">
+            {gridLines}
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#grid-pattern)" />
+        {/* <rect width="100%" height="100%" fill="white" /> */}
+      </svg>
+      <div className="tracks">{trackComponents}</div>
       <span className="position-marker" style={{ height: totalHeight, left: scaledStartPosition }}>
         <svg className="position-marker-head-container">
           <circle className="position-marker-head" cx="50%" cy="50%" r="50%" />
@@ -59,16 +70,6 @@ const Tracks = ({
           <circle className="player-position-marker-head" cx="50%" cy="50%" r="50%" />
         </svg>
       </span>
-      <svg className="tracks-grid" width="100%" height={totalHeight}>
-        <defs>
-          <pattern id="grid-pattern" width={gridPatternWidth} height="100%" patternUnits="userSpaceOnUse">
-            {gridLines}
-          </pattern>
-        </defs>
-        <rect width="100%" height="100%" fill="url(#grid-pattern)" />
-        {/* <rect width="100%" height="100%" fill="white" /> */}
-      </svg>
-      <div className="tracks">{trackComponents}</div>
     </div>
   );
 };

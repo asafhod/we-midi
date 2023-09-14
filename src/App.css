@@ -1,37 +1,86 @@
 .App {
+  height: 100vh;
+  width: 100vw;
   margin: 0;
   padding: 0;
   box-sizing: border-box;
   text-align: center;
+  background-color: black;
+  color: #b7bfc4;
 }
 
+/* why don't these work? Trying to hide the browser window scroll bars even when at min widths*/
+/* .body {
+  scrollbar-width: none;
+}
+.body::-webkit-scrollbar {
+  display: none;
+} */
+/* .body {
+  overflow: hidden;
+} */
+
 .workspace {
-  height: 100%;
-  width: 100%;
+  min-width: 500px;
   overflow-x: hidden;
 }
 
 .track-editor-controls {
   margin-top: 7px;
+  margin-bottom: 8px;
 }
 
 .track-list {
-  height: 100%;
-  width: 20%;
+  background-color: #15191b;
 }
 
-.track-editor {
+.scroll-content-wrapper {
+  width: calc(100vw - 17px);
+  float: left;
+}
+
+.content-panel {
+  float: left;
+  margin-right: 6px;
+  width: 10%;
+  max-width: 192px;
+  height: 90%;
+  max-height: 80vh;
+}
+
+.content-h {
   overflow-x: auto;
   overflow-y: hidden;
+  scrollbar-width: none;
+  background-color: #15191b; /* move to track-editor when you make it */
+}
+
+.content-h::-webkit-scrollbar {
+  display: none;
+}
+
+.content-v {
+  width: 100%;
+  overflow-x: hidden;
+  overflow-y: hidden;
   text-align: left;
-  margin-top: 7px;
+  scrollbar-width: none;
+  max-height: 80vh;
+}
+
+/* .scroll-content-zoom-wrapper {
+  width: 90%;
+  float: left;
+} */
+
+.track-editor-wrapper .custom-scrollbar-v {
+  margin-left: 90%;
 }
 
 .ruler {
   width: fit-content;
-  border-top: 1px solid black;
   border-bottom: 1px solid black;
-  height: 2.25em;
+  height: 35px; /* Using this in TrackEditor component's vertical scrollbar. If you change this, change it there as well. */
 }
 
 .ruler-labels {
@@ -40,7 +89,8 @@
 }
 
 .ruler-label {
-  font-size: 0.75em;
+  font-size: 12px;
+  font-weight: bold;
   text-align: left;
   position: absolute;
   top: -1px;
@@ -110,30 +160,40 @@
   width: 25px;
 }
 
-.custom-scrollbar-h {
-  position: relative;
+.scrollbar-h {
+  /* use variable, do the same for V */
+  margin-left: min(calc(10% + 6px), 198px);
+  width: 100vw - min(calc(10% + 6px), 198px);
   height: 17px;
+  position: relative;
   background-color: #f1f1f1;
+  overflow-x: clip;
 }
 
-.custom-scrollbar-v {
+.scrollbar-v {
+  margin-left: calc(100vw - 17px);
   position: relative;
   width: 17px;
   background-color: #f1f1f1;
+  overflow-y: clip;
 }
 
-.custom-scrollbar-h .scroll-thumb {
+.scrollbar-h .scroll-thumb {
   position: absolute;
   top: 2px;
   height: 13px;
   background-color: #9d9d9d;
+  transition-property: left;
+  transition-timing-function: ease-in-out;
 }
 
-.custom-scrollbar-v .scroll-thumb {
+.scrollbar-v .scroll-thumb {
   position: absolute;
   left: 2px;
   width: 13px;
   background-color: #9d9d9d;
+  transition-property: top;
+  transition-timing-function: ease-in-out;
 }
 
 .scroll-thumb:hover {

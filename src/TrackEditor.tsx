@@ -1,18 +1,15 @@
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import * as Tone from "tone";
-import useResizeObserver from "use-resize-observer";
 import Player from "./Player";
 import Ruler from "./Ruler";
 import Tracks from "./Tracks";
-import CustomScrollbar from "./CustomScrollbar";
+import CustomScroll from "./CustomScroll";
 
 type TrackEditorProps = {
   numTracks: number;
 };
 
 const TrackEditor = ({ numTracks }: TrackEditorProps): JSX.Element => {
-  const trackEditorRef = useRef<HTMLDivElement>(null);
-  const { width: editorWidth = 0 } = useResizeObserver<HTMLDivElement>({ ref: trackEditorRef }); // can get height too if needed later
   const [isPlaying, setIsPlaying] = useState(false);
   const [startPosition, setStartPosition] = useState(0);
   const [playerPosition, setPlayerPosition] = useState(0);
@@ -26,6 +23,7 @@ const TrackEditor = ({ numTracks }: TrackEditorProps): JSX.Element => {
   const zoomMin: number = 0.104;
   const zoomMax: number = 67.708;
 
+  const allTracksHeight: number = numTracks * trackHeight;
   const trackHeightMin: number = 30;
   const trackHeightMax: number = 200;
 
@@ -80,7 +78,26 @@ const TrackEditor = ({ numTracks }: TrackEditorProps): JSX.Element => {
     }
 
     if (e.deltaX !== 0) blockAutoscroll();
+
+    // console.log(trackEditorRef.current?.scrollTop);
   };
+
+  // const handleScroll = (e: React.UIEvent<HTMLDivElement, UIEvent>) => {
+  //   // const scrollLeft: number = e.currentTarget.scrollLeft;
+  //   // const scrollTop: number = e.currentTarget.scrollTop;
+
+  //   // setScrollPositionX((prevScrollPositionX) => {
+  //   //   return prevScrollPositionX === scrollLeft ? prevScrollPositionX : scrollLeft;
+  //   // });
+
+  //   // setScrollPositionY((prevScrollPositionY) => {
+  //   //   return prevScrollPositionY === scrollTop ? prevScrollPositionY : scrollTop;
+  //   // });
+
+  //   if (scrollPositionX !== e.currentTarget.scrollLeft) setScrollPositionX(e.currentTarget.scrollLeft);
+
+  //   if (scrollPositionY !== e.currentTarget.scrollTop) setScrollPositionY(e.currentTarget.scrollTop);
+  // };
 
   const changeStartPosition = (newStartPosition: number) => {
     setStartPosition(newStartPosition);
@@ -113,25 +130,43 @@ const TrackEditor = ({ numTracks }: TrackEditorProps): JSX.Element => {
     }
   };
 
-  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
-    if (e.button === 1) blockAutoscroll();
-  };
+  // const handleMouseDown = (e: React.MouseEvent<HTMLDivElement, MouseEvent>, targetButton: number) => {
+  //   if (e.button === targetButton) blockAutoscroll();
+  // };
 
   const blockAutoscroll = () => {
     if (isPlaying && !autoscrollBlocked) setAutoscrollBlocked(true);
   };
 
-  useEffect(() => {
-    if (isPlaying && !autoscrollBlocked && trackEditorRef.current) {
-      const minPositionVisible: number = trackEditorRef.current.scrollLeft;
+  // useEffect(() => {
+  //   if (trackEditorRef.current) {
+  //     const blockWheelScroll = (e: WheelEvent) => {
+  //       e.preventDefault(); // prevent wheel from scrolling vertically
+  //     };
 
-      const maxPositionVisible: number = minPositionVisible + editorWidth - 1;
+  //     trackEditorRef.current.addEventListener("wheel", blockWheelScroll, { passive: false });
 
-      if (scaledPlayerPosition > maxPositionVisible || scaledPlayerPosition < minPositionVisible) {
-        trackEditorRef.current.scrollTo(scaledPlayerPosition, 0);
-      }
-    }
-  }, [scaledPlayerPosition, isPlaying, autoscrollBlocked, editorWidth]);
+  //     // proper pratice with conditional like this?
+  //     return trackEditorRef.current.removeEventListener("wheel", blockWheelScroll);
+  //   }
+  // }, []);
+
+  // useEffect(() => {
+  //   if (trackEditorRef.current && trackEditorRef.current.scrollLeft !== scrollPositionX) {
+  //     // scroll smoothly if scroll thumb is larger than roughly half the scroll bar
+  //     // this makes the thumb's motion clearer for the user
+  //     const scrollOptions: ScrollToOptions = { left: scrollPositionX };
+  //     if (editorWidth / totalWidth > 0.49) scrollOptions.behavior = "smooth";
+  //     trackEditorRef.current.scrollTo(scrollOptions);
+  //   }
+  // }, [scrollPositionX, editorWidth, totalWidth]);
+
+  // useEffect(() => {
+  //   if (trackEditorRef.current && trackEditorRef.current.scrollTop !== scrollPositionY) {
+  //     console.log("In useEffect. State is " + scrollPositionY + " and scroll is " + trackEditorRef.current.scrollTop);
+  //     trackEditorRef.current.scrollTop = scrollPositionY;
+  //   }
+  // }, [scrollPositionY]);
 
   return (
     <>
@@ -172,34 +207,44 @@ const TrackEditor = ({ numTracks }: TrackEditorProps): JSX.Element => {
           </button>
         </span>
       </div>
-      {/* <div className="track-list"></div> */}
-      <div className="track-editor" ref={trackEditorRef} onWheel={scrollWheelZoom} onMouseDown={handleMouseDown}>
-        <Ruler
-          numSegments={numSegments}
-          segmentWidth={segmentWidth}
-          measuresPerSegment={measuresPerSegment}
-          segmentIsBeat={segmentIsBeat}
-          divisions={divisions}
-          markerPatternWidth={gridPatternWidth}
-          totalWidth={totalWidth}
-          onClick={(e) => clickChangePosition(e, true)}
-        />
-        <Tracks
-          numTracks={numTracks}
-          trackHeight={trackHeight}
-          divisions={divisions}
-          gridPatternWidth={gridPatternWidth}
-          totalWidth={totalWidth}
-          scaleWidth={scaleWidth}
-          isPlaying={isPlaying}
-          scaledStartPosition={scaledStartPosition}
-          scaledPlayerPosition={scaledPlayerPosition}
-          onClick={clickChangePosition}
-        />
-      </div>
-      <div className="scrollbar-container" onMouseDown={blockAutoscroll}>
-        <CustomScrollbar size={editorWidth} contentSelector=".track-editor" contentFullSize={totalWidth} />
-      </div>
+      <CustomScroll
+        contentFullSizeH={totalWidth}
+        contentFullSizeV={allTracksHeight + 35}
+        scaledPlayerPosition={scaledPlayerPosition}
+        isPlaying={isPlaying}
+        scrollWheelZoom={scrollWheelZoom}
+        autoscrollBlocked={autoscrollBlocked}
+        blockAutoscroll={blockAutoscroll}
+      >
+        <div className="track-list" style={{ height: allTracksHeight + 35 }}>
+          <p>test</p>
+        </div>
+        <>
+          <Ruler
+            numSegments={numSegments}
+            segmentWidth={segmentWidth}
+            measuresPerSegment={measuresPerSegment}
+            segmentIsBeat={segmentIsBeat}
+            divisions={divisions}
+            markerPatternWidth={gridPatternWidth}
+            totalWidth={totalWidth}
+            onClick={(e) => clickChangePosition(e, true)}
+          />
+          <Tracks
+            numTracks={numTracks}
+            trackHeight={trackHeight}
+            totalHeight={allTracksHeight}
+            divisions={divisions}
+            gridPatternWidth={gridPatternWidth}
+            totalWidth={totalWidth}
+            scaleWidth={scaleWidth}
+            isPlaying={isPlaying}
+            scaledStartPosition={scaledStartPosition}
+            scaledPlayerPosition={scaledPlayerPosition}
+            onClick={clickChangePosition}
+          />
+        </>
+      </CustomScroll>
     </>
   );
 };
