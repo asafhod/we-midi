@@ -30,13 +30,28 @@
   margin-bottom: 8px;
 }
 
+.track-list-header {
+  height: 35px;
+  background-color: #15191b;
+}
+
 .track-list {
+  margin-top: 35px;
   background-color: #15191b;
 }
 
 .scroll-content-wrapper {
-  width: calc(100vw - 17px);
+  width: calc(100vw);
   float: left;
+  position: relative;
+}
+
+.content-panel-header {
+  position: absolute;
+  top: 0px;
+  margin-right: 6px;
+  width: 10%;
+  max-width: 192px;
 }
 
 .content-panel {
@@ -53,10 +68,20 @@
   overflow-y: hidden;
   scrollbar-width: none;
   background-color: #181d20; /* move to track-editor when you make it */
+  position: relative;
 }
 
 .content-h::-webkit-scrollbar {
   display: none;
+}
+
+.content-header {
+  position: absolute;
+  z-index: 1;
+}
+
+.content-body {
+  margin-top: 35px;
 }
 
 .content-v {
@@ -79,7 +104,7 @@
 
 .ruler {
   width: fit-content;
-  height: 35px; /* Using this in TrackEditor component's vertical scrollbar. If you change this, change it there as well. */
+  height: 35px; /* Using this in TrackEditor component's vertical scrollbar and content-body CSS class. If you change this, change it in those places as well. */
   background-color: #0d1012;
 }
 
@@ -122,9 +147,9 @@
 
 .position-marker {
   position: absolute;
+  top: 35px;
   width: 2px;
   border-left: 2px solid blue;
-  z-index: 1;
 }
 
 .position-marker-head-container {
@@ -141,9 +166,9 @@
 
 .player-position-marker {
   position: absolute;
+  top: 35px;
   width: 2px;
   border-left: 2px solid orange;
-  z-index: 1;
 }
 
 .player-position-marker-head {
@@ -168,40 +193,47 @@
   width: 100vw - min(calc(10% + 6px), 198px);
   height: 17px;
   position: relative;
-  background-color: #f1f1f1;
+  background-color: transparent;
+  /* background-color: #f1f1f1; */
   overflow-x: clip;
+  border-radius: 8.5px;
 }
 
 .scrollbar-v {
   margin-left: calc(100vw - 17px);
   position: relative;
+  top: 35px;
   width: 17px;
-  background-color: #f1f1f1;
+  background-color: transparent;
+  /* background-color: #f1f1f1; */
   overflow-y: clip;
+  border-radius: 8.5px;
 }
 
 .scrollbar-h .scroll-thumb {
-  position: absolute;
   top: 2px;
   height: 13px;
-  background-color: #9d9d9d;
   transition-property: left;
-  transition-timing-function: ease-in-out;
+  background-color: #9d9d9dff;
 }
 
 .scrollbar-v .scroll-thumb {
-  position: absolute;
   left: 2px;
   width: 13px;
-  background-color: #9d9d9d;
   transition-property: top;
+  background-color: #9d9d9d33;
+}
+
+.scroll-thumb {
+  position: absolute;
+  border-radius: 8.5px;
   transition-timing-function: ease-in-out;
 }
 
 .scroll-thumb:hover {
-  background-color: #c1c1c1;
+  background-color: #c1c1c1ff;
 }
 
 .scroll-thumb:active {
-  background-color: #787878;
+  background-color: #787878ff;
 }

@@ -4,6 +4,7 @@ import useResizeObserver from "use-resize-observer";
 type CustomScrollProps = {
   contentFullSizeH: number;
   contentFullSizeV: number;
+  scaledStartPosition: number;
   scaledPlayerPosition: number;
   isPlaying: boolean;
   scrollWheelZoom: (e: React.WheelEvent<HTMLDivElement>) => void;
@@ -14,6 +15,7 @@ type CustomScrollProps = {
 const CustomScroll = ({
   contentFullSizeH,
   contentFullSizeV,
+  scaledStartPosition,
   scaledPlayerPosition,
   isPlaying,
   scrollWheelZoom,
@@ -23,38 +25,26 @@ const CustomScroll = ({
 }: PropsWithChildren<CustomScrollProps>) => {
   const contentHRef = useRef<HTMLDivElement>(null);
   const contentVRef = useRef<HTMLDivElement>(null);
+  const contentHeaderRef = useRef<HTMLDivElement>(null);
   const thumbHRef = useRef<HTMLDivElement>(null);
   const thumbVRef = useRef<HTMLDivElement>(null);
   const { width: sizeH = 0 } = useResizeObserver<HTMLDivElement>({ ref: contentHRef });
-  const { height: sizeV = 0 } = useResizeObserver<HTMLDivElement>({ ref: contentVRef });
+  const { height = 0 } = useResizeObserver<HTMLDivElement>({ ref: contentVRef });
 
-  if (contentFullSizeH <= 0 || contentFullSizeV <= 0)
+  // TODO: Fix ratio issue between sizeV and contentFullSizeV (currently removed the +35 on the prop)
+  // Appears to slightly affect page amount for vertical click scrolling (anything else?)
+  const sizeV: number = Math.max(height - 35, 0); // any issue here when window size is small?
+
+  if (contentFullSizeH <= 0 || contentFullSizeV <= 0) {
     throw new Error(`Scrollable content size is invalid - Width: ${contentFullSizeH} Height: ${contentFullSizeV}`);
+  }
+
+  const playerPositionMarkerDisplay: string = isPlaying ? "inline" : "none"; // use render flag instead?
+  const showScrollbarV: boolean = contentFullSizeV > sizeV; // can this break the ref? maybe gets rid of it, but harmless?
 
   const childrenArray = Children.toArray(children);
 
-  // const calcScrollOptions = (scrollbarClickPos: number): ScrollOptions => {
-  //   const thumbEnd: number = thumbOffset + thumbSize - 1;
-
-  //   const scrollOptions: ScrollToOptions = {};
-
-  //   // scroll smoothly if scroll thumb is larger than half the scroll bar
-  //   // this makes the thumb's motion clearer for the user
-  //   if (thumbSize > Math.floor(size / 2)) scrollOptions.behavior = "smooth";
-
-  //   // detect which direction to scroll, then scroll by a page's worth
-  //   if (scrollbarClickPos < thumbOffset) {
-  //     isVertical
-  //       ? (scrollOptions.top = Math.max(scrollPosition - size, 0))
-  //       : (scrollOptions.left = Math.max(scrollPosition - size, 0));
-  //   } else if (scrollbarClickPos > thumbEnd) {
-  //     isVertical
-  //       ? (scrollOptions.top = Math.min(scrollPosition + size, maxScrollPosition))
-  //       : (scrollOptions.left = Math.min(scrollPosition + size, maxScrollPosition));
-  //   }
-
-  //   return scrollOptions;
-  // };
+  console.log(scaledStartPosition, scaledPlayerPosition);
 
   const handleMouseDownH = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
     if (e.button === 0) {
@@ -98,14 +88,17 @@ const CustomScroll = ({
             const scrollbarClickPos: number = e.clientX - target.getBoundingClientRect().left;
             const currentThumbHSize: number = Number(thumbHRef.current.style.width.slice(0, -2)); // strip the px (it has that, right?)
 
-            // const scrollOptions: ScrollToOptions = calcScrollOptions(scrollbarClickPos);
-            // contentRef.current.scrollTo(scrollOptions);
+            // does this ever conflict with the max scroll offset delay logic? Appears not to
+            const scrollOptions: ScrollToOptions = {};
+            if (currentThumbHSize > Math.floor(sizeH / 2)) scrollOptions.behavior = "smooth";
 
             // detect which direction to scroll, then scroll by a page's worth
             if (scrollbarClickPos < currentThumbHOffset) {
-              contentHRef.current.scrollBy(-sizeH, 0);
+              scrollOptions.left = -sizeH;
+              contentHRef.current.scrollBy(scrollOptions);
             } else if (scrollbarClickPos > currentThumbHOffset + currentThumbHSize - 1) {
-              contentHRef.current.scrollBy(sizeH, 0);
+              scrollOptions.left = sizeH;
+              contentHRef.current.scrollBy(scrollOptions);
             }
           }
         }
@@ -157,14 +150,17 @@ const CustomScroll = ({
             const scrollbarClickPos: number = e.clientY - target.getBoundingClientRect().top;
             const currentThumbVSize: number = Number(thumbVRef.current.style.height.slice(0, -2)); // strip the px (it has that, right?)
 
-            // const scrollOptions: ScrollToOptions = calcScrollOptions(scrollbarClickPos);
-            // contentRef.current.scrollTo(scrollOptions);
+            // does this ever conflict with the max scroll offset delay logic? Appears not to
+            const scrollOptions: ScrollToOptions = {};
+            if (currentThumbVSize > Math.floor(sizeV / 2)) scrollOptions.behavior = "smooth";
 
             // detect which direction to scroll, then scroll by a page's worth
             if (scrollbarClickPos < currentThumbVOffset) {
-              contentVRef.current.scrollBy(0, -sizeH);
+              scrollOptions.top = -sizeV;
+              contentVRef.current.scrollBy(scrollOptions);
             } else if (scrollbarClickPos > currentThumbVOffset + currentThumbVSize - 1) {
-              contentVRef.current.scrollBy(0, sizeH);
+              scrollOptions.top = sizeV;
+              contentVRef.current.scrollBy(scrollOptions);
             }
           }
         }
@@ -261,6 +257,11 @@ const CustomScroll = ({
     // Note: Offset will be set twice on the max position track-length-decrease edge case (regardless of whether handleScrollY or the UE fires first), but it's harmless
 
     const newScrollPositionY: number = e.currentTarget.scrollTop;
+
+    if (contentHeaderRef.current) {
+      contentHeaderRef.current.style.top = `${newScrollPositionY}px`;
+    }
+
     updateThumbV(newScrollPositionY, false);
   };
 
@@ -298,9 +299,10 @@ const CustomScroll = ({
   return (
     <div className="scroll-container">
       <div className="scroll-content-wrapper">
+        <div className="content-panel-header">{childrenArray[0]}</div>
         <div className="content-v" ref={contentVRef} onScroll={handleScrollY}>
           <div className="content-panel" onWheel={handleWheelV}>
-            {childrenArray[0]}
+            {childrenArray[1]}
           </div>
 
           <div
@@ -310,7 +312,23 @@ const CustomScroll = ({
             onWheel={scrollWheelZoom}
             onMouseDown={handleMouseDownContent}
           >
-            {childrenArray[1]}
+            <div className="content-header" ref={contentHeaderRef}>
+              <span className="position-marker" style={{ height: sizeV, left: scaledStartPosition }}>
+                <svg className="position-marker-head-container">
+                  <circle className="position-marker-head" cx="50%" cy="50%" r="50%" />
+                </svg>
+              </span>
+              <span
+                className="player-position-marker"
+                style={{ height: sizeV, left: scaledPlayerPosition, display: playerPositionMarkerDisplay }}
+              >
+                <svg className="position-marker-head-container">
+                  <circle className="player-position-marker-head" cx="50%" cy="50%" r="50%" />
+                </svg>
+              </span>
+              {childrenArray[2]}
+            </div>
+            <div className="content-body">{childrenArray[3]}</div>
           </div>
         </div>
         <div className="scrollbar-h" onWheel={handleWheelH} onMouseDown={handleMouseDownH}>
@@ -318,10 +336,13 @@ const CustomScroll = ({
         </div>
       </div>
 
-      {/* use CSS for height instead */}
-      <div className="scrollbar-v" style={{ height: sizeV }} onWheel={handleWheelV} onMouseDown={handleMouseDownV}>
-        <div className="scroll-thumb" ref={thumbVRef} />
-      </div>
+      {/* use CSS for height instead? */}
+
+      {showScrollbarV && (
+        <div className="scrollbar-v" style={{ height: sizeV }} onWheel={handleWheelV} onMouseDown={handleMouseDownV}>
+          <div className="scroll-thumb" ref={thumbVRef} />
+        </div>
+      )}
     </div>
   );
 };

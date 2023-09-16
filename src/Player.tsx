@@ -43,6 +43,7 @@ const Player = ({
       Tone.Transport.seconds = startPosition;
       setIsPlaying(false);
       setPlayerPosition(startPosition);
+      console.log("s", startPosition);
 
       if (autoscrollBlocked) setAutoscrollBlocked(false);
     } else {
@@ -54,6 +55,7 @@ const Player = ({
   useEffect(() => {
     Tone.Transport.scheduleRepeat((time) => {
       Tone.Draw.schedule(() => setPlayerPosition(Math.max(Tone.Transport.seconds - 0.085, 0)), time); // offset is compromise between desktop and mobile
+      console.log("u", Tone.Transport.seconds - 0.085);
     }, "32n");
     // clear it in a cleanup function?
   }, [setPlayerPosition]);

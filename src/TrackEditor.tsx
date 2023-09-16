@@ -27,7 +27,7 @@ const TrackEditor = ({ numTracks }: TrackEditorProps): JSX.Element => {
   const trackHeightMin: number = 30;
   const trackHeightMax: number = 200;
 
-  const numMeasures: number = 450;
+  const numMeasures: number = 250;
   const widthFactor: number = 76.824;
 
   const groupMeasures: boolean = zoom < 0.678;
@@ -222,42 +222,42 @@ const TrackEditor = ({ numTracks }: TrackEditorProps): JSX.Element => {
       </div>
       <CustomScroll
         contentFullSizeH={totalWidth}
-        contentFullSizeV={allTracksHeight + 35}
+        contentFullSizeV={allTracksHeight}
+        scaledStartPosition={scaledStartPosition}
         scaledPlayerPosition={scaledPlayerPosition}
         isPlaying={isPlaying}
         scrollWheelZoom={scrollWheelZoom}
         autoscrollBlocked={autoscrollBlocked}
         blockAutoscroll={blockAutoscroll}
       >
-        <div className="track-list" style={{ height: allTracksHeight + 35 }}>
-          <p>test</p>
+        <div className="track-list-header">
+          <p>test-header</p>
         </div>
-        <>
-          <Ruler
-            numSegments={numSegments}
-            segmentWidth={segmentWidth}
-            measuresPerSegment={measuresPerSegment}
-            segmentIsBeat={segmentIsBeat}
-            divisions={divisions}
-            markerPatternWidth={gridPatternWidth}
-            totalWidth={totalWidth}
-            onClick={(e) => clickChangePosition(e, true)}
-          />
-          <Tracks
-            numTracks={numTracks}
-            trackHeight={trackHeight}
-            totalHeight={allTracksHeight}
-            divisions={divisions}
-            gridPatternWidth={gridPatternWidth}
-            colorPatternWidth={colorPatternWidth}
-            totalWidth={totalWidth}
-            scaleWidth={scaleWidth}
-            isPlaying={isPlaying}
-            scaledStartPosition={scaledStartPosition}
-            scaledPlayerPosition={scaledPlayerPosition}
-            onClick={clickChangePosition}
-          />
-        </>
+        <div className="track-list" style={{ height: allTracksHeight }}>
+          <p>test-list</p>
+        </div>
+
+        <Ruler
+          numSegments={numSegments}
+          segmentWidth={segmentWidth}
+          measuresPerSegment={measuresPerSegment}
+          segmentIsBeat={segmentIsBeat}
+          divisions={divisions}
+          markerPatternWidth={gridPatternWidth}
+          totalWidth={totalWidth}
+          onClick={(e) => clickChangePosition(e, true)}
+        />
+        <Tracks
+          numTracks={numTracks}
+          trackHeight={trackHeight}
+          totalHeight={allTracksHeight}
+          divisions={divisions}
+          gridPatternWidth={gridPatternWidth}
+          colorPatternWidth={colorPatternWidth}
+          totalWidth={totalWidth}
+          scaleWidth={scaleWidth}
+          onClick={clickChangePosition}
+        />
       </CustomScroll>
     </>
   );
