@@ -33,9 +33,12 @@ const TrackEditor = ({ numTracks }: TrackEditorProps): JSX.Element => {
   const groupMeasures: boolean = zoom < 0.678;
   const segmentIsBeat: boolean = zoom > 2.644;
 
+  // ------package all zoom logic into one function and reduce to one tree------
+
   let measuresPerSegment: number = 1;
   let divisions: number = 4;
 
+  // Is there an equation for this? Maybe not. Might just be arbitrary cutoffs.
   if (groupMeasures) {
     if (zoom > 0.311) measuresPerSegment = 2;
     else if (zoom > 0.211) measuresPerSegment = 3;
@@ -55,6 +58,16 @@ const TrackEditor = ({ numTracks }: TrackEditorProps): JSX.Element => {
 
   const segmentWidth: number = zoom * widthFactor * measuresPerSegment;
   const gridPatternWidth: number = segmentIsBeat ? segmentWidth * 4 : segmentWidth;
+
+  let colorPatternWidthFactor: number = 2;
+  if (zoom > 25.541) colorPatternWidthFactor = 0.125;
+  else if (zoom > 13.352) colorPatternWidthFactor = 0.25;
+  else if (zoom > 6.543) colorPatternWidthFactor = 0.5;
+  else if (zoom > 3.206) colorPatternWidthFactor = 1;
+
+  const colorPatternWidth: number = gridPatternWidth * colorPatternWidthFactor;
+
+  // ----------------------------------------------------
 
   const scaleWidth: number = (zoom * widthFactor) / 2;
   const totalWidth: number = Math.ceil(segmentWidth * numSegments);
@@ -236,6 +249,7 @@ const TrackEditor = ({ numTracks }: TrackEditorProps): JSX.Element => {
             totalHeight={allTracksHeight}
             divisions={divisions}
             gridPatternWidth={gridPatternWidth}
+            colorPatternWidth={colorPatternWidth}
             totalWidth={totalWidth}
             scaleWidth={scaleWidth}
             isPlaying={isPlaying}

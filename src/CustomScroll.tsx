@@ -33,18 +33,6 @@ const CustomScroll = ({
 
   const childrenArray = Children.toArray(children);
 
-  // const thumbOffset: number = Math.round(scrollPosition * pageRatio);
-
-  // console.log(contentRef.current);
-
-  // const scrollbarProps: { className: string; style: { width?: number; height?: number } } = isVertical
-  //   ? { className: "custom-scrollbar-v", style: { height: size } }
-  //   : { className: "custom-scrollbar-h", style: { width: size } };
-
-  // const thumbProps: { style: { left?: number; top?: number; width?: number; height?: number } } = isVertical
-  //   ? { style: { top: thumbOffset, height: thumbSize } }
-  //   : { style: { left: thumbOffset, width: thumbSize } };
-
   // const calcScrollOptions = (scrollbarClickPos: number): ScrollOptions => {
   //   const thumbEnd: number = thumbOffset + thumbSize - 1;
 
@@ -68,46 +56,141 @@ const CustomScroll = ({
   //   return scrollOptions;
   // };
 
-  // const handleMouseDown = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
-  // if (e.button === 0) {
-  //   e.preventDefault(); // prevent unwanted effects, such as text highlighting when moving mouse
-  //   const target = e.target as HTMLDivElement;
-  //   if (target.className === "scroll-thumb") {
-  //     const initialMousePos: number = isVertical ? e.clientY : e.clientX;
-  //     const handleMouseMove = (e: MouseEvent) => {
-  //       const newMousePos: number = isVertical ? e.clientY : e.clientX;
-  //       const deltaPos: number = newMousePos - initialMousePos;
-  //       const newScrollPosition: number = Math.max(Math.min(Math.round((thumbOffset + deltaPos) / pageRatio), maxScrollPosition), 0);
-  //       setScrollPosition(newScrollPosition);
-  //       // isVertical ? (contentRef.current.scrollTop = newScrollPosition) : (contentRef.current.scrollLeft = newScrollPosition);
-  //     };
-  //     const handleMouseUp = () => {
-  //       document.removeEventListener("mousemove", handleMouseMove);
-  //       document.removeEventListener("mouseup", handleMouseUp);
-  //     };
-  //     document.addEventListener("mousemove", handleMouseMove);
-  //     document.addEventListener("mouseup", handleMouseUp);
-  //   } else {
-  //     const scrollbarClickPos: number = isVertical
-  //       ? e.clientY - target.getBoundingClientRect().top
-  //       : e.clientX - target.getBoundingClientRect().left;
-  //     // const scrollOptions: ScrollToOptions = calcScrollOptions(scrollbarClickPos);
-  //     // contentRef.current.scrollTo(scrollOptions);
-  //     // detect which direction to scroll, then scroll by a page's worth
-  //     if (scrollbarClickPos < thumbOffset) {
-  //       setScrollPosition(Math.max(scrollPosition - size, 0));
-  //     } else if (scrollbarClickPos > thumbOffset + thumbSize - 1) {
-  //       setScrollPosition(Math.min(scrollPosition + size, maxScrollPosition));
-  //     }
-  //   }
-  // }
-  // };
+  const handleMouseDownH = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
+    if (e.button === 0) {
+      e.preventDefault(); // prevent unwanted effects, such as text highlighting when moving mouse
 
-  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement, MouseEvent>, targetButton: number) => {
-    if (e.button === targetButton) blockAutoscroll();
+      if (thumbHRef.current) {
+        // TODO: Make sure bugs can't happen if values change during. May have to move parts into the handleMouseMove function.
+        // Or make it so these values can't change while the mouse is down here, though that may not be feasible in the larger app context.
+        const currentThumbHOffset: number = Number(thumbHRef.current.style.left.slice(0, -2)); // strip the px
+        const maxScrollPositionX: number = contentFullSizeH - sizeH;
+
+        const target = e.target as HTMLDivElement;
+        if (target.className === "scroll-thumb") {
+          const initialMousePos: number = e.clientX;
+
+          // TODO: Make sure bugs can't happen if values change during. May have to move parts into the handleMouseMove function.
+          // Or make it so these values can't change while the mouse is down here, though that may not be feasible in the larger app context.
+          const pageRatioH: number = sizeH / contentFullSizeH;
+
+          const handleMouseMoveH = (e: MouseEvent) => {
+            if (contentHRef.current) {
+              const newMousePos: number = e.clientX;
+              const deltaPos: number = newMousePos - initialMousePos;
+              const newScrollPosition: number = Math.max(
+                Math.min(Math.round((currentThumbHOffset + deltaPos) / pageRatioH), maxScrollPositionX),
+                0
+              ); // unnecessary to min-max it?
+
+              contentHRef.current.scrollLeft = newScrollPosition;
+            }
+          };
+
+          const handleMouseUpH = () => {
+            document.removeEventListener("mousemove", handleMouseMoveH);
+            document.removeEventListener("mouseup", handleMouseUpH);
+          };
+          document.addEventListener("mousemove", handleMouseMoveH);
+          document.addEventListener("mouseup", handleMouseUpH);
+        } else {
+          if (contentHRef.current) {
+            const scrollbarClickPos: number = e.clientX - target.getBoundingClientRect().left;
+            const currentThumbHSize: number = Number(thumbHRef.current.style.width.slice(0, -2)); // strip the px (it has that, right?)
+
+            // const scrollOptions: ScrollToOptions = calcScrollOptions(scrollbarClickPos);
+            // contentRef.current.scrollTo(scrollOptions);
+
+            // detect which direction to scroll, then scroll by a page's worth
+            if (scrollbarClickPos < currentThumbHOffset) {
+              contentHRef.current.scrollBy(-sizeH, 0);
+            } else if (scrollbarClickPos > currentThumbHOffset + currentThumbHSize - 1) {
+              contentHRef.current.scrollBy(sizeH, 0);
+            }
+          }
+        }
+      }
+
+      blockAutoscroll();
+    }
   };
 
-  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+  const handleMouseDownV = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
+    if (e.button === 0) {
+      e.preventDefault(); // prevent unwanted effects, such as text highlighting when moving mouse
+
+      if (thumbVRef.current) {
+        // TODO: Make sure bugs can't happen if values change during. May have to move parts into the handleMouseMove function.
+        // Or make it so these values can't change while the mouse is down here, though that may not be feasible in the larger app context.
+        const currentThumbVOffset: number = Number(thumbVRef.current.style.top.slice(0, -2)); // strip the px
+        const maxScrollPositionY: number = contentFullSizeV - sizeV;
+
+        const target = e.target as HTMLDivElement;
+        if (target.className === "scroll-thumb") {
+          const initialMousePos: number = e.clientY;
+
+          // TODO: Make sure bugs can't happen if values change during. May have to move parts into the handleMouseMove function.
+          // Or make it so these values can't change while the mouse is down here, though that may not be feasible in the larger app context.
+          const pageRatioV: number = sizeV / contentFullSizeV;
+
+          const handleMouseMoveV = (e: MouseEvent) => {
+            if (contentVRef.current) {
+              const newMousePos: number = e.clientY;
+              const deltaPos: number = newMousePos - initialMousePos;
+              const newScrollPosition: number = Math.max(
+                Math.min(Math.round((currentThumbVOffset + deltaPos) / pageRatioV), maxScrollPositionY),
+                0
+              ); // unnecessary to min-max it?
+
+              contentVRef.current.scrollTop = newScrollPosition;
+            }
+          };
+
+          const handleMouseUpV = () => {
+            document.removeEventListener("mousemove", handleMouseMoveV);
+            document.removeEventListener("mouseup", handleMouseUpV);
+          };
+          document.addEventListener("mousemove", handleMouseMoveV);
+          document.addEventListener("mouseup", handleMouseUpV);
+        } else {
+          if (contentVRef.current) {
+            const scrollbarClickPos: number = e.clientY - target.getBoundingClientRect().top;
+            const currentThumbVSize: number = Number(thumbVRef.current.style.height.slice(0, -2)); // strip the px (it has that, right?)
+
+            // const scrollOptions: ScrollToOptions = calcScrollOptions(scrollbarClickPos);
+            // contentRef.current.scrollTo(scrollOptions);
+
+            // detect which direction to scroll, then scroll by a page's worth
+            if (scrollbarClickPos < currentThumbVOffset) {
+              contentVRef.current.scrollBy(0, -sizeH);
+            } else if (scrollbarClickPos > currentThumbVOffset + currentThumbVSize - 1) {
+              contentVRef.current.scrollBy(0, sizeH);
+            }
+          }
+        }
+      }
+    }
+  };
+
+  const handleMouseDownContent = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
+    if (e.button === 1) blockAutoscroll();
+  };
+
+  const handleWheelH = (e: React.WheelEvent<HTMLDivElement>) => {
+    if (contentHRef.current) {
+      if (e.deltaX > 0) {
+        contentHRef.current.scrollBy({ left: 100, behavior: "smooth" });
+      } else if (e.deltaX < 0) {
+        contentHRef.current.scrollBy({ left: -100, behavior: "smooth" });
+      }
+    }
+    // may need to prevent entire window from scrolling, see how wheel usually behaves
+
+    // refactor slightly to prevent duplicate deltaX checking in this scenario
+    scrollWheelZoom(e);
+  };
+
+  const handleWheelV = (e: React.WheelEvent<HTMLDivElement>) => {
     if (contentVRef.current) {
       if (e.deltaY > 0) {
         contentVRef.current.scrollBy(0, 100);
@@ -216,7 +299,7 @@ const CustomScroll = ({
     <div className="scroll-container">
       <div className="scroll-content-wrapper">
         <div className="content-v" ref={contentVRef} onScroll={handleScrollY}>
-          <div className="content-panel" onWheel={handleWheel}>
+          <div className="content-panel" onWheel={handleWheelV}>
             {childrenArray[0]}
           </div>
 
@@ -225,23 +308,18 @@ const CustomScroll = ({
             ref={contentHRef}
             onScroll={handleScrollX}
             onWheel={scrollWheelZoom}
-            onMouseDown={(e) => handleMouseDown(e, 1)}
+            onMouseDown={handleMouseDownContent}
           >
             {childrenArray[1]}
           </div>
         </div>
-        <div className="scrollbar-h" onWheel={scrollWheelZoom} onMouseDown={(e) => handleMouseDown(e, 0)}>
+        <div className="scrollbar-h" onWheel={handleWheelH} onMouseDown={handleMouseDownH}>
           <div className="scroll-thumb" ref={thumbHRef} />
         </div>
       </div>
 
       {/* use CSS for height instead */}
-      <div
-        className="scrollbar-v"
-        style={{ height: sizeV }}
-        onWheel={handleWheel}
-        // onMouseDown={handleMouseDown}
-      >
+      <div className="scrollbar-v" style={{ height: sizeV }} onWheel={handleWheelV} onMouseDown={handleMouseDownV}>
         <div className="scroll-thumb" ref={thumbVRef} />
       </div>
     </div>

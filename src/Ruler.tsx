@@ -77,14 +77,14 @@ const Markers = ({ divisions, markerPatternWidth }: MarkersProps): JSX.Element =
 
   for (let i = 1; i < divisions; i++) {
     const offset: number = Math.round((i * markerPatternWidth) / divisions) + 1;
-    markers.push(<line key={i} x1={offset} y1="75%" x2={offset} y2="100%" stroke="black" strokeWidth="0.6" />);
+    markers.push(<line key={i} x1={offset} y1="75%" x2={offset} y2="100%" stroke="#a9abad" strokeWidth="0.6" />);
   }
 
   return (
     <svg className="ruler-markers" width="100%" height="100%">
       <defs>
         <pattern id="marker-pattern" width={markerPatternWidth} height="100%" patternUnits="userSpaceOnUse">
-          <line x1="1" y1="0" x2="1" y2="100%" stroke="black" strokeWidth="0.6" />
+          <line x1="1" y1="0" x2="1" y2="100%" stroke="#898b8d" strokeWidth="0.6" />
           {markers}
         </pattern>
       </defs>

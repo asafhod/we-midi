@@ -52,7 +52,7 @@
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: none;
-  background-color: #15191b; /* move to track-editor when you make it */
+  background-color: #181d20; /* move to track-editor when you make it */
 }
 
 .content-h::-webkit-scrollbar {
@@ -79,8 +79,8 @@
 
 .ruler {
   width: fit-content;
-  border-bottom: 1px solid black;
   height: 35px; /* Using this in TrackEditor component's vertical scrollbar. If you change this, change it there as well. */
+  background-color: #0d1012;
 }
 
 .ruler-labels {
@@ -124,6 +124,7 @@
   position: absolute;
   width: 2px;
   border-left: 2px solid blue;
+  z-index: 1;
 }
 
 .position-marker-head-container {
@@ -142,6 +143,7 @@
   position: absolute;
   width: 2px;
   border-left: 2px solid orange;
+  z-index: 1;
 }
 
 .player-position-marker-head {

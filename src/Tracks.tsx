@@ -6,6 +6,7 @@ type TracksProps = {
   totalHeight: number;
   divisions: number;
   gridPatternWidth: number;
+  colorPatternWidth: number;
   totalWidth: number;
   scaleWidth: number;
   isPlaying: boolean;
@@ -20,6 +21,7 @@ const Tracks = ({
   totalHeight,
   divisions,
   gridPatternWidth,
+  colorPatternWidth,
   totalWidth,
   scaleWidth,
   isPlaying,
@@ -42,21 +44,13 @@ const Tracks = ({
   for (let i = 0; i < divisions; i++) {
     const offset: number = Math.round((i * gridPatternWidth) / divisions) + 1;
 
-    gridLines.push(<line key={i} x1={offset} y1="0" x2={offset} y2="100%" stroke="black" strokeWidth="0.6" />);
+    gridLines.push(<line key={i} x1={offset} y1="0" x2={offset} y2="100%" stroke="#32373c" strokeWidth="0.6" />);
   }
+
+  const colorHighlightWidth: number = colorPatternWidth / 2;
 
   return (
     <div className="tracks-wrapper" style={{ width: totalWidth, height: totalHeight }} onClick={onClick}>
-      <svg className="tracks-grid" width="100%" height={totalHeight}>
-        <defs>
-          <pattern id="grid-pattern" width={gridPatternWidth} height="100%" patternUnits="userSpaceOnUse">
-            {gridLines}
-          </pattern>
-        </defs>
-        <rect width="100%" height="100%" fill="url(#grid-pattern)" />
-        {/* <rect width="100%" height="100%" fill="white" /> */}
-      </svg>
-      <div className="tracks">{trackComponents}</div>
       <span className="position-marker" style={{ height: totalHeight, left: scaledStartPosition }}>
         <svg className="position-marker-head-container">
           <circle className="position-marker-head" cx="50%" cy="50%" r="50%" />
@@ -70,6 +64,19 @@ const Tracks = ({
           <circle className="player-position-marker-head" cx="50%" cy="50%" r="50%" />
         </svg>
       </span>
+      <svg className="tracks-grid" width="100%" height={totalHeight}>
+        <defs>
+          <pattern id="grid-pattern" width={gridPatternWidth} height="100%" patternUnits="userSpaceOnUse">
+            {gridLines}
+          </pattern>
+          <pattern id="color-pattern" width={colorPatternWidth} height="100%" patternUnits="userSpaceOnUse">
+            <rect width={colorHighlightWidth} height="100%" fill="#00000024" />
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#color-pattern)" />
+        <rect width="100%" height="100%" fill="url(#grid-pattern)" />
+      </svg>
+      <div className="tracks">{trackComponents}</div>
     </div>
   );
 };
