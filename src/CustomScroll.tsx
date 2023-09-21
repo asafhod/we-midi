@@ -7,9 +7,11 @@ type CustomScrollProps = {
   scaledStartPosition: number;
   scaledPlayerPosition: number;
   isPlaying: boolean;
+  zoom: number;
   scrollWheelZoom: (e: React.WheelEvent<HTMLDivElement>) => void;
   autoscrollBlocked: boolean;
   blockAutoscroll: () => void;
+  numMeasures: number;
 };
 
 const CustomScroll = ({
@@ -18,9 +20,11 @@ const CustomScroll = ({
   scaledStartPosition,
   scaledPlayerPosition,
   isPlaying,
+  zoom,
   scrollWheelZoom,
   autoscrollBlocked,
   blockAutoscroll,
+  numMeasures,
   children,
 }: PropsWithChildren<CustomScrollProps>) => {
   const contentHRef = useRef<HTMLDivElement>(null);
@@ -40,11 +44,11 @@ const CustomScroll = ({
   }
 
   const playerPositionMarkerDisplay: string = isPlaying ? "inline" : "none"; // use render flag instead?
-  const showScrollbarV: boolean = contentFullSizeV > sizeV; // can this break the ref? maybe gets rid of it, but harmless?
+
+  // optimize so doesn't re-calc on every render
+  const showScrollbarV: boolean = contentFullSizeV > window.innerHeight * 0.8 - 35; // can this break the ref? maybe gets rid of it, but harmless?
 
   const childrenArray = Children.toArray(children);
-
-  console.log(scaledStartPosition, scaledPlayerPosition);
 
   const handleMouseDownH = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
     if (e.button === 0) {
@@ -86,7 +90,7 @@ const CustomScroll = ({
         } else {
           if (contentHRef.current) {
             const scrollbarClickPos: number = e.clientX - target.getBoundingClientRect().left;
-            const currentThumbHSize: number = Number(thumbHRef.current.style.width.slice(0, -2)); // strip the px (it has that, right?)
+            const currentThumbHSize: number = Number(thumbHRef.current.style.width.slice(0, -2)); // strip the px
 
             // does this ever conflict with the max scroll offset delay logic? Appears not to
             const scrollOptions: ScrollToOptions = {};
@@ -148,7 +152,7 @@ const CustomScroll = ({
         } else {
           if (contentVRef.current) {
             const scrollbarClickPos: number = e.clientY - target.getBoundingClientRect().top;
-            const currentThumbVSize: number = Number(thumbVRef.current.style.height.slice(0, -2)); // strip the px (it has that, right?)
+            const currentThumbVSize: number = Number(thumbVRef.current.style.height.slice(0, -2)); // strip the px
 
             // does this ever conflict with the max scroll offset delay logic? Appears not to
             const scrollOptions: ScrollToOptions = {};
@@ -173,6 +177,8 @@ const CustomScroll = ({
   };
 
   const handleWheelH = (e: React.WheelEvent<HTMLDivElement>) => {
+    if (e.ctrlKey) return;
+
     if (contentHRef.current) {
       if (e.deltaX > 0) {
         contentHRef.current.scrollBy({ left: 100, behavior: "smooth" });
@@ -180,13 +186,14 @@ const CustomScroll = ({
         contentHRef.current.scrollBy({ left: -100, behavior: "smooth" });
       }
     }
-    // may need to prevent entire window from scrolling, see how wheel usually behaves
 
-    // refactor slightly to prevent duplicate deltaX checking in this scenario
+    // refactor slightly to prevent duplicate deltaX / control button checking in this scenario (just combine the functions)
     scrollWheelZoom(e);
   };
 
   const handleWheelV = (e: React.WheelEvent<HTMLDivElement>) => {
+    if (e.ctrlKey) return;
+
     if (contentVRef.current) {
       if (e.deltaY > 0) {
         contentVRef.current.scrollBy(0, 100);
@@ -195,15 +202,17 @@ const CustomScroll = ({
       }
     }
 
-    // may need to prevent entire window from scrolling, see how wheel usually behaves
+    // Would also scroll the entire window if it's scrollable. Make sure it never is, even on browser zoom-in.
   };
 
-  const updateThumbH = (scrollPositionX: number, updateSize: boolean) => {
+  const updateThumbH = (scrollPositionX: number, updateSize: boolean, updatePosition: boolean) => {
     if (thumbHRef.current) {
-      // const currentScrollPositionX: number = contentHRef.current.scrollLeft;
       const pageRatioH: number = sizeH / contentFullSizeH;
       const newThumbHOffset: number = Math.round(scrollPositionX * pageRatioH);
 
+      // TODO: Fix issue where the zoom-out max pos scroll edge case still causes flickering on certain screen sizes, like laptop full-size
+      // Somehow atEnd repeatedly switches between true and false in that scernario, so the transition isn't kept throughout
+      // Rounding-related? May also affect the vertical axis. Check.
       const atEnd: boolean = Math.ceil(scrollPositionX) >= contentFullSizeH - sizeH;
       const transition: string = thumbHRef.current.style.transitionDuration;
       if (atEnd && !transition) {
@@ -218,13 +227,12 @@ const CustomScroll = ({
         thumbHRef.current.style.width = `${newThumbHSize}px`;
       }
 
-      thumbHRef.current.style.left = `${newThumbHOffset}px`;
+      if (updatePosition) thumbHRef.current.style.left = `${newThumbHOffset}px`;
     }
   };
 
   const updateThumbV = (scrollPositionY: number, updateSize: boolean) => {
     if (thumbVRef.current) {
-      // const currentScrollPositionY: number = contentVRef.current.scrollTop;
       const pageRatioV: number = sizeV / contentFullSizeV;
       const newThumbVOffset: number = Math.round(scrollPositionY * pageRatioV);
 
@@ -248,9 +256,8 @@ const CustomScroll = ({
 
   const handleScrollX = (e: React.UIEvent<HTMLDivElement, UIEvent>) => {
     // Note: Offset will be set twice on the max position zoom-out edge case (regardless of whether handleScrollX or the UE fires first), but it's harmless
-
     const newScrollPositionX: number = e.currentTarget.scrollLeft;
-    updateThumbH(newScrollPositionX, false);
+    updateThumbH(newScrollPositionX, false, true);
   };
 
   const handleScrollY = (e: React.UIEvent<HTMLDivElement, UIEvent>) => {
@@ -266,20 +273,29 @@ const CustomScroll = ({
   };
 
   useEffect(() => {
-    if (contentHRef.current) {
-      const currentScrollPositionX: number = contentHRef.current.scrollLeft;
-      updateThumbH(currentScrollPositionX, true);
-
-      // trigger zoom-centering scroll (actually, best to do a useEffect on zoom for this)
-    }
-  }, [sizeH, contentFullSizeH]);
-
-  useEffect(() => {
     if (contentVRef.current) {
       const currentScrollPositionY: number = contentVRef.current.scrollTop;
       updateThumbV(currentScrollPositionY, true);
     }
   }, [sizeV, contentFullSizeV]);
+
+  useEffect(() => {
+    if (contentHRef.current) {
+      const currentScrollPositionX: number = contentHRef.current.scrollLeft;
+      updateThumbH(currentScrollPositionX, true, true);
+    }
+  }, [sizeH, numMeasures]);
+
+  useEffect(() => {
+    if (contentHRef.current) {
+      const currentScrollPositionX: number = contentHRef.current.scrollLeft;
+      updateThumbH(currentScrollPositionX, true, false); // add return flag for max pos?
+
+      // trigger zoom-centering scroll
+      const zoomCenterPosition: number = isPlaying && !autoscrollBlocked ? scaledPlayerPosition : scaledStartPosition;
+      contentHRef.current.scrollTo(Math.floor(zoomCenterPosition - sizeH / 2), 0); //round?
+    }
+  }, [zoom]);
 
   useEffect(() => {
     const autoscroll = () => {
@@ -335,8 +351,6 @@ const CustomScroll = ({
           <div className="scroll-thumb" ref={thumbHRef} />
         </div>
       </div>
-
-      {/* use CSS for height instead? */}
 
       {showScrollbarV && (
         <div className="scrollbar-v" style={{ height: sizeV }} onWheel={handleWheelV} onMouseDown={handleMouseDownV}>

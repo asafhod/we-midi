@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import * as Tone from "tone";
 import Player from "./Player";
+import CustomScroll from "./CustomScroll";
 import Ruler from "./Ruler";
 import Tracks from "./Tracks";
-import CustomScroll from "./CustomScroll";
+import TrackControls from "./TrackControls";
 
 type TrackEditorProps = {
   numTracks: number;
@@ -19,7 +20,11 @@ const TrackEditor = ({ numTracks }: TrackEditorProps): JSX.Element => {
 
   const [trackHeight, setTrackHeight] = useState(78);
 
-  const zoomFactor: number = 1.067;
+  const zoomInRef = useRef<HTMLButtonElement>(null);
+  const zoomOutRef = useRef<HTMLButtonElement>(null);
+
+  // const zoomFactor: number = 1.067;
+  const zoomFactor: number = 1.138; // If you actually do increase this, fine tune the Min, Max, and thresholds
   const zoomMin: number = 0.104;
   const zoomMax: number = 67.708;
 
@@ -84,33 +89,23 @@ const TrackEditor = ({ numTracks }: TrackEditorProps): JSX.Element => {
   };
 
   const scrollWheelZoom = (e: React.WheelEvent<HTMLDivElement>) => {
-    if (e.deltaY > 0) {
-      zoomOut();
-    } else if (e.deltaY < 0) {
-      zoomIn();
+    if (e.ctrlKey) return;
+
+    if (e.deltaY !== 0) {
+      // super jank and slow workaround - see if there's anything more elegant
+      // if you just call zoomOut/zoomIn, React fights this at the level of the wheel event, clashing
+      // with the zoom useEffect and causing visual artifacts
+      const clickEvent = new MouseEvent("click", { bubbles: true, cancelable: true, view: window });
+
+      if (e.deltaY > 0 && zoomOutRef.current) {
+        zoomOutRef.current.dispatchEvent(clickEvent);
+      } else if (e.deltaY < 0 && zoomInRef.current) {
+        zoomInRef.current.dispatchEvent(clickEvent);
+      }
     }
 
     if (e.deltaX !== 0) blockAutoscroll();
-
-    // console.log(trackEditorRef.current?.scrollTop);
   };
-
-  // const handleScroll = (e: React.UIEvent<HTMLDivElement, UIEvent>) => {
-  //   // const scrollLeft: number = e.currentTarget.scrollLeft;
-  //   // const scrollTop: number = e.currentTarget.scrollTop;
-
-  //   // setScrollPositionX((prevScrollPositionX) => {
-  //   //   return prevScrollPositionX === scrollLeft ? prevScrollPositionX : scrollLeft;
-  //   // });
-
-  //   // setScrollPositionY((prevScrollPositionY) => {
-  //   //   return prevScrollPositionY === scrollTop ? prevScrollPositionY : scrollTop;
-  //   // });
-
-  //   if (scrollPositionX !== e.currentTarget.scrollLeft) setScrollPositionX(e.currentTarget.scrollLeft);
-
-  //   if (scrollPositionY !== e.currentTarget.scrollTop) setScrollPositionY(e.currentTarget.scrollTop);
-  // };
 
   const changeStartPosition = (newStartPosition: number) => {
     setStartPosition(newStartPosition);
@@ -131,7 +126,12 @@ const TrackEditor = ({ numTracks }: TrackEditorProps): JSX.Element => {
   const clickChangePosition = (e: React.MouseEvent<HTMLDivElement, MouseEvent>, alsoChangePlayerPos?: boolean) => {
     const target = e.currentTarget as HTMLDivElement;
 
-    const x: number = e.clientX - target.getBoundingClientRect().left;
+    const x: number = e.clientX - Math.round(target.getBoundingClientRect().left);
+
+    // prevent position change in scenario where some browsers trigger the click event
+    // even if the user clicked outside of the target div by up to a full pixel
+    if (x < 0) return;
+
     const newPosition: number = x / scaleWidth;
 
     changeStartPosition(newPosition);
@@ -143,43 +143,9 @@ const TrackEditor = ({ numTracks }: TrackEditorProps): JSX.Element => {
     }
   };
 
-  // const handleMouseDown = (e: React.MouseEvent<HTMLDivElement, MouseEvent>, targetButton: number) => {
-  //   if (e.button === targetButton) blockAutoscroll();
-  // };
-
   const blockAutoscroll = () => {
     if (isPlaying && !autoscrollBlocked) setAutoscrollBlocked(true);
   };
-
-  // useEffect(() => {
-  //   if (trackEditorRef.current) {
-  //     const blockWheelScroll = (e: WheelEvent) => {
-  //       e.preventDefault(); // prevent wheel from scrolling vertically
-  //     };
-
-  //     trackEditorRef.current.addEventListener("wheel", blockWheelScroll, { passive: false });
-
-  //     // proper pratice with conditional like this?
-  //     return trackEditorRef.current.removeEventListener("wheel", blockWheelScroll);
-  //   }
-  // }, []);
-
-  // useEffect(() => {
-  //   if (trackEditorRef.current && trackEditorRef.current.scrollLeft !== scrollPositionX) {
-  //     // scroll smoothly if scroll thumb is larger than roughly half the scroll bar
-  //     // this makes the thumb's motion clearer for the user
-  //     const scrollOptions: ScrollToOptions = { left: scrollPositionX };
-  //     if (editorWidth / totalWidth > 0.49) scrollOptions.behavior = "smooth";
-  //     trackEditorRef.current.scrollTo(scrollOptions);
-  //   }
-  // }, [scrollPositionX, editorWidth, totalWidth]);
-
-  // useEffect(() => {
-  //   if (trackEditorRef.current && trackEditorRef.current.scrollTop !== scrollPositionY) {
-  //     console.log("In useEffect. State is " + scrollPositionY + " and scroll is " + trackEditorRef.current.scrollTop);
-  //     trackEditorRef.current.scrollTop = scrollPositionY;
-  //   }
-  // }, [scrollPositionY]);
 
   return (
     <>
@@ -195,10 +161,10 @@ const TrackEditor = ({ numTracks }: TrackEditorProps): JSX.Element => {
         />
         <span className="control-block">
           {"Zoom: "}
-          <button className="plus-minus-button" type="button" onClick={zoomOut}>
+          <button className="plus-minus-button" type="button" ref={zoomOutRef} onClick={zoomOut}>
             -
           </button>
-          <button className="plus-minus-button" type="button" onClick={zoomIn}>
+          <button className="plus-minus-button" type="button" ref={zoomInRef} onClick={zoomIn}>
             +
           </button>
         </span>
@@ -212,7 +178,7 @@ const TrackEditor = ({ numTracks }: TrackEditorProps): JSX.Element => {
             -
           </button>
           <button
-            className="plus-minus-button"
+            className="track-sizing-button"
             type="button"
             onClick={() => setTrackHeight(Math.min(trackHeight + 5, trackHeightMax))}
           >
@@ -226,17 +192,16 @@ const TrackEditor = ({ numTracks }: TrackEditorProps): JSX.Element => {
         scaledStartPosition={scaledStartPosition}
         scaledPlayerPosition={scaledPlayerPosition}
         isPlaying={isPlaying}
+        zoom={zoom}
         scrollWheelZoom={scrollWheelZoom}
         autoscrollBlocked={autoscrollBlocked}
         blockAutoscroll={blockAutoscroll}
+        numMeasures={numMeasures}
       >
-        <div className="track-list-header">
-          <p>test-header</p>
+        <div className="track-controls-header">
+          <p>Tracks</p>
         </div>
-        <div className="track-list" style={{ height: allTracksHeight }}>
-          <p>test-list</p>
-        </div>
-
+        <TrackControls trackHeight={trackHeight} />
         <Ruler
           numSegments={numSegments}
           segmentWidth={segmentWidth}

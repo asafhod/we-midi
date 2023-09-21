@@ -30,14 +30,18 @@
   margin-bottom: 8px;
 }
 
-.track-list-header {
+.track-controls-header {
   height: 35px;
+  background-color: black;
+}
+
+.track-controls {
+  margin-top: 35px;
   background-color: #15191b;
 }
 
-.track-list {
-  margin-top: 35px;
-  background-color: #15191b;
+.track-control {
+  border-bottom: 2px solid black;
 }
 
 .scroll-content-wrapper {
@@ -189,10 +193,10 @@
 
 .scrollbar-h {
   /* use variable, do the same for V */
+  position: relative;
   margin-left: min(calc(10% + 6px), 198px);
   width: 100vw - min(calc(10% + 6px), 198px);
-  height: 17px;
-  position: relative;
+  height: 13px;
   background-color: transparent;
   /* background-color: #f1f1f1; */
   overflow-x: clip;
@@ -200,10 +204,10 @@
 }
 
 .scrollbar-v {
-  margin-left: calc(100vw - 17px);
   position: relative;
+  margin-left: calc(100vw - 13px);
+  width: 13px;
   top: 35px;
-  width: 17px;
   background-color: transparent;
   /* background-color: #f1f1f1; */
   overflow-y: clip;
@@ -211,14 +215,12 @@
 }
 
 .scrollbar-h .scroll-thumb {
-  top: 2px;
   height: 13px;
   transition-property: left;
   background-color: #9d9d9dff;
 }
 
 .scrollbar-v .scroll-thumb {
-  left: 2px;
   width: 13px;
   transition-property: top;
   background-color: #9d9d9d33;
