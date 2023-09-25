@@ -143,6 +143,12 @@
   position: relative;
 }
 
+.region {
+  position: absolute;
+  background-color: rgba(0, 150, 0, 0.137);
+  border-radius: 5px; /* what about corner notes? */
+}
+
 .track-note {
   display: inline-block;
   background-color: green;

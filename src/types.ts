@@ -9,6 +9,12 @@ export type NoteType = {
   velocity: number;
 };
 
+export type RegionType = {
+  startTime: number;
+  endTime: number;
+  notes: NoteType[];
+};
+
 export type TrackType = {
   name: string;
   instrument: Tone.Sampler;
