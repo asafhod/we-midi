@@ -17,14 +17,14 @@ const createInstrument = (instrumentNum: number, instrumentFamily: string): Tone
   };
 
   if (instrumentFamily === "drums") {
-    return new Tone.Sampler(drums).toDestination();
+    return new Tone.Sampler(drums);
   } else {
     let instrument: Partial<Tone.SamplerOptions> | undefined = instruments[String(instrumentNum)];
 
     // if instrument number is not accounted for, defaulting to acoustic grand piano
     if (!instrument) instrument = instruments["0"];
 
-    return new Tone.Sampler(instrument).toDestination();
+    return new Tone.Sampler(instrument);
   }
 };
 
