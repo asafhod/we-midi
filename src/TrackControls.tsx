@@ -84,13 +84,15 @@ const TrackControl = ({ track, trackID, trackHeight, setTracks }: TrackControlPr
   return (
     <div className="track-control" style={{ height: trackHeight }}>
       <input
+        className="track-name"
         type="text"
-        maxLength={20}
+        maxLength={21}
         value={trackName}
         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTrackName(e.target.value)}
         onBlur={(e: React.FocusEvent<HTMLInputElement, Element>) => e.target.value.trim() === "" && setTrackName(`Track ${trackID}`)}
       />
       <input
+        className="volume-fader"
         type="range"
         min="-40"
         max="8"
@@ -100,11 +102,15 @@ const TrackControl = ({ track, trackID, trackHeight, setTracks }: TrackControlPr
       />
       <label>
         <input type="checkbox" className="mute-solo-chk" checked={isMuted} onChange={() => setIsMuted(!isMuted)} />{" "}
-        <span className="mute-btn">M</span>
+        <div className="mute-btn">
+          <div className="mute-btn-text">M</div>
+        </div>
       </label>
       <label>
         <input type="checkbox" className="mute-solo-chk" checked={isSolo} onChange={() => setIsSolo(!isSolo)} />{" "}
-        <span className="solo-btn">S</span>
+        <div className="solo-btn">
+          <div className="solo-btn-text">S</div>
+        </div>
       </label>
 
       {/* can you pass a name to the instrument? If not, make a property for it on the tracks object */}
