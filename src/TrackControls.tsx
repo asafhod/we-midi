@@ -8,12 +8,12 @@ type TrackControlsProps = {
 };
 
 const TrackControls = ({ trackHeight }: TrackControlsProps): JSX.Element => {
-  const { tracks } = useContext(TracksContext)!;
+  const { tracks, setTracks } = useContext(TracksContext)!;
   const trackControls: JSX.Element[] = [];
 
   //   possibly put track id on actual tracks object instead and use that here and in Tracks component
   for (let i = 0; i < tracks.length; i++) {
-    trackControls.push(<TrackControl key={i} track={tracks[i]} trackNum={i} trackHeight={trackHeight} />);
+    trackControls.push(<TrackControl key={i} track={tracks[i]} trackID={i} trackHeight={trackHeight} setTracks={setTracks} />);
   }
 
   return <div className="track-controls">{trackControls}</div>;
@@ -21,14 +21,16 @@ const TrackControls = ({ trackHeight }: TrackControlsProps): JSX.Element => {
 
 type TrackControlProps = {
   track: TrackType;
-  trackNum: number;
+  trackID: number;
   trackHeight: number;
+  setTracks: React.Dispatch<React.SetStateAction<TrackType[]>>;
 };
 
-const TrackControl = ({ track, trackNum, trackHeight }: TrackControlProps): JSX.Element => {
+const TrackControl = ({ track, trackID, trackHeight, setTracks }: TrackControlProps): JSX.Element => {
   const [isMuted, setIsMuted] = useState(false);
   const [isSolo, setIsSolo] = useState(false);
   const [volume, setVolume] = useState(track.instrument.volume.value);
+  const [trackName, setTrackName] = useState(track.name || `Track ${trackID}`);
   const volumeRef = useRef(new Tone.Volume(volume));
 
   useEffect(() => {
@@ -60,21 +62,49 @@ const TrackControl = ({ track, trackNum, trackHeight }: TrackControlProps): JSX.
     volumeRef.current.volume.value = volume;
   }, [volume]);
 
+  useEffect(() => {
+    // Maybe standardize the placeholder "Track #" name to always be the track's literal name instead of sometimes having the track's name be ""
+    if (trackName !== (track.name || `Track ${trackID}`)) {
+      setTracks((prevTracks) => {
+        const newTrack: TrackType = { ...track, name: trackName };
+
+        const newTracks: TrackType[] = prevTracks.map((tr, i) => {
+          if (i === trackID) {
+            return newTrack;
+          }
+
+          return tr;
+        });
+
+        return newTracks;
+      });
+    }
+  }, [trackName]);
+
   return (
     <div className="track-control" style={{ height: trackHeight }}>
-      <p>{track.name || `Track ${trackNum}`}</p>
+      <input
+        type="text"
+        maxLength={20}
+        value={trackName}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTrackName(e.target.value)}
+        onBlur={(e: React.FocusEvent<HTMLInputElement, Element>) => e.target.value.trim() === "" && setTrackName(`Track ${trackID}`)}
+      />
       <input
         type="range"
-        min="-20"
-        max="20"
+        min="-40"
+        max="8"
         value={volume}
         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setVolume(Number(e.target.value))}
+        onDoubleClick={() => setVolume(-16)}
       />
       <label>
-        <input type="checkbox" checked={isMuted} onChange={() => setIsMuted(!isMuted)} /> Mute
+        <input type="checkbox" className="mute-solo-chk" checked={isMuted} onChange={() => setIsMuted(!isMuted)} />{" "}
+        <span className="mute-btn">M</span>
       </label>
       <label>
-        <input type="checkbox" checked={isSolo} onChange={() => setIsSolo(!isSolo)} /> Solo
+        <input type="checkbox" className="mute-solo-chk" checked={isSolo} onChange={() => setIsSolo(!isSolo)} />{" "}
+        <span className="solo-btn">S</span>
       </label>
 
       {/* can you pass a name to the instrument? If not, make a property for it on the tracks object */}

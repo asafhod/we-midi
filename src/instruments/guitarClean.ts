@@ -1,6 +1,8 @@
 import * as Tone from "tone";
 
 // change to use dynamic imports?
+import d2 from "../assets/samples/guitar-clean/guitar-clean-38.wav";
+import dSharp2 from "../assets/samples/guitar-clean/guitar-clean-39.wav";
 import e2 from "../assets/samples/guitar-clean/guitar-clean-40.wav";
 import f2 from "../assets/samples/guitar-clean/guitar-clean-41.wav";
 import fSharp2 from "../assets/samples/guitar-clean/guitar-clean-42.wav";
@@ -38,22 +40,14 @@ import cSharp5 from "../assets/samples/guitar-clean/guitar-clean-73.wav";
 import d5 from "../assets/samples/guitar-clean/guitar-clean-74.wav";
 import dSharp5 from "../assets/samples/guitar-clean/guitar-clean-75.wav";
 import e5 from "../assets/samples/guitar-clean/guitar-clean-76.wav";
-import f5 from "../assets/samples/guitar-clean/guitar-clean-77.wav";
-import fSharp5 from "../assets/samples/guitar-clean/guitar-clean-78.wav";
-import g5 from "../assets/samples/guitar-clean/guitar-clean-79.wav";
-import gSharp5 from "../assets/samples/guitar-clean/guitar-clean-80.wav";
-import a5 from "../assets/samples/guitar-clean/guitar-clean-81.wav";
-import aSharp5 from "../assets/samples/guitar-clean/guitar-clean-82.wav";
-import b5 from "../assets/samples/guitar-clean/guitar-clean-83.wav";
-import c6 from "../assets/samples/guitar-clean/guitar-clean-84.wav";
-import cSharp6 from "../assets/samples/guitar-clean/guitar-clean-85.wav";
-import d6 from "../assets/samples/guitar-clean/guitar-clean-86.wav";
 
 // electric guitar (clean)
 const guitarClean: Partial<Tone.SamplerOptions> = {
-  volume: 18,
+  volume: 0,
   release: 1,
   urls: {
+    D2: d2,
+    "D#2": dSharp2,
     E2: e2,
     F2: f2,
     "F#2": fSharp2,
@@ -91,16 +85,6 @@ const guitarClean: Partial<Tone.SamplerOptions> = {
     D5: d5,
     "D#5": dSharp5,
     E5: e5,
-    F5: f5,
-    "F#5": fSharp5,
-    G5: g5,
-    "G#5": gSharp5,
-    A5: a5,
-    "A#5": aSharp5,
-    B5: b5,
-    C6: c6,
-    "C#6": cSharp6,
-    D6: d6,
   },
 };
 

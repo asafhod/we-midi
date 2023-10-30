@@ -44,6 +44,28 @@
   border-bottom: 2px solid black;
 }
 
+.mute-solo-chk {
+  display: none;
+}
+
+.mute-btn {
+  width: 20px;
+  height: 20px;
+}
+
+.solo-btn {
+  width: 20px;
+  height: 20px;
+}
+
+.mute-solo-chk:checked + .mute-btn {
+  background-color: red;
+}
+
+.mute-solo-chk:checked + .solo-btn {
+  background-color: yellow;
+}
+
 .scroll-content-wrapper {
   width: calc(100vw);
   float: left;
