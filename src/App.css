@@ -41,30 +41,65 @@
 }
 
 .track-control {
+  position: relative;
   border-bottom: 2px solid black;
 }
 
+.instrument-icon {
+  position: absolute;
+  top: 5px;
+  left: 10px;
+}
+
+.instrument-select {
+  position: absolute;
+  margin-top: 5px;
+  padding-top: 0px;
+  left: 9px;
+  width: 22px;
+  height: 150px;
+  border-bottom-left-radius: 10px;
+  border-bottom-right-radius: 10px;
+  z-index: 1;
+  background-color: rgb(0, 0, 0);
+}
+
+.instrument-option {
+  margin-left: 1px;
+  margin-top: -9px;
+}
+
+.instrument-option:hover {
+  margin-left: 2px;
+}
+
 .track-name {
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  display: inline-block;
   font-size: 14px;
-  height: 17px;
-  width: 150px;
+  height: 21px;
+  width: 144px;
   border-radius: 10px;
-  padding-left: 6px;
+  padding-left: 27px;
   padding-right: 6px;
   background-color: rgb(67, 67, 67);
   color: white;
   outline: none;
   border: none;
-  margin-top: 5px;
 }
 
 .volume-fader {
   -webkit-appearance: none;
   appearance: none;
+  position: absolute;
+  top: 35px;
+  left: 7px;
+  width: 138px;
 }
 
 .volume-fader::-webkit-slider-runnable-track {
-  width: 300px;
   height: 2px;
   background: #ddd;
   border: none;
@@ -92,9 +127,12 @@
 
 .mute-btn,
 .solo-btn {
+  font-family: monospace;
   display: inline-block;
   position: relative;
-  width: 20px;
+  top: 45px;
+  /* left: px; */
+  width: 47px;
   height: 20px;
   margin-left: 5px;
   border: 1px solid black;
@@ -104,7 +142,7 @@
 .mute-btn-text {
   position: absolute;
   top: -3px;
-  left: 2px;
+  left: 5px;
   color: red;
   user-select: none;
 }

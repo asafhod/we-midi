@@ -5,27 +5,33 @@ import guitarClean from "./guitarClean";
 import guitarDistorted from "./guitarDistorted";
 import piano from "./piano";
 
-const createInstrument = (instrumentNum: number, instrumentFamily: string): Tone.Sampler => {
-  // 26 is electric guitar (jazz) - possibly get rid of this later, or use ranges/families to cover other instrument numbers
-  // 86 is synth - lead 6 (voice) - can implement with samples later
+const createInstrument = (instrumentType: string, instrumentNum?: number): { instrument: Tone.Sampler; instrumentName: string } => {
+  // TODO: implement 8-bit and synth
   const instruments: { [key: string]: Partial<Tone.SamplerOptions> } = {
-    "0": piano,
-    "26": guitarClean,
-    "28": guitarClean,
-    "31": guitarDistorted,
-    "33": bass,
+    piano: piano,
+    guitar: guitarClean,
+    guitarDist: guitarDistorted,
+    bass: bass,
+    drums: drums,
   };
 
-  if (instrumentFamily === "drums") {
-    return new Tone.Sampler(drums);
-  } else {
-    let instrument: Partial<Tone.SamplerOptions> | undefined = instruments[String(instrumentNum)];
+  let instrumentName: string = instrumentType;
 
-    // if instrument number is not accounted for, defaulting to acoustic grand piano
-    if (!instrument) instrument = instruments["0"];
-
-    return new Tone.Sampler(instrument);
+  // differentiate distorted guitar from clean guitar
+  if (instrumentNum === 30 || instrumentNum === 31) {
+    instrumentName = "guitarDist";
   }
+
+  let instrument: Partial<Tone.SamplerOptions> | undefined = instruments[instrumentName];
+
+  // if instrument name is not accounted for, default to acoustic grand piano
+  if (!instrument) {
+    instrumentName = "piano";
+    instrument = piano;
+  }
+
+  const instrumentSampler: Tone.Sampler = new Tone.Sampler(instrument);
+  return { instrument: instrumentSampler, instrumentName };
 };
 
 export default createInstrument;

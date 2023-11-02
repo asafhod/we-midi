@@ -2,7 +2,7 @@ import * as Tone from "tone";
 import { useState, useEffect, useContext } from "react";
 import TracksContext from "./TracksContext";
 import { NoteType, RegionType } from "./types";
-import { TrackType } from "./types";
+// import { TrackType } from "./types";
 
 type TrackProps = {
   trackID: number;
@@ -13,8 +13,8 @@ type TrackProps = {
 
 const Track = ({ trackID, width, height, scaleWidth }: TrackProps): JSX.Element => {
   // TODO: change to use Redux state instead of context API
-  const { tracks, setTracks } = useContext(TracksContext)!;
-  // const { tracks } = useContext(TracksContext)!;
+  // const { tracks, setTracks } = useContext(TracksContext)!;
+  const { tracks } = useContext(TracksContext)!;
   const [regions, setRegions] = useState<RegionType[]>([]);
 
   const notes: JSX.Element[] = [];
@@ -44,61 +44,61 @@ const Track = ({ trackID, width, height, scaleWidth }: TrackProps): JSX.Element 
   }
 
   // ---Move to midi editor component---------------------
-  const addNote = (name: string, midiNum: number, duration: string | number, noteTime: number, velocity: number) => {
-    let track: TrackType = tracks[trackID];
-    const instrument: Tone.Sampler = track.instrument;
+  // const addNote = (name: string, midiNum: number, duration: string | number, noteTime: number, velocity: number) => {
+  //   let track: TrackType = tracks[trackID];
+  //   const instrument: Tone.Sampler = track.instrument;
 
-    const noteID: number = Tone.Transport.schedule((time: number) => {
-      instrument.triggerAttackRelease(name, duration, time, velocity);
-    }, noteTime);
+  //   const noteID: number = Tone.Transport.schedule((time: number) => {
+  //     instrument.triggerAttackRelease(name, duration, time, velocity);
+  //   }, noteTime);
 
-    const notes: NoteType[] = [...track.notes, { noteID, name, midiNum, duration, noteTime, velocity }];
+  //   const notes: NoteType[] = [...track.notes, { noteID, name, midiNum, duration, noteTime, velocity }];
 
-    const minNote: number = Math.min(track.minNote, midiNum);
-    const maxNote: number = Math.max(track.maxNote, midiNum);
+  //   const minNote: number = Math.min(track.minNote, midiNum);
+  //   const maxNote: number = Math.max(track.maxNote, midiNum);
 
-    track = { ...track, notes, minNote, maxNote };
+  //   track = { ...track, notes, minNote, maxNote };
 
-    const newTracks: TrackType[] = tracks.map((tr, i) => {
-      if (i === trackID) {
-        return track;
-      }
+  //   const newTracks: TrackType[] = tracks.map((tr, i) => {
+  //     if (i === trackID) {
+  //       return track;
+  //     }
 
-      return tr;
-    });
+  //     return tr;
+  //   });
 
-    setTracks(newTracks);
-  };
+  //   setTracks(newTracks);
+  // };
 
-  const removeNote = (noteID: number) => {
-    // add handling for if note doesn't exist
-    Tone.Transport.clear(noteID);
+  // const removeNote = (noteID: number) => {
+  //   // add handling for if note doesn't exist
+  //   Tone.Transport.clear(noteID);
 
-    let track: TrackType = tracks[trackID];
-    const notes: NoteType[] = track.notes.filter((note) => note.noteID !== noteID);
+  //   let track: TrackType = tracks[trackID];
+  //   const notes: NoteType[] = track.notes.filter((note) => note.noteID !== noteID);
 
-    const newNoteRange: { minNote: number; maxNote: number } = notes.reduce(
-      (range, note) => {
-        const min: number = Math.min(range.minNote, note.midiNum);
-        const max: number = Math.max(range.maxNote, note.midiNum);
+  //   const newNoteRange: { minNote: number; maxNote: number } = notes.reduce(
+  //     (range, note) => {
+  //       const min: number = Math.min(range.minNote, note.midiNum);
+  //       const max: number = Math.max(range.maxNote, note.midiNum);
 
-        return { minNote: min, maxNote: max };
-      },
-      { minNote: 128, maxNote: -1 }
-    );
+  //       return { minNote: min, maxNote: max };
+  //     },
+  //     { minNote: 128, maxNote: -1 }
+  //   );
 
-    track = { ...track, notes, minNote: newNoteRange.minNote, maxNote: newNoteRange.maxNote };
+  //   track = { ...track, notes, minNote: newNoteRange.minNote, maxNote: newNoteRange.maxNote };
 
-    const newTracks: TrackType[] = tracks.map((tr, i) => {
-      if (i === trackID) {
-        return track;
-      }
+  //   const newTracks: TrackType[] = tracks.map((tr, i) => {
+  //     if (i === trackID) {
+  //       return track;
+  //     }
 
-      return tr;
-    });
+  //     return tr;
+  //   });
 
-    setTracks(newTracks);
-  };
+  //   setTracks(newTracks);
+  // };
   // -----------------------------------------------------
 
   const generateRegions = () => {
@@ -245,7 +245,7 @@ const Track = ({ trackID, width, height, scaleWidth }: TrackProps): JSX.Element 
         );
       })}
       {notes}
-      <div>
+      {/* <div>
         {tracks[trackID].name || `Track ${trackID}`}
         <button type="button" onClick={() => addNote("C3", 48, 0.25, Tone.Transport.toSeconds("4:0:0"), 0.6)}>
           Add C Note
@@ -253,7 +253,7 @@ const Track = ({ trackID, width, height, scaleWidth }: TrackProps): JSX.Element 
         <button type="button" onClick={() => removeNote(tracks[trackID].notes[tracks[trackID].notes.length - 1].noteID)}>
           Remove Newest Note
         </button>
-      </div>
+      </div> */}
     </div>
   );
 };

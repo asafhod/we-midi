@@ -201,7 +201,7 @@ const TrackEditor = ({ numTracks }: TrackEditorProps): JSX.Element => {
         <div className="track-controls-header">
           <p>Tracks</p>
         </div>
-        <TrackControls trackHeight={trackHeight} />
+        <TrackControls trackHeight={trackHeight} isPlaying={isPlaying} />
         <Ruler
           numSegments={numSegments}
           segmentWidth={segmentWidth}

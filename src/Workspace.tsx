@@ -15,7 +15,7 @@ const Workspace = ({ midiURL }: WorkspaceProps): JSX.Element => {
   const [tracks, setTracks] = useState<TrackType[]>([]);
 
   useEffect(() => {
-    // clear it in a cleanup function for unmount and in case url changes
+    // clear it in a cleanup function for unmount and in case url changes (dispose of instruments, volumes, etc.)
     const loadMidi = async (midiURL: string) => {
       const midi: MidiJSON = await MidiLoad.fromUrl(midiURL);
       if (!midi || !Object.keys(midi).length) throw new Error("Cannot schedule notes: Invalid MIDI file");
@@ -31,7 +31,7 @@ const Workspace = ({ midiURL }: WorkspaceProps): JSX.Element => {
 
       for (let i = 1; i < midi.tracks.length; i++) {
         const track: TrackJSON = midi.tracks[i];
-        const instrument: Tone.Sampler = createInstrument(track.instrument.number, track.instrument.family);
+        const { instrument, instrumentName } = createInstrument(track.instrument.family, track.instrument.number);
 
         await Tone.loaded();
 
@@ -50,7 +50,7 @@ const Workspace = ({ midiURL }: WorkspaceProps): JSX.Element => {
           maxNote = Math.max(maxNote, midiNum);
         }
 
-        tracks.push({ name: track.name, instrument, notes, minNote, maxNote });
+        tracks.push({ name: track.name, instrumentName, instrument, notes, minNote, maxNote });
       }
 
       setTracks(tracks);

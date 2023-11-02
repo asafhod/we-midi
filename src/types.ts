@@ -17,6 +17,7 @@ export type RegionType = {
 
 export type TrackType = {
   name: string;
+  instrumentName: string;
   instrument: Tone.Sampler;
   notes: NoteType[];
   minNote: number;
