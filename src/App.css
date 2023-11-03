@@ -53,11 +53,14 @@
 
 .instrument-select {
   position: absolute;
-  margin-top: 5px;
-  padding-top: 0px;
-  left: 9px;
-  width: 22px;
-  height: 150px;
+  margin-top: 25px;
+  padding-left: 5px;
+  left: 5px;
+  top: -20px;
+  height: 22px;
+  width: 144px;
+  border-top-left-radius: 10px;
+  border-top-right-radius: 10px;
   border-bottom-left-radius: 10px;
   border-bottom-right-radius: 10px;
   z-index: 1;
@@ -65,12 +68,12 @@
 }
 
 .instrument-option {
-  margin-left: 1px;
+  margin-right: 3px;
   margin-top: -9px;
 }
 
 .instrument-option:hover {
-  margin-left: 2px;
+  margin-top: -14px;
 }
 
 .track-name {
@@ -132,7 +135,7 @@
   position: relative;
   top: 45px;
   /* left: px; */
-  width: 47px;
+  width: 20px;
   height: 20px;
   margin-left: 5px;
   border: 1px solid black;

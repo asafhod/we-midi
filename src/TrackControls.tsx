@@ -139,7 +139,7 @@ const TrackControl = ({ track, trackID, trackHeight, setTracks, isPlaying }: Tra
         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTrackName(e.target.value)}
         onBlur={(e: React.FocusEvent<HTMLInputElement, Element>) => e.target.value.trim() === "" && setTrackName(`Track ${trackID}`)}
       />
-      <InstrumentSelect instrument={instrument} setInstrument={setInstrument} isPlaying={isPlaying} />
+      <InstrumentSelect instrument={instrument} setInstrument={setInstrument} trackID={trackID} isPlaying={isPlaying} />
       <input
         className="volume-fader"
         type="range"
@@ -152,13 +152,13 @@ const TrackControl = ({ track, trackID, trackHeight, setTracks, isPlaying }: Tra
       <label>
         <input type="checkbox" className="mute-solo-chk" checked={isMuted} onChange={() => setIsMuted(!isMuted)} />{" "}
         <div className="mute-btn">
-          <div className="mute-btn-text">Mute</div>
+          <div className="mute-btn-text">M</div>
         </div>
       </label>
       <label>
         <input type="checkbox" className="mute-solo-chk" checked={isSolo} onChange={() => setIsSolo(!isSolo)} />{" "}
         <div className="solo-btn">
-          <div className="solo-btn-text">Solo</div>
+          <div className="solo-btn-text">S</div>
         </div>
       </label>
 
@@ -171,82 +171,115 @@ const TrackControl = ({ track, trackID, trackHeight, setTracks, isPlaying }: Tra
 type InstrumentSelectProps = {
   instrument: string;
   setInstrument: React.Dispatch<React.SetStateAction<string>>;
+  trackID: number;
   isPlaying: boolean; // Less prop drilling? Context?
 };
 
-const InstrumentSelect = ({ instrument, setInstrument, isPlaying }: InstrumentSelectProps): JSX.Element => {
+const InstrumentSelect = ({ instrument, setInstrument, trackID, isPlaying }: InstrumentSelectProps): JSX.Element => {
   const [isSelecting, setIsSelecting] = useState(false);
+  const initialClick = useRef(false);
 
-  const selectInstrument = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
-    const selectedElement = e.target as HTMLDivElement;
-    const instrumentName: string | undefined = selectedElement.dataset.instrument;
-
-    if (instrumentName) {
-      setInstrument(instrumentName);
-      setIsSelecting(false);
+  const handleClick = (e: MouseEvent) => {
+    if (initialClick.current) {
+      initialClick.current = false;
+      return;
     }
+
+    const selectedElement = e.target as HTMLElement;
+
+    if (selectedElement.classList.contains("instrument-select")) {
+      return;
+    } else if (selectedElement.classList.contains("instrument-option") && Number(selectedElement.dataset.trackid) === trackID) {
+      const instrumentName: string | undefined = selectedElement.dataset.instrument;
+      if (instrumentName) setInstrument(instrumentName);
+    }
+
+    setIsSelecting(false);
   };
 
-  return isSelecting ? (
-    <div className="instrument-select" onClick={(e) => selectInstrument(e)}>
+  useEffect(() => {
+    if (isSelecting) {
+      initialClick.current = true;
+      document.addEventListener("click", handleClick);
+    } else {
+      initialClick.current = false;
+      document.removeEventListener("click", handleClick);
+    }
+
+    return () => {
+      document.removeEventListener("click", handleClick);
+    };
+  }, [isSelecting]);
+
+  return (
+    <>
       <img
-        className="instrument-option"
-        data-instrument="guitar"
-        src={instrumentIcons["guitar"]}
-        alt={"Clean Guitar"}
+        className="instrument-icon"
+        src={instrumentIcons[instrument]}
+        alt={instrument}
         height="20px"
         width="20px"
+        onClick={() => !isPlaying && !isSelecting && setIsSelecting(true)}
       />
-      <img
-        className="instrument-option"
-        data-instrument="guitarDist"
-        src={instrumentIcons["guitarDist"]}
-        alt={"Distorted Guitar"}
-        height="20px"
-        width="20px"
-      />
-      <img
-        className="instrument-option"
-        data-instrument="bass"
-        src={instrumentIcons["bass"]}
-        alt={"Bass"}
-        height="20px"
-        width="20px"
-      />
-      <img
-        className="instrument-option"
-        data-instrument="piano"
-        src={instrumentIcons["piano"]}
-        alt={"Piano"}
-        height="20px"
-        width="20px"
-      />
-      <img
-        className="instrument-option"
-        data-instrument="drums"
-        src={instrumentIcons["drums"]}
-        alt={"Drums"}
-        height="20px"
-        width="20px"
-      />
-      <img
-        className="instrument-option"
-        data-instrument="8-bit"
-        src={instrumentIcons["8-bit"]}
-        alt={"8-bit"}
-        height="20px"
-        width="20px"
-      />
-    </div>
-  ) : (
-    <img
-      className="instrument-icon"
-      src={instrumentIcons[instrument]}
-      alt={instrument}
-      height="20px"
-      width="20px"
-      onClick={() => !isPlaying && setIsSelecting(true)}
-    />
+      {isSelecting && (
+        <div className="instrument-select">
+          <img
+            className="instrument-option"
+            data-instrument="guitar"
+            data-trackid={trackID}
+            src={instrumentIcons["guitar"]}
+            alt={"Clean Guitar"}
+            height="20px"
+            width="20px"
+          />
+          <img
+            className="instrument-option"
+            data-instrument="guitarDist"
+            data-trackid={trackID}
+            src={instrumentIcons["guitarDist"]}
+            alt={"Distorted Guitar"}
+            height="20px"
+            width="20px"
+          />
+          <img
+            className="instrument-option"
+            data-instrument="bass"
+            data-trackid={trackID}
+            src={instrumentIcons["bass"]}
+            alt={"Bass"}
+            height="20px"
+            width="20px"
+          />
+          <img
+            className="instrument-option"
+            data-instrument="piano"
+            data-trackid={trackID}
+            src={instrumentIcons["piano"]}
+            alt={"Piano"}
+            height="20px"
+            width="20px"
+          />
+          <img
+            className="instrument-option"
+            data-instrument="drums"
+            data-trackid={trackID}
+            src={instrumentIcons["drums"]}
+            alt={"Drums"}
+            height="20px"
+            width="20px"
+          />
+          <img
+            className="instrument-option"
+            data-instrument="8-bit"
+            data-trackid={trackID}
+            src={instrumentIcons["8-bit"]}
+            alt={"8-bit"}
+            height="20px"
+            width="20px"
+          />
+        </div>
+      )}
+    </>
   );
 };
 
