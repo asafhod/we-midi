@@ -19,6 +19,7 @@ export type TrackType = {
   name: string;
   instrumentName: string;
   instrument: Tone.Sampler;
+  panVol: Tone.PanVol;
   notes: NoteType[];
   minNote: number;
   maxNote: number;

@@ -33,6 +33,8 @@ const Workspace = ({ midiURL }: WorkspaceProps): JSX.Element => {
         const track: TrackJSON = midi.tracks[i];
         const { instrument, instrumentName } = createInstrument(track.instrument.family, track.instrument.number);
 
+        const panVol: Tone.PanVol = new Tone.PanVol(0, instrument.volume.value); //later, change vol to -16 and have track vols/pans saved for each song
+
         await Tone.loaded();
 
         const notes: NoteType[] = [];
@@ -50,7 +52,7 @@ const Workspace = ({ midiURL }: WorkspaceProps): JSX.Element => {
           maxNote = Math.max(maxNote, midiNum);
         }
 
-        tracks.push({ name: track.name, instrumentName, instrument, notes, minNote, maxNote });
+        tracks.push({ name: track.name, instrumentName, instrument, panVol, notes, minNote, maxNote });
       }
 
       setTracks(tracks);

@@ -4,6 +4,7 @@ import { TrackType, NoteType } from "./types";
 import TracksContext from "./TracksContext";
 import createInstrument from "./instruments/createInstrument";
 import instrumentIcons from "./instruments/instrumentIcons";
+import { ReactComponent as GlobeIcon } from "./assets/icons/globe.svg";
 
 type TrackControlsProps = {
   trackHeight: number;
@@ -12,12 +13,69 @@ type TrackControlsProps = {
 
 const TrackControls = ({ trackHeight, isPlaying }: TrackControlsProps): JSX.Element => {
   const { tracks, setTracks } = useContext(TracksContext)!;
+  const [soloTracks, setSoloTracks] = useState<boolean[]>(() => {
+    const soloTracks: boolean[] = [];
+    for (let i = 0; i < tracks.length; i++) {
+      soloTracks.push(false);
+    }
+    return soloTracks;
+  });
+  const [mutedTracks, setMutedTracks] = useState<boolean[]>(() => {
+    const mutedTracks: boolean[] = [];
+    for (let i = 0; i < tracks.length; i++) {
+      mutedTracks.push(false);
+    }
+    return mutedTracks;
+  });
+
+  useEffect(() => {
+    const soloExists: boolean = soloTracks.includes(true);
+
+    for (let i = 0; i < tracks.length; i++) {
+      const panVolNode: Tone.PanVol | undefined = tracks[i].panVol;
+
+      if (panVolNode) {
+        const isSolo: boolean = soloTracks[i];
+        const isManuallyMuted: boolean = mutedTracks[i];
+
+        // simplify?
+        if (soloExists) {
+          if (isSolo) {
+            // unmute
+            panVolNode.mute = false;
+          } else {
+            // mute
+            panVolNode.mute = true;
+          }
+        } else {
+          // unmute, unless manually muted
+          if (!isManuallyMuted) {
+            panVolNode.mute = false;
+          } else {
+            panVolNode.mute = true;
+          }
+        }
+      }
+    }
+  }, [soloTracks]);
+
   const trackControls: JSX.Element[] = [];
 
   //   possibly put track id on actual tracks object instead and use that here and in Tracks component
   for (let i = 0; i < tracks.length; i++) {
     trackControls.push(
-      <TrackControl key={i} track={tracks[i]} trackID={i} trackHeight={trackHeight} setTracks={setTracks} isPlaying={isPlaying} />
+      <TrackControl
+        key={i}
+        track={tracks[i]}
+        trackID={i}
+        trackHeight={trackHeight}
+        setTracks={setTracks}
+        isSolo={soloTracks[i]}
+        setSoloTracks={setSoloTracks}
+        isMuted={mutedTracks[i]}
+        setMutedTracks={setMutedTracks}
+        isPlaying={isPlaying}
+      />
     );
   }
 
@@ -29,48 +87,69 @@ type TrackControlProps = {
   trackID: number;
   trackHeight: number;
   setTracks: React.Dispatch<React.SetStateAction<TrackType[]>>;
+  isSolo: boolean;
+  setSoloTracks: React.Dispatch<React.SetStateAction<boolean[]>>;
+  isMuted: boolean;
+  setMutedTracks: React.Dispatch<React.SetStateAction<boolean[]>>;
   isPlaying: boolean;
 };
 
-const TrackControl = ({ track, trackID, trackHeight, setTracks, isPlaying }: TrackControlProps): JSX.Element => {
-  const [isMuted, setIsMuted] = useState(false);
-  const [isSolo, setIsSolo] = useState(false);
-  const [volume, setVolume] = useState(track.instrument.volume.value);
+const TrackControl = ({
+  track,
+  trackID,
+  trackHeight,
+  setTracks,
+  isSolo,
+  setSoloTracks,
+  isMuted,
+  setMutedTracks,
+  isPlaying,
+}: TrackControlProps): JSX.Element => {
+  const [volume, setVolume] = useState(track.panVol.volume.value); // set these initials based on settings for each song (see Workspace component)
+  const [pan, setPan] = useState(0); // set these initials based on settings for each song (see Workspace component)
   const [trackName, setTrackName] = useState(track.name || `Track ${trackID}`);
   const [instrument, setInstrument] = useState(track.instrumentName);
-  const volumeRef = useRef(new Tone.Volume(volume));
+  const [isGlobal, setIsGlobal] = useState(false);
+
+  const handleMute = () => {
+    setMutedTracks((prevMutedTracks) => {
+      return prevMutedTracks.map((isMuted, i) => (i === trackID ? !isMuted : isMuted));
+    });
+  };
+
+  const handleSolo = () => {
+    setSoloTracks((prevSoloTracks) => {
+      return prevSoloTracks.map((isSolo, i) => (i === trackID ? !isSolo : isSolo));
+    });
+  };
 
   useEffect(() => {
-    track.instrument.chain(volumeRef.current, Tone.Destination);
-
-    // TODO: Address warnings
+    // how come when I tried to do this in the Workspace component instead, it resulted in two nodes for each track where the controls only affected one?
+    track.instrument.chain(track.panVol, Tone.Destination);
   }, []);
 
   useEffect(() => {
-    if (isMuted) {
-      volumeRef.current.mute = true;
-    } else {
-      volumeRef.current.mute = false;
-    }
+    if (!isSolo) track.panVol.mute = isMuted;
   }, [isMuted]);
 
-  // TODO: Implement
-  useEffect(() => {
-    if (isSolo) {
-    } else {
-    }
-  }, [isSolo]);
+  // useEffect(() => {
+  //   //  TODO: Implement using the shared state. Either tracks or another.
+  // }, [isGlobal]);
 
   useEffect(() => {
-    volumeRef.current.volume.value = volume;
+    track.panVol.volume.value = volume;
   }, [volume]);
+
+  useEffect(() => {
+    track.panVol.pan.value = pan / 8;
+  }, [pan]);
 
   useEffect(() => {
     if (track.instrumentName !== instrument) {
       track.instrument.dispose();
 
       const { instrument: newInstrument } = createInstrument(instrument);
-      newInstrument.chain(volumeRef.current, Tone.Destination);
+      newInstrument.chain(track.panVol);
 
       const newNotes: NoteType[] = [];
 
@@ -90,12 +169,13 @@ const TrackControl = ({ track, trackID, trackHeight, setTracks, isPlaying }: Tra
         name: track.name,
         instrumentName: instrument,
         instrument: newInstrument,
+        panVol: track.panVol, // dispose and make new panVol instead?
         notes: newNotes,
         minNote: track.minNote,
         maxNote: track.maxNote,
       };
 
-      // TODO: avoid repeating this. function?
+      // TODO: Avoid repeating this. Make function?
       setTracks((prevTracks) => {
         const newTracks: TrackType[] = prevTracks.map((tr, i) => {
           if (i === trackID) {
@@ -149,21 +229,35 @@ const TrackControl = ({ track, trackID, trackHeight, setTracks, isPlaying }: Tra
         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setVolume(Number(e.target.value))}
         onDoubleClick={() => setVolume(-16)}
       />
-      <label>
-        <input type="checkbox" className="mute-solo-chk" checked={isMuted} onChange={() => setIsMuted(!isMuted)} />{" "}
-        <div className="mute-btn">
-          <div className="mute-btn-text">M</div>
-        </div>
-      </label>
-      <label>
-        <input type="checkbox" className="mute-solo-chk" checked={isSolo} onChange={() => setIsSolo(!isSolo)} />{" "}
-        <div className="solo-btn">
-          <div className="solo-btn-text">S</div>
-        </div>
-      </label>
-
-      {/* can you pass a name to the instrument? If not, make a property for it on the tracks object */}
-      {/* <p>{tracks[i].instrument.name}</p>  */}
+      <input
+        className="pan-control"
+        type="range"
+        min="-8"
+        max="8"
+        value={pan}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPan(Number(e.target.value))}
+        onDoubleClick={() => setPan(0)}
+      />
+      <div className="track-control-btn-container">
+        <label>
+          <input type="checkbox" className="track-control-chk" checked={isMuted} onChange={handleMute} />
+          <div className="mute-btn">
+            <div className="track-control-btn-content mute-btn-text">M</div>
+          </div>
+        </label>
+        <label>
+          <input type="checkbox" className="track-control-chk" checked={isSolo} onChange={handleSolo} />
+          <div className="solo-btn">
+            <div className="track-control-btn-content solo-btn-text">S</div>
+          </div>
+        </label>
+        <label>
+          <input type="checkbox" className="track-control-chk" checked={isGlobal} onChange={() => setIsGlobal(!isGlobal)} />
+          <div className="global-btn">
+            <GlobeIcon className="global-btn-icon" width="16" height="16" />
+          </div>
+        </label>
+      </div>
     </div>
   );
 };

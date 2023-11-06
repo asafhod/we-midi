@@ -124,12 +124,49 @@
   width: 2px;
 } */
 
-.mute-solo-chk {
+.pan-control {
+  -webkit-appearance: none;
+  appearance: none;
+  position: absolute;
+  top: 53px;
+  left: 14px;
+  width: 50px;
+}
+
+.pan-control::-webkit-slider-runnable-track {
+  height: 2px;
+  background: #ddd;
+  border: none;
+  border-radius: 2px;
+}
+
+.pan-control::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 12px;
+  width: 12px;
+  margin-top: -5px;
+  background-color: blue;
+  border-radius: 6px;
+}
+
+/* .pan-control::-moz-range-thumb {
+  height: 2px;
+  width: 2px;
+} */
+
+.track-control-btn-container {
+  position: relative;
+  left: 70px;
+}
+
+.track-control-chk {
   display: none;
 }
 
 .mute-btn,
-.solo-btn {
+.solo-btn,
+.global-btn {
   font-family: monospace;
   display: inline-block;
   position: relative;
@@ -142,33 +179,50 @@
   background-color: rgb(67, 67, 67);
 }
 
-.mute-btn-text {
+.track-control-btn-content {
   position: absolute;
   top: -3px;
   left: 5px;
-  color: red;
   user-select: none;
+}
+
+.mute-btn-text {
+  color: red;
 }
 
 .solo-btn-text {
-  position: absolute;
-  top: -3px;
-  left: 5px;
   color: yellow;
-  user-select: none;
 }
 
-.mute-solo-chk:checked + .mute-btn {
+.global-btn-icon {
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  user-select: none;
+  stroke: rgb(95, 6, 95);
+  fill: rgb(95, 6, 95);
+}
+
+.track-control-chk:checked + .mute-btn {
   background-color: red;
 }
 
-.mute-solo-chk:checked + .solo-btn {
+.track-control-chk:checked + .solo-btn {
   background-color: rgb(231, 195, 17);
 }
 
-.mute-solo-chk:checked + .mute-btn .mute-btn-text,
-.mute-solo-chk:checked + .solo-btn .solo-btn-text {
+.track-control-chk:checked + .global-btn {
+  background-color: rgb(95, 6, 95);
+}
+
+.track-control-chk:checked + .mute-btn .mute-btn-text,
+.track-control-chk:checked + .solo-btn .solo-btn-text {
   color: white;
+}
+
+.track-control-chk:checked + .global-btn .global-btn-icon {
+  stroke: white;
+  fill: white;
 }
 
 .scroll-content-wrapper {
@@ -183,6 +237,7 @@
   margin-right: 6px;
   width: 10%;
   max-width: 192px;
+  z-index: 1;
 }
 
 .content-panel {
