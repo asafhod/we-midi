@@ -35,7 +35,8 @@
   background-color: black;
 }
 
-.track-controls {
+.track-controls,
+.instrument-controls {
   margin-top: 35px;
   background-color: #15191b;
 }
@@ -225,6 +226,16 @@
   fill: white;
 }
 
+.instrument-note {
+  background-color: white;
+  color: black;
+}
+
+.instrument-note-sharp {
+  background-color: black;
+  color: white;
+}
+
 .scroll-content-wrapper {
   width: calc(100vw);
   float: left;
@@ -342,6 +353,7 @@
   top: 35px;
   width: 2px;
   border-left: 2px solid blue;
+  pointer-events: none;
 }
 
 .position-marker-head-container {
@@ -361,6 +373,7 @@
   top: 35px;
   width: 2px;
   border-left: 2px solid orange;
+  pointer-events: none;
 }
 
 .player-position-marker-head {

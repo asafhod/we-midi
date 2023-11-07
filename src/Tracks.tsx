@@ -10,6 +10,7 @@ type TracksProps = {
   totalWidth: number;
   scaleWidth: number;
   onClick: (e: React.MouseEvent<HTMLDivElement, MouseEvent>, alsoChangePlayerPos?: boolean) => void;
+  setMidiEditorTrackID: React.Dispatch<React.SetStateAction<number>>;
 };
 
 const Tracks = ({
@@ -22,6 +23,7 @@ const Tracks = ({
   totalWidth,
   scaleWidth,
   onClick,
+  setMidiEditorTrackID,
 }: TracksProps): JSX.Element => {
   // Figure out exactly how to set up the Track components. Redux/ContextAPI may help clarify.
   //   How to prevent all tracks from re-rendering when a single track is edited (none are added/removed)
@@ -29,7 +31,16 @@ const Tracks = ({
   let trackComponents: JSX.Element[] = [];
 
   for (let i = 0; i < numTracks; i++) {
-    trackComponents[i] = <Track key={i} trackID={i} width={totalWidth} height={trackHeight} scaleWidth={scaleWidth} />;
+    trackComponents[i] = (
+      <Track
+        key={i}
+        trackID={i}
+        width={totalWidth}
+        height={trackHeight}
+        scaleWidth={scaleWidth}
+        setMidiEditorTrackID={setMidiEditorTrackID}
+      />
+    );
   }
 
   const gridLines: JSX.Element[] = [];
