@@ -107,7 +107,7 @@ const TrackControl = ({
 }: TrackControlProps): JSX.Element => {
   const [volume, setVolume] = useState(track.panVol.volume.value); // set these initials based on settings for each song (see Workspace component)
   const [pan, setPan] = useState(0); // set these initials based on settings for each song (see Workspace component)
-  const [trackName, setTrackName] = useState(track.name || `Track ${trackID}`);
+  const [trackName, setTrackName] = useState(track.name);
   const [instrument, setInstrument] = useState(track.instrumentName);
   const [isGlobal, setIsGlobal] = useState(false);
 
@@ -191,8 +191,10 @@ const TrackControl = ({
   }, [instrument]);
 
   useEffect(() => {
-    // Maybe standardize the placeholder "Track #" name to always be the track's literal name instead of sometimes having the track's name be ""
-    if (trackName !== (track.name || `Track ${trackID}`)) {
+    // Will likely need to have a state on the component for the Track name, then only update the global name onBlur
+    //    This avoids issue where name could be "" for a user if another user clears the name and hasn't blurred out yet
+    //    This also avoids global state changes for each letter of the name change, only does one for the final when blurred
+    if (trackName !== track.name) {
       setTracks((prevTracks) => {
         const newTrack: TrackType = { ...track, name: trackName };
 

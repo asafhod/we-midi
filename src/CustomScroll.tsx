@@ -1,4 +1,4 @@
-import { PropsWithChildren, Children, useEffect, useRef } from "react";
+import { PropsWithChildren, Children, useState, useEffect, useRef } from "react";
 import useResizeObserver from "use-resize-observer";
 
 type CustomScrollProps = {
@@ -12,6 +12,12 @@ type CustomScrollProps = {
   autoscrollBlocked: boolean;
   blockAutoscroll: () => void;
   numMeasures: number;
+  midiEditorTrackID: number;
+};
+
+type TrackScrollPosition = {
+  trackID: number;
+  scrollPosition: number;
 };
 
 const CustomScroll = ({
@@ -25,8 +31,21 @@ const CustomScroll = ({
   autoscrollBlocked,
   blockAutoscroll,
   numMeasures,
+  midiEditorTrackID,
   children,
 }: PropsWithChildren<CustomScrollProps>) => {
+  const [lastFocusedTrackID, setLastFocusedTrackID] = useState(-1);
+  // TODO: Implement actual defaults
+  const [trackScrollPositions, setTrackScrollPositions] = useState<TrackScrollPosition[]>([
+    { trackID: -1, scrollPosition: 0 },
+    { trackID: 0, scrollPosition: 100 },
+    { trackID: 1, scrollPosition: 200 },
+    { trackID: 2, scrollPosition: 300 },
+    { trackID: 3, scrollPosition: 400 },
+    { trackID: 4, scrollPosition: 500 },
+    { trackID: 5, scrollPosition: 600 },
+  ]);
+
   const contentHRef = useRef<HTMLDivElement>(null);
   const contentVRef = useRef<HTMLDivElement>(null);
   const contentHeaderRef = useRef<HTMLDivElement>(null);
@@ -311,6 +330,31 @@ const CustomScroll = ({
 
     autoscroll();
   }, [scaledPlayerPosition, isPlaying, autoscrollBlocked, sizeH]);
+
+  useEffect(() => {
+    // TODO: Figure out way to get the scroll position right before leaving the view
+    if (contentVRef.current && lastFocusedTrackID !== midiEditorTrackID) {
+      const lastFocusedTrackScrollPos: number = contentVRef.current.scrollTop;
+
+      const currFocusedTrackScrollPos: number =
+        trackScrollPositions.find((trackScrollPosition) => trackScrollPosition.trackID === midiEditorTrackID)?.scrollPosition || 0;
+      contentVRef.current.scrollTop = currFocusedTrackScrollPos;
+
+      const newTrackScrollPositions: TrackScrollPosition[] = trackScrollPositions.map((trackScrollPosition) => {
+        if (trackScrollPosition.trackID === lastFocusedTrackID) {
+          return { trackID: lastFocusedTrackID, scrollPosition: lastFocusedTrackScrollPos };
+        } else {
+          // TODO: Does using original object reference like this cause a memory leak? Need deep copy instead?
+          return trackScrollPosition;
+        }
+      });
+
+      setTrackScrollPositions(newTrackScrollPositions);
+      setLastFocusedTrackID(midiEditorTrackID);
+
+      console.log(newTrackScrollPositions);
+    }
+  }, [midiEditorTrackID]);
 
   return (
     <div className="scroll-container">

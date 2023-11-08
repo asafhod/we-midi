@@ -320,7 +320,7 @@
   user-select: none;
 }
 
-.tracks-wrapper {
+.grid-wrapper {
   width: 100%;
   border-bottom: 1px solid black;
   position: relative;
@@ -346,6 +346,10 @@
   display: inline-block;
   background-color: green;
   position: absolute;
+}
+
+.midi-editor {
+  height: 2112px;
 }
 
 .position-marker {

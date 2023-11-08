@@ -4,6 +4,7 @@ import TracksContext from "./TracksContext";
 import Player from "./Player";
 import CustomScroll from "./CustomScroll";
 import Ruler from "./Ruler";
+import Grid from "./Grid";
 import Tracks from "./Tracks";
 import TrackControls from "./TrackControls";
 import InstrumentControls from "./InstrumentControls";
@@ -19,7 +20,7 @@ const TrackEditor = ({ numTracks }: TrackEditorProps): JSX.Element => {
   const [playerPosition, setPlayerPosition] = useState(0);
   const [autoscrollBlocked, setAutoscrollBlocked] = useState(false);
   const [midiEditorTrackID, setMidiEditorTrackID] = useState(-1);
-  const { tracks } = useContext(TracksContext)!;
+  const { tracks } = useContext(TracksContext)!; // TODO: make sure you're getting tracks consistently across components instead of randomly drilling/contexting
 
   const [zoom, setZoom] = useState(1);
 
@@ -29,6 +30,7 @@ const TrackEditor = ({ numTracks }: TrackEditorProps): JSX.Element => {
   const zoomOutRef = useRef<HTMLButtonElement>(null);
 
   const editingMidi: boolean = midiEditorTrackID !== -1;
+  const midiEditorHeight: number = 2112;
 
   // const zoomFactor: number = 1.067;
   const zoomFactor: number = 1.138; // If you actually do increase this, fine tune the Min, Max, and thresholds
@@ -201,7 +203,7 @@ const TrackEditor = ({ numTracks }: TrackEditorProps): JSX.Element => {
       </div>
       <CustomScroll
         contentFullSizeH={totalWidth}
-        contentFullSizeV={allTracksHeight}
+        contentFullSizeV={editingMidi ? midiEditorHeight : allTracksHeight}
         scaledStartPosition={scaledStartPosition}
         scaledPlayerPosition={scaledPlayerPosition}
         isPlaying={isPlaying}
@@ -210,6 +212,7 @@ const TrackEditor = ({ numTracks }: TrackEditorProps): JSX.Element => {
         autoscrollBlocked={autoscrollBlocked}
         blockAutoscroll={blockAutoscroll}
         numMeasures={numMeasures}
+        midiEditorTrackID={midiEditorTrackID}
       >
         <div className="track-controls-header">
           <p>{editingMidi ? tracks[midiEditorTrackID].name : "Tracks"}</p>
@@ -229,22 +232,26 @@ const TrackEditor = ({ numTracks }: TrackEditorProps): JSX.Element => {
           totalWidth={totalWidth}
           onClick={(e) => clickChangePosition(e, true)}
         />
-        {editingMidi ? (
-          <MidiEditor />
-        ) : (
-          <Tracks
-            numTracks={numTracks}
-            trackHeight={trackHeight}
-            totalHeight={allTracksHeight}
-            divisions={divisions}
-            gridPatternWidth={gridPatternWidth}
-            colorPatternWidth={colorPatternWidth}
-            totalWidth={totalWidth}
-            scaleWidth={scaleWidth}
-            onClick={clickChangePosition}
-            setMidiEditorTrackID={setMidiEditorTrackID}
-          />
-        )}
+        <Grid
+          totalHeight={editingMidi ? midiEditorHeight : allTracksHeight}
+          totalWidth={totalWidth}
+          gridPatternWidth={gridPatternWidth}
+          colorPatternWidth={colorPatternWidth}
+          divisions={divisions}
+          onClick={clickChangePosition}
+        >
+          {editingMidi ? (
+            <MidiEditor track={tracks[midiEditorTrackID]} height={midiEditorHeight} scaleWidth={scaleWidth} />
+          ) : (
+            <Tracks
+              numTracks={numTracks}
+              trackHeight={trackHeight}
+              totalWidth={totalWidth}
+              scaleWidth={scaleWidth}
+              setMidiEditorTrackID={setMidiEditorTrackID}
+            />
+          )}
+        </Grid>
       </CustomScroll>
     </>
   );

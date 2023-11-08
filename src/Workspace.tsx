@@ -52,7 +52,7 @@ const Workspace = ({ midiURL }: WorkspaceProps): JSX.Element => {
           maxNote = Math.max(maxNote, midiNum);
         }
 
-        tracks.push({ name: track.name, instrumentName, instrument, panVol, notes, minNote, maxNote });
+        tracks.push({ name: track.name || `Track ${i - 1}`, instrumentName, instrument, panVol, notes, minNote, maxNote });
       }
 
       setTracks(tracks);

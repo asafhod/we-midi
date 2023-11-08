@@ -2,6 +2,7 @@ import * as Tone from "tone";
 import { useState, useEffect, useContext } from "react";
 import TracksContext from "./TracksContext";
 import { NoteType, RegionType } from "./types";
+import TrackNote from "./TrackNote";
 // import { TrackType } from "./types";
 
 type TrackProps = {
@@ -257,17 +258,6 @@ const Track = ({ trackID, width, height, scaleWidth, setMidiEditorTrackID }: Tra
       </div> */}
     </div>
   );
-};
-
-type TrackNoteProps = {
-  left: number;
-  top: number;
-  width: number;
-  height: number;
-};
-
-const TrackNote = ({ left, top, width, height }: TrackNoteProps): JSX.Element => {
-  return <div className="track-note" style={{ left, top, width, height }} />;
 };
 
 export default Track;
