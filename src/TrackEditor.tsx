@@ -20,6 +20,7 @@ const TrackEditor = ({ numTracks }: TrackEditorProps): JSX.Element => {
   const [playerPosition, setPlayerPosition] = useState(0);
   const [autoscrollBlocked, setAutoscrollBlocked] = useState(false);
   const [midiEditorTrackID, setMidiEditorTrackID] = useState(-1);
+  const [nextMidiEditorTrackID, setNextMidiEditorTrackID] = useState(-1);
   const { tracks } = useContext(TracksContext)!; // TODO: make sure you're getting tracks consistently across components instead of randomly drilling/contexting
 
   const [zoom, setZoom] = useState(1);
@@ -178,7 +179,7 @@ const TrackEditor = ({ numTracks }: TrackEditorProps): JSX.Element => {
           </button>
         </span>
         {editingMidi ? (
-          <button className="midi-editor-close-btn" onClick={() => setMidiEditorTrackID(-1)}>
+          <button className="midi-editor-close-btn" onClick={() => setNextMidiEditorTrackID(-1)}>
             Close
           </button>
         ) : (
@@ -213,6 +214,8 @@ const TrackEditor = ({ numTracks }: TrackEditorProps): JSX.Element => {
         blockAutoscroll={blockAutoscroll}
         numMeasures={numMeasures}
         midiEditorTrackID={midiEditorTrackID}
+        setMidiEditorTrackID={setMidiEditorTrackID}
+        nextMidiEditorTrackID={nextMidiEditorTrackID}
       >
         <div className="track-controls-header">
           <p>{editingMidi ? tracks[midiEditorTrackID].name : "Tracks"}</p>
@@ -238,6 +241,7 @@ const TrackEditor = ({ numTracks }: TrackEditorProps): JSX.Element => {
           gridPatternWidth={gridPatternWidth}
           colorPatternWidth={colorPatternWidth}
           divisions={divisions}
+          editingMidi={editingMidi}
           onClick={clickChangePosition}
         >
           {editingMidi ? (
@@ -248,7 +252,7 @@ const TrackEditor = ({ numTracks }: TrackEditorProps): JSX.Element => {
               trackHeight={trackHeight}
               totalWidth={totalWidth}
               scaleWidth={scaleWidth}
-              setMidiEditorTrackID={setMidiEditorTrackID}
+              setNextMidiEditorTrackID={setNextMidiEditorTrackID}
             />
           )}
         </Grid>

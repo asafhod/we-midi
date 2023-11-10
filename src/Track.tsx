@@ -10,10 +10,10 @@ type TrackProps = {
   width: number;
   height: number;
   scaleWidth: number;
-  setMidiEditorTrackID: React.Dispatch<React.SetStateAction<number>>;
+  setNextMidiEditorTrackID: React.Dispatch<React.SetStateAction<number>>;
 };
 
-const Track = ({ trackID, width, height, scaleWidth, setMidiEditorTrackID }: TrackProps): JSX.Element => {
+const Track = ({ trackID, width, height, scaleWidth, setNextMidiEditorTrackID }: TrackProps): JSX.Element => {
   // TODO: change to use Redux state instead of context API
   // const { tracks, setTracks } = useContext(TracksContext)!;
   const { tracks } = useContext(TracksContext)!;
@@ -232,7 +232,7 @@ const Track = ({ trackID, width, height, scaleWidth, setMidiEditorTrackID }: Tra
   }, [tracks]);
 
   return (
-    <div className="track" style={{ width, height }} onDoubleClick={() => setMidiEditorTrackID(trackID)}>
+    <div className="track" style={{ width, height }} onDoubleClick={() => setNextMidiEditorTrackID(trackID)}>
       {regions.map((region, i) => {
         return (
           <div

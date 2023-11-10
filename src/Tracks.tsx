@@ -5,10 +5,10 @@ type TracksProps = {
   trackHeight: number;
   totalWidth: number;
   scaleWidth: number;
-  setMidiEditorTrackID: React.Dispatch<React.SetStateAction<number>>;
+  setNextMidiEditorTrackID: React.Dispatch<React.SetStateAction<number>>;
 };
 
-const Tracks = ({ numTracks, trackHeight, totalWidth, scaleWidth, setMidiEditorTrackID }: TracksProps): JSX.Element => {
+const Tracks = ({ numTracks, trackHeight, totalWidth, scaleWidth, setNextMidiEditorTrackID }: TracksProps): JSX.Element => {
   // Figure out exactly how to set up the Track components. Redux/ContextAPI may help clarify.
   //   How to prevent all tracks from re-rendering when a single track is edited (none are added/removed)
 
@@ -22,7 +22,7 @@ const Tracks = ({ numTracks, trackHeight, totalWidth, scaleWidth, setMidiEditorT
         width={totalWidth}
         height={trackHeight}
         scaleWidth={scaleWidth}
-        setMidiEditorTrackID={setMidiEditorTrackID}
+        setNextMidiEditorTrackID={setNextMidiEditorTrackID}
       />
     );
   }

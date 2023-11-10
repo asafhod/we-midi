@@ -13,6 +13,8 @@ type CustomScrollProps = {
   blockAutoscroll: () => void;
   numMeasures: number;
   midiEditorTrackID: number;
+  setMidiEditorTrackID: React.Dispatch<React.SetStateAction<number>>;
+  nextMidiEditorTrackID: number;
 };
 
 type TrackScrollPosition = {
@@ -32,9 +34,10 @@ const CustomScroll = ({
   blockAutoscroll,
   numMeasures,
   midiEditorTrackID,
+  setMidiEditorTrackID,
+  nextMidiEditorTrackID,
   children,
 }: PropsWithChildren<CustomScrollProps>) => {
-  const [lastFocusedTrackID, setLastFocusedTrackID] = useState(-1);
   // TODO: Implement actual defaults
   const [trackScrollPositions, setTrackScrollPositions] = useState<TrackScrollPosition[]>([
     { trackID: -1, scrollPosition: 0 },
@@ -333,26 +336,28 @@ const CustomScroll = ({
 
   useEffect(() => {
     // TODO: Figure out way to get the scroll position right before leaving the view
-    if (contentVRef.current && lastFocusedTrackID !== midiEditorTrackID) {
-      const lastFocusedTrackScrollPos: number = contentVRef.current.scrollTop;
-
-      const currFocusedTrackScrollPos: number =
-        trackScrollPositions.find((trackScrollPosition) => trackScrollPosition.trackID === midiEditorTrackID)?.scrollPosition || 0;
-      contentVRef.current.scrollTop = currFocusedTrackScrollPos;
+    if (contentVRef.current && midiEditorTrackID !== nextMidiEditorTrackID) {
+      const currScrollPos: number = contentVRef.current.scrollTop;
 
       const newTrackScrollPositions: TrackScrollPosition[] = trackScrollPositions.map((trackScrollPosition) => {
-        if (trackScrollPosition.trackID === lastFocusedTrackID) {
-          return { trackID: lastFocusedTrackID, scrollPosition: lastFocusedTrackScrollPos };
+        if (trackScrollPosition.trackID === midiEditorTrackID) {
+          return { trackID: midiEditorTrackID, scrollPosition: currScrollPos };
         } else {
           // TODO: Does using original object reference like this cause a memory leak? Need deep copy instead?
           return trackScrollPosition;
         }
       });
 
+      setMidiEditorTrackID(nextMidiEditorTrackID);
       setTrackScrollPositions(newTrackScrollPositions);
-      setLastFocusedTrackID(midiEditorTrackID);
+    }
+  }, [nextMidiEditorTrackID]);
 
-      console.log(newTrackScrollPositions);
+  useEffect(() => {
+    if (contentVRef.current) {
+      const currTrackScrollPos: number =
+        trackScrollPositions.find((trackScrollPosition) => trackScrollPosition.trackID === midiEditorTrackID)?.scrollPosition || 0;
+      contentVRef.current.scrollTop = currTrackScrollPos;
     }
   }, [midiEditorTrackID]);
 
