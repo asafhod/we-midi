@@ -40,14 +40,16 @@ const Grid = ({
           </pattern>
           {editingMidi ? (
             <pattern id="midi-color-pattern" width="1" height="288" patternUnits="userSpaceOnUse">
-              <rect width="1" height="24" fill="#282C32" />
+              <rect width="1" height="23.4" fill="#282C32" />
+              <line x1="0" y1="23.4" x2="1" y2="24" stroke="#59626B" strokeWidth="0.6" />
               <rect y="24" width="1" height="24" fill="#282C32" />
               <rect y="48" width="1" height="24" fill="#181D20" />
               <rect y="72" width="1" height="24" fill="#282C32" />
               <rect y="96" width="1" height="24" fill="#181D20" />
               <rect y="120" width="1" height="24" fill="#282C32" />
               <rect y="144" width="1" height="24" fill="#181D20" />
-              <rect y="168" width="1" height="24" fill="#282C32" />
+              <rect y="168" width="1" height="23.4" fill="#282C32" />
+              <line x1="0" y1="191.4" x2="1" y2="192" stroke="#181D20" strokeWidth="0.6" />
               <rect y="192" width="1" height="24" fill="#282C32" />
               <rect y="216" width="1" height="24" fill="#181D20" />
               <rect y="240" width="1" height="24" fill="#282C32" />

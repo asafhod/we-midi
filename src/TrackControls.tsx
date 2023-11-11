@@ -13,30 +13,30 @@ type TrackControlsProps = {
 
 const TrackControls = ({ trackHeight, isPlaying }: TrackControlsProps): JSX.Element => {
   const { tracks, setTracks } = useContext(TracksContext)!;
-  const [soloTracks, setSoloTracks] = useState<boolean[]>(() => {
-    const soloTracks: boolean[] = [];
-    for (let i = 0; i < tracks.length; i++) {
-      soloTracks.push(false);
+  const [soloTracks, setSoloTracks] = useState<{ id: number; isSolo: boolean }[]>(() => {
+    const soloTracks: { id: number; isSolo: boolean }[] = [];
+    for (const track of tracks) {
+      soloTracks.push({ id: track.id, isSolo: false });
     }
     return soloTracks;
   });
-  const [mutedTracks, setMutedTracks] = useState<boolean[]>(() => {
-    const mutedTracks: boolean[] = [];
-    for (let i = 0; i < tracks.length; i++) {
-      mutedTracks.push(false);
+  const [mutedTracks, setMutedTracks] = useState<{ id: number; isMuted: boolean }[]>(() => {
+    const mutedTracks: { id: number; isMuted: boolean }[] = [];
+    for (const track of tracks) {
+      mutedTracks.push({ id: track.id, isMuted: false });
     }
     return mutedTracks;
   });
 
   useEffect(() => {
-    const soloExists: boolean = soloTracks.includes(true);
+    const soloExists: boolean = soloTracks.some((track) => track.isSolo);
 
-    for (let i = 0; i < tracks.length; i++) {
-      const panVolNode: Tone.PanVol | undefined = tracks[i].panVol;
+    for (const track of tracks) {
+      const panVolNode: Tone.PanVol | undefined = track.panVol;
 
       if (panVolNode) {
-        const isSolo: boolean = soloTracks[i];
-        const isManuallyMuted: boolean = mutedTracks[i];
+        const isSolo: boolean | undefined = soloTracks.find((tr) => tr.id === track.id)?.isSolo;
+        const isManuallyMuted: boolean | undefined = mutedTracks.find((tr) => tr.id === track.id)?.isMuted;
 
         // simplify?
         if (soloExists) {
@@ -62,17 +62,20 @@ const TrackControls = ({ trackHeight, isPlaying }: TrackControlsProps): JSX.Elem
   const trackControls: JSX.Element[] = [];
 
   //   possibly put track id on actual tracks object instead and use that here and in Tracks component
-  for (let i = 0; i < tracks.length; i++) {
+  for (const track of tracks) {
+    // efficient enough?
+    const isSolo: boolean = Boolean(soloTracks.find((tr) => tr.id === track.id)?.isSolo);
+    const isMuted: boolean = Boolean(mutedTracks.find((tr) => tr.id === track.id)?.isMuted);
+
     trackControls.push(
       <TrackControl
-        key={i}
-        track={tracks[i]}
-        trackID={i}
+        key={track.id}
+        track={track}
         trackHeight={trackHeight}
         setTracks={setTracks}
-        isSolo={soloTracks[i]}
+        isSolo={isSolo}
         setSoloTracks={setSoloTracks}
-        isMuted={mutedTracks[i]}
+        isMuted={isMuted}
         setMutedTracks={setMutedTracks}
         isPlaying={isPlaying}
       />
@@ -84,19 +87,31 @@ const TrackControls = ({ trackHeight, isPlaying }: TrackControlsProps): JSX.Elem
 
 type TrackControlProps = {
   track: TrackType;
-  trackID: number;
   trackHeight: number;
   setTracks: React.Dispatch<React.SetStateAction<TrackType[]>>;
   isSolo: boolean;
-  setSoloTracks: React.Dispatch<React.SetStateAction<boolean[]>>;
+  setSoloTracks: React.Dispatch<
+    React.SetStateAction<
+      {
+        id: number;
+        isSolo: boolean;
+      }[]
+    >
+  >;
   isMuted: boolean;
-  setMutedTracks: React.Dispatch<React.SetStateAction<boolean[]>>;
+  setMutedTracks: React.Dispatch<
+    React.SetStateAction<
+      {
+        id: number;
+        isMuted: boolean;
+      }[]
+    >
+  >;
   isPlaying: boolean;
 };
 
 const TrackControl = ({
   track,
-  trackID,
   trackHeight,
   setTracks,
   isSolo,
@@ -113,13 +128,13 @@ const TrackControl = ({
 
   const handleMute = () => {
     setMutedTracks((prevMutedTracks) => {
-      return prevMutedTracks.map((isMuted, i) => (i === trackID ? !isMuted : isMuted));
+      return prevMutedTracks.map((tr) => (tr.id === track.id ? { ...tr, isMuted: !tr.isMuted } : tr));
     });
   };
 
   const handleSolo = () => {
     setSoloTracks((prevSoloTracks) => {
-      return prevSoloTracks.map((isSolo, i) => (i === trackID ? !isSolo : isSolo));
+      return prevSoloTracks.map((tr) => (tr.id === track.id ? { ...tr, isSolo: !tr.isSolo } : tr));
     });
   };
 
@@ -154,18 +169,19 @@ const TrackControl = ({
       const newNotes: NoteType[] = [];
 
       for (const note of track.notes) {
-        const { noteID, name, midiNum, duration, noteTime, velocity } = note;
+        const { id: noteID, name, midiNum, duration, noteTime, velocity } = note;
         Tone.Transport.clear(noteID);
 
         const newNoteID: number = Tone.Transport.schedule((time) => {
           newInstrument.triggerAttackRelease(name, duration, time, velocity);
         }, noteTime);
 
-        const newNote: NoteType = { noteID: newNoteID, name, midiNum, duration, noteTime, velocity };
+        const newNote: NoteType = { id: newNoteID, name, midiNum, duration, noteTime, velocity };
         newNotes.push(newNote);
       }
 
       const newTrack: TrackType = {
+        id: track.id,
         name: track.name,
         instrumentName: instrument,
         instrument: newInstrument,
@@ -175,16 +191,8 @@ const TrackControl = ({
         maxNote: track.maxNote,
       };
 
-      // TODO: Avoid repeating this. Make function?
       setTracks((prevTracks) => {
-        const newTracks: TrackType[] = prevTracks.map((tr, i) => {
-          if (i === trackID) {
-            return newTrack;
-          }
-
-          return tr;
-        });
-
+        const newTracks: TrackType[] = prevTracks.map((tr) => (tr.id === track.id ? newTrack : tr));
         return newTracks;
       });
     }
@@ -198,14 +206,7 @@ const TrackControl = ({
       setTracks((prevTracks) => {
         const newTrack: TrackType = { ...track, name: trackName };
 
-        const newTracks: TrackType[] = prevTracks.map((tr, i) => {
-          if (i === trackID) {
-            return newTrack;
-          }
-
-          return tr;
-        });
-
+        const newTracks: TrackType[] = prevTracks.map((tr) => (tr.id === track.id ? newTrack : tr));
         return newTracks;
       });
     }
@@ -219,9 +220,9 @@ const TrackControl = ({
         maxLength={15}
         value={trackName}
         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTrackName(e.target.value)}
-        onBlur={(e: React.FocusEvent<HTMLInputElement, Element>) => e.target.value.trim() === "" && setTrackName(`Track ${trackID}`)}
+        onBlur={(e: React.FocusEvent<HTMLInputElement, Element>) => e.target.value.trim() === "" && setTrackName(`Track ${track.id}`)}
       />
-      <InstrumentSelect instrument={instrument} setInstrument={setInstrument} trackID={trackID} isPlaying={isPlaying} />
+      <InstrumentSelect instrument={instrument} setInstrument={setInstrument} trackID={track.id} isPlaying={isPlaying} />
       <input
         className="volume-fader"
         type="range"

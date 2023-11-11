@@ -1,7 +1,7 @@
 import * as Tone from "tone";
 
 export type NoteType = {
-  noteID: number;
+  id: number;
   name: string;
   midiNum: number;
   duration: string | number;
@@ -16,6 +16,7 @@ export type RegionType = {
 };
 
 export type TrackType = {
+  id: number;
   name: string;
   instrumentName: string;
   instrument: Tone.Sampler;

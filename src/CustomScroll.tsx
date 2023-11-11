@@ -40,13 +40,13 @@ const CustomScroll = ({
 }: PropsWithChildren<CustomScrollProps>) => {
   // TODO: Implement actual defaults
   const [trackScrollPositions, setTrackScrollPositions] = useState<TrackScrollPosition[]>([
-    { trackID: -1, scrollPosition: 0 },
-    { trackID: 0, scrollPosition: 100 },
-    { trackID: 1, scrollPosition: 200 },
-    { trackID: 2, scrollPosition: 300 },
-    { trackID: 3, scrollPosition: 400 },
-    { trackID: 4, scrollPosition: 500 },
-    { trackID: 5, scrollPosition: 600 },
+    { trackID: 0, scrollPosition: 0 },
+    { trackID: 1, scrollPosition: 100 },
+    { trackID: 2, scrollPosition: 200 },
+    { trackID: 3, scrollPosition: 300 },
+    { trackID: 4, scrollPosition: 400 },
+    { trackID: 5, scrollPosition: 500 },
+    { trackID: 6, scrollPosition: 600 },
   ]);
 
   const contentHRef = useRef<HTMLDivElement>(null);

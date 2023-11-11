@@ -22,6 +22,9 @@ const Workspace = ({ midiURL }: WorkspaceProps): JSX.Element => {
 
       console.log(midi);
 
+      // TODO: Retrieve trackIDs from database
+      const trackIDs: number[] = [];
+
       await Tone.start();
 
       Tone.Transport.PPQ = midi.header.ppq;
@@ -46,13 +49,22 @@ const Workspace = ({ midiURL }: WorkspaceProps): JSX.Element => {
             instrument.triggerAttackRelease(name, duration, time, velocity);
           }, noteTime);
 
-          notes.push({ noteID, name, midiNum, duration, noteTime, velocity });
+          notes.push({ id: noteID, name, midiNum, duration, noteTime, velocity });
 
           minNote = Math.min(minNote, midiNum);
           maxNote = Math.max(maxNote, midiNum);
         }
 
-        tracks.push({ name: track.name || `Track ${i - 1}`, instrumentName, instrument, panVol, notes, minNote, maxNote });
+        tracks.push({
+          id: trackIDs[i - 1] || i,
+          name: track.name || `Track ${i - 1}`,
+          instrumentName,
+          instrument,
+          panVol,
+          notes,
+          minNote,
+          maxNote,
+        });
       }
 
       setTracks(tracks);
@@ -72,7 +84,7 @@ const Workspace = ({ midiURL }: WorkspaceProps): JSX.Element => {
         <p>Loading...</p>
       ) : (
         <TracksContext.Provider value={{ tracks, setTracks }}>
-          <TrackEditor numTracks={tracks.length} />
+          <TrackEditor />
         </TracksContext.Provider>
       )}
     </div>

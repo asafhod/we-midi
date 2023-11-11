@@ -1,5 +1,6 @@
 import * as Tone from "tone";
-import { useState, useRef, useContext } from "react";
+import { useState, useRef, useMemo, useContext } from "react";
+import { TrackType } from "./types";
 import TracksContext from "./TracksContext";
 import Player from "./Player";
 import CustomScroll from "./CustomScroll";
@@ -10,18 +11,16 @@ import TrackControls from "./TrackControls";
 import InstrumentControls from "./InstrumentControls";
 import MidiEditor from "./MidiEditor";
 
-type TrackEditorProps = {
-  numTracks: number;
-};
+type TrackEditorProps = {};
 
-const TrackEditor = ({ numTracks }: TrackEditorProps): JSX.Element => {
+const TrackEditor = ({}: TrackEditorProps): JSX.Element => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [startPosition, setStartPosition] = useState(0);
   const [playerPosition, setPlayerPosition] = useState(0);
   const [autoscrollBlocked, setAutoscrollBlocked] = useState(false);
-  const [midiEditorTrackID, setMidiEditorTrackID] = useState(-1);
-  const [nextMidiEditorTrackID, setNextMidiEditorTrackID] = useState(-1);
-  const { tracks } = useContext(TracksContext)!; // TODO: make sure you're getting tracks consistently across components instead of randomly drilling/contexting
+  const [midiEditorTrackID, setMidiEditorTrackID] = useState(0);
+  const [nextMidiEditorTrackID, setNextMidiEditorTrackID] = useState(0);
+  const { tracks, setTracks } = useContext(TracksContext)!; // TODO: make sure you're getting tracks consistently across components instead of randomly drilling/contexting
 
   const [zoom, setZoom] = useState(1);
 
@@ -30,15 +29,18 @@ const TrackEditor = ({ numTracks }: TrackEditorProps): JSX.Element => {
   const zoomInRef = useRef<HTMLButtonElement>(null);
   const zoomOutRef = useRef<HTMLButtonElement>(null);
 
-  const editingMidi: boolean = midiEditorTrackID !== -1;
   const midiEditorHeight: number = 2112;
+  const midiEditorTrack: TrackType | null | undefined = useMemo(() => {
+    // Also re-calcs every time tracks changes. Any way to limit that so its only if the current track is removed from tracks?
+    return midiEditorTrackID !== 0 ? tracks.find((track) => track.id === midiEditorTrackID) : null;
+  }, [midiEditorTrackID, tracks]);
 
   // const zoomFactor: number = 1.067;
   const zoomFactor: number = 1.138; // If you actually do increase this, fine tune the Min, Max, and thresholds
   const zoomMin: number = 0.104;
   const zoomMax: number = 67.708;
 
-  const allTracksHeight: number = numTracks * trackHeight;
+  const allTracksHeight: number = tracks.length * trackHeight;
   const trackHeightMin: number = 30;
   const trackHeightMax: number = 200;
 
@@ -178,8 +180,8 @@ const TrackEditor = ({ numTracks }: TrackEditorProps): JSX.Element => {
             +
           </button>
         </span>
-        {editingMidi ? (
-          <button className="midi-editor-close-btn" onClick={() => setNextMidiEditorTrackID(-1)}>
+        {midiEditorTrack ? (
+          <button className="midi-editor-close-btn" onClick={() => setNextMidiEditorTrackID(0)}>
             Close
           </button>
         ) : (
@@ -204,7 +206,7 @@ const TrackEditor = ({ numTracks }: TrackEditorProps): JSX.Element => {
       </div>
       <CustomScroll
         contentFullSizeH={totalWidth}
-        contentFullSizeV={editingMidi ? midiEditorHeight : allTracksHeight}
+        contentFullSizeV={midiEditorTrack ? midiEditorHeight : allTracksHeight}
         scaledStartPosition={scaledStartPosition}
         scaledPlayerPosition={scaledPlayerPosition}
         isPlaying={isPlaying}
@@ -218,10 +220,10 @@ const TrackEditor = ({ numTracks }: TrackEditorProps): JSX.Element => {
         nextMidiEditorTrackID={nextMidiEditorTrackID}
       >
         <div className="track-controls-header">
-          <p>{editingMidi ? tracks[midiEditorTrackID].name : "Tracks"}</p>
+          <p>{midiEditorTrack ? midiEditorTrack.name : "Tracks"}</p>
         </div>
-        {editingMidi ? (
-          <InstrumentControls track={tracks[midiEditorTrackID]} />
+        {midiEditorTrack ? (
+          <InstrumentControls track={midiEditorTrack} />
         ) : (
           <TrackControls trackHeight={trackHeight} isPlaying={isPlaying} />
         )}
@@ -236,19 +238,25 @@ const TrackEditor = ({ numTracks }: TrackEditorProps): JSX.Element => {
           onClick={(e) => clickChangePosition(e, true)}
         />
         <Grid
-          totalHeight={editingMidi ? midiEditorHeight : allTracksHeight}
+          totalHeight={midiEditorTrack ? midiEditorHeight : allTracksHeight}
           totalWidth={totalWidth}
           gridPatternWidth={gridPatternWidth}
           colorPatternWidth={colorPatternWidth}
           divisions={divisions}
-          editingMidi={editingMidi}
+          editingMidi={Boolean(midiEditorTrack)}
           onClick={clickChangePosition}
         >
-          {editingMidi ? (
-            <MidiEditor track={tracks[midiEditorTrackID]} height={midiEditorHeight} scaleWidth={scaleWidth} />
+          {midiEditorTrack ? (
+            <MidiEditor
+              track={midiEditorTrack}
+              setTracks={setTracks}
+              height={midiEditorHeight}
+              scaleWidth={scaleWidth}
+              startPosition={startPosition}
+            />
           ) : (
             <Tracks
-              numTracks={numTracks}
+              tracks={tracks}
               trackHeight={trackHeight}
               totalWidth={totalWidth}
               scaleWidth={scaleWidth}

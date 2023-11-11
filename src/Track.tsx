@@ -1,28 +1,25 @@
 import * as Tone from "tone";
 import { useState, useEffect, useContext } from "react";
 import TracksContext from "./TracksContext";
-import { NoteType, RegionType } from "./types";
-import TrackNote from "./TrackNote";
-// import { TrackType } from "./types";
+import { TrackType, NoteType, RegionType } from "./types";
 
 type TrackProps = {
-  trackID: number;
+  track: TrackType;
   width: number;
   height: number;
   scaleWidth: number;
   setNextMidiEditorTrackID: React.Dispatch<React.SetStateAction<number>>;
 };
 
-const Track = ({ trackID, width, height, scaleWidth, setNextMidiEditorTrackID }: TrackProps): JSX.Element => {
+const Track = ({ track, width, height, scaleWidth, setNextMidiEditorTrackID }: TrackProps): JSX.Element => {
   // TODO: change to use Redux state instead of context API
-  // const { tracks, setTracks } = useContext(TracksContext)!;
   const { tracks } = useContext(TracksContext)!;
   const [regions, setRegions] = useState<RegionType[]>([]);
 
   const notes: JSX.Element[] = [];
 
-  if (tracks[trackID].notes.length) {
-    const { minNote, maxNote } = tracks[trackID];
+  if (track.notes.length) {
+    const { minNote, maxNote } = track;
 
     const noteRange: number = maxNote - minNote;
 
@@ -34,74 +31,16 @@ const Track = ({ trackID, width, height, scaleWidth, setNextMidiEditorTrackID }:
     const noteHeight: number = noteRange === 0 ? 5 : Math.min(Math.round((scaledHeight / noteRange) * heightScale), 5);
     const availableTrackHeight: number = scaledHeight - noteHeight;
 
-    for (const note of tracks[trackID].notes) {
+    for (const note of track.notes) {
       const noteLeft: number = Math.round(note.noteTime * scaleWidth) + 1;
       const noteWidth: number = Math.round(Number(note.duration) * scaleWidth);
 
       const normalizedNotePosition: number = noteRange === 0 ? 0.5 : 1 - (note.midiNum - minNote) / noteRange;
       const noteTop: number = Math.round(normalizedNotePosition * availableTrackHeight) + heightOffset;
 
-      notes.push(<TrackNote key={note.noteID} left={noteLeft} top={noteTop} width={noteWidth} height={noteHeight} />);
+      notes.push(<TrackNote key={note.id} left={noteLeft} top={noteTop} width={noteWidth} height={noteHeight} />);
     }
   }
-
-  // ---Move to midi editor component---------------------
-  // const addNote = (name: string, midiNum: number, duration: string | number, noteTime: number, velocity: number) => {
-  //   let track: TrackType = tracks[trackID];
-  //   const instrument: Tone.Sampler = track.instrument;
-
-  //   const noteID: number = Tone.Transport.schedule((time: number) => {
-  //     instrument.triggerAttackRelease(name, duration, time, velocity);
-  //   }, noteTime);
-
-  //   const notes: NoteType[] = [...track.notes, { noteID, name, midiNum, duration, noteTime, velocity }];
-
-  //   const minNote: number = Math.min(track.minNote, midiNum);
-  //   const maxNote: number = Math.max(track.maxNote, midiNum);
-
-  //   track = { ...track, notes, minNote, maxNote };
-
-  //   const newTracks: TrackType[] = tracks.map((tr, i) => {
-  //     if (i === trackID) {
-  //       return track;
-  //     }
-
-  //     return tr;
-  //   });
-
-  //   setTracks(newTracks);
-  // };
-
-  // const removeNote = (noteID: number) => {
-  //   // add handling for if note doesn't exist
-  //   Tone.Transport.clear(noteID);
-
-  //   let track: TrackType = tracks[trackID];
-  //   const notes: NoteType[] = track.notes.filter((note) => note.noteID !== noteID);
-
-  //   const newNoteRange: { minNote: number; maxNote: number } = notes.reduce(
-  //     (range, note) => {
-  //       const min: number = Math.min(range.minNote, note.midiNum);
-  //       const max: number = Math.max(range.maxNote, note.midiNum);
-
-  //       return { minNote: min, maxNote: max };
-  //     },
-  //     { minNote: 128, maxNote: -1 }
-  //   );
-
-  //   track = { ...track, notes, minNote: newNoteRange.minNote, maxNote: newNoteRange.maxNote };
-
-  //   const newTracks: TrackType[] = tracks.map((tr, i) => {
-  //     if (i === trackID) {
-  //       return track;
-  //     }
-
-  //     return tr;
-  //   });
-
-  //   setTracks(newTracks);
-  // };
-  // -----------------------------------------------------
 
   const generateRegions = () => {
     const addRegion = (note: NoteType, regions: RegionType[], measureLength: number) => {
@@ -175,7 +114,8 @@ const Track = ({ trackID, width, height, scaleWidth, setNextMidiEditorTrackID }:
       return regions;
     };
 
-    const notes: NoteType[] = tracks[trackID].notes;
+    // TODO: Make sure copying state values safely. Ask ChatGPT.
+    const notes: NoteType[] = track.notes;
     const measureLength: number = 4 * (60 / Tone.Transport.bpm.value);
     const regionGap: number = measureLength * 2;
     let newRegions: RegionType[] = [];
@@ -232,7 +172,7 @@ const Track = ({ trackID, width, height, scaleWidth, setNextMidiEditorTrackID }:
   }, [tracks]);
 
   return (
-    <div className="track" style={{ width, height }} onDoubleClick={() => setNextMidiEditorTrackID(trackID)}>
+    <div className="track" style={{ width, height }} onDoubleClick={() => setNextMidiEditorTrackID(track.id)}>
       {regions.map((region, i) => {
         return (
           <div
@@ -247,17 +187,19 @@ const Track = ({ trackID, width, height, scaleWidth, setNextMidiEditorTrackID }:
         );
       })}
       {notes}
-      {/* <div>
-        {tracks[trackID].name || `Track ${trackID}`}
-        <button type="button" onClick={() => addNote("C3", 48, 0.25, Tone.Transport.toSeconds("4:0:0"), 0.6)}>
-          Add C Note
-        </button>
-        <button type="button" onClick={() => removeNote(tracks[trackID].notes[tracks[trackID].notes.length - 1].noteID)}>
-          Remove Newest Note
-        </button>
-      </div> */}
     </div>
   );
+};
+
+type TrackNoteProps = {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+};
+
+const TrackNote = ({ left, top, width, height }: TrackNoteProps): JSX.Element => {
+  return <div className="track-note" style={{ left, top, width, height }} />;
 };
 
 export default Track;
