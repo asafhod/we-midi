@@ -33,7 +33,7 @@ const Track = ({ track, width, height, scaleWidth, setNextMidiEditorTrackID }: T
 
     for (const note of track.notes) {
       const noteLeft: number = Math.round(note.noteTime * scaleWidth) + 1;
-      const noteWidth: number = Math.round(Number(note.duration) * scaleWidth);
+      const noteWidth: number = Math.max(Math.round(Number(note.duration) * scaleWidth), 1);
 
       const normalizedNotePosition: number = noteRange === 0 ? 0.5 : 1 - (note.midiNum - minNote) / noteRange;
       const noteTop: number = Math.round(normalizedNotePosition * availableTrackHeight) + heightOffset;

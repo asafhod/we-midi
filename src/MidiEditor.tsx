@@ -1,6 +1,6 @@
 import * as Tone from "tone";
 import { TrackType, NoteType } from "./types";
-import noteNames from "./noteNames";
+import { noteNames } from "./noteNames";
 
 type MidiEditorProps = {
   track: TrackType;
@@ -18,7 +18,7 @@ const MidiEditor = ({ track, setTracks, scaleWidth, startPosition }: MidiEditorP
 
     for (const note of track.notes) {
       const noteLeft: number = Math.round(note.noteTime * scaleWidth) + 1;
-      const noteWidth: number = Math.round(Number(note.duration) * scaleWidth);
+      const noteWidth: number = Math.max(Math.round(Number(note.duration) * scaleWidth), 1);
       const noteTop: number = (108 - note.midiNum) * noteHeight;
 
       notes.push(<EditorNote key={note.id} noteID={note.id} left={noteLeft} top={noteTop} width={noteWidth} height={noteHeight} />);

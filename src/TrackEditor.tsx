@@ -1,5 +1,5 @@
 import * as Tone from "tone";
-import { useState, useRef, useMemo, useContext } from "react";
+import { useState, useMemo, useContext } from "react";
 import { TrackType } from "./types";
 import TracksContext from "./TracksContext";
 import Player from "./Player";
@@ -26,17 +26,13 @@ const TrackEditor = ({}: TrackEditorProps): JSX.Element => {
 
   const [trackHeight, setTrackHeight] = useState(78);
 
-  const zoomInRef = useRef<HTMLButtonElement>(null);
-  const zoomOutRef = useRef<HTMLButtonElement>(null);
-
   const midiEditorHeight: number = 2112;
   const midiEditorTrack: TrackType | null | undefined = useMemo(() => {
     // Also re-calcs every time tracks changes. Any way to limit that so its only if the current track is removed from tracks?
     return midiEditorTrackID !== 0 ? tracks.find((track) => track.id === midiEditorTrackID) : null;
   }, [midiEditorTrackID, tracks]);
 
-  // const zoomFactor: number = 1.067;
-  const zoomFactor: number = 1.138; // If you actually do increase this, fine tune the Min, Max, and thresholds
+  const zoomFactor: number = 1.21; // Fine-tune the Min, Max, and thresholds?
   const zoomMin: number = 0.104;
   const zoomMax: number = 67.708;
 
@@ -104,15 +100,10 @@ const TrackEditor = ({}: TrackEditorProps): JSX.Element => {
     if (e.ctrlKey) return;
 
     if (e.deltaY !== 0) {
-      // super jank and slow workaround - see if there's anything more elegant
-      // if you just call zoomOut/zoomIn, React fights this at the level of the wheel event, clashing
-      // with the zoom useEffect and causing visual artifacts
-      const clickEvent = new MouseEvent("click", { bubbles: true, cancelable: true, view: window });
-
-      if (e.deltaY > 0 && zoomOutRef.current) {
-        zoomOutRef.current.dispatchEvent(clickEvent);
-      } else if (e.deltaY < 0 && zoomInRef.current) {
-        zoomInRef.current.dispatchEvent(clickEvent);
+      if (e.deltaY > 0) {
+        zoomOut();
+      } else if (e.deltaY < 0) {
+        zoomIn();
       }
     }
 
@@ -166,6 +157,7 @@ const TrackEditor = ({}: TrackEditorProps): JSX.Element => {
       e.preventDefault();
 
       // TODO: Clean up and add min/max constraints, scrolling, and blockAuto scroll. Move elsewhere, if needed for consistent focusing.
+      //       Probably just change to a document listener and have those wherever needed, like in Player
       if (e.code === "ArrowRight") {
         setStartPosition((prevStartPos) => prevStartPos + 0.077);
       } else if (e.code === "ArrowLeft") {
@@ -194,10 +186,10 @@ const TrackEditor = ({}: TrackEditorProps): JSX.Element => {
         />
         <span className="control-block">
           {"Zoom: "}
-          <button className="plus-minus-button" type="button" ref={zoomOutRef} onClick={zoomOut}>
+          <button className="plus-minus-button" type="button" onClick={zoomOut}>
             -
           </button>
-          <button className="plus-minus-button" type="button" ref={zoomInRef} onClick={zoomIn}>
+          <button className="plus-minus-button" type="button" onClick={zoomIn}>
             +
           </button>
         </span>

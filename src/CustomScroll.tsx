@@ -311,7 +311,7 @@ const CustomScroll = ({
     }
   }, [sizeH, numMeasures]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (contentHRef.current) {
       const currentScrollPositionX: number = contentHRef.current.scrollLeft;
       updateThumbH(currentScrollPositionX, true, false); // add return flag for max pos?
@@ -376,7 +376,6 @@ const CustomScroll = ({
           <div className="content-panel" onWheel={handleWheelV}>
             {childrenArray[1]}
           </div>
-
           <div
             className="content-h"
             ref={contentHRef}

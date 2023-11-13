@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { TrackType } from "./types";
-import noteNames from "./noteNames";
+import { noteNames, drumsNoteNames } from "./noteNames";
 
 type InstrumentControlsProps = {
   track: TrackType;
@@ -19,6 +19,7 @@ const InstrumentControls = ({ track }: InstrumentControlsProps) => {
 
   const instrumentNotes: JSX.Element[] = useMemo(() => {
     const instrumentNotes: JSX.Element[] = [];
+    const isDrums: boolean = track.instrumentName === "drums";
 
     for (let i = 87; i >= 0; i--) {
       const noteName: string = noteNames[i];
@@ -26,13 +27,13 @@ const InstrumentControls = ({ track }: InstrumentControlsProps) => {
 
       instrumentNotes.push(
         <div key={i} className={isSharp ? "instrument-note-sharp" : "instrument-note"} data-note={noteName}>
-          {noteName}
+          {isDrums ? drumsNoteNames[i] : noteName}
         </div>
       );
     }
 
     return instrumentNotes;
-  }, []);
+  }, []); // Deps?
 
   return (
     <div className="instrument-controls" onClick={(e) => playNote(e)}>
