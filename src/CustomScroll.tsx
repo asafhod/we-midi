@@ -1,4 +1,4 @@
-import { PropsWithChildren, Children, useState, useEffect, useRef } from "react";
+import { PropsWithChildren, Children, useState, useEffect, useLayoutEffect, useRef } from "react";
 import useResizeObserver from "use-resize-observer";
 
 type CustomScrollProps = {
@@ -355,7 +355,7 @@ const CustomScroll = ({
     }
   }, [nextMidiEditorTrackID]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (contentVRef.current) {
       const currTrackViewSetting: TrackViewSetting | undefined = trackViewSettings.find(
         (trackViewSetting) => trackViewSetting.trackID === midiEditorTrackID
