@@ -35,7 +35,7 @@ const Grid = ({
     <div className="grid-wrapper" style={{ width: totalWidth, height: totalHeight }} onClick={onClick}>
       <svg className="grid-svg" width="100%" height={totalHeight}>
         <defs>
-          <pattern id="grid-pattern" width={gridPatternWidth} height="100%" patternUnits="userSpaceOnUse">
+          <pattern id="grid-pattern" width={gridPatternWidth} height={totalHeight} patternUnits="userSpaceOnUse">
             {gridLines}
           </pattern>
           {editingMidi ? (

@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { TrackType } from "./types";
+import noteNames from "./noteNames";
 
 type InstrumentControlsProps = {
   track: TrackType;
@@ -18,17 +19,14 @@ const InstrumentControls = ({ track }: InstrumentControlsProps) => {
 
   const instrumentNotes: JSX.Element[] = useMemo(() => {
     const instrumentNotes: JSX.Element[] = [];
-    const pitches: string[] = ["A", "A#", "B", "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#"];
 
     for (let i = 87; i >= 0; i--) {
-      const pitch: string = pitches[i % 12];
-      const isSharp: boolean = pitch.length === 2;
-      const octave: string = String(i < 3 ? 0 : Math.floor((i - 3) / 12) + 1);
-      const note: string = pitch + octave;
+      const noteName: string = noteNames[i];
+      const isSharp: boolean = noteName.length === 3;
 
       instrumentNotes.push(
-        <div key={i} className={isSharp ? "instrument-note-sharp" : "instrument-note"} data-note={note}>
-          {note}
+        <div key={i} className={isSharp ? "instrument-note-sharp" : "instrument-note"} data-note={noteName}>
+          {noteName}
         </div>
       );
     }

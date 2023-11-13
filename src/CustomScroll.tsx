@@ -8,6 +8,7 @@ type CustomScrollProps = {
   scaledPlayerPosition: number;
   isPlaying: boolean;
   zoom: number;
+  setZoom: React.Dispatch<React.SetStateAction<number>>;
   scrollWheelZoom: (e: React.WheelEvent<HTMLDivElement>) => void;
   autoscrollBlocked: boolean;
   blockAutoscroll: () => void;
@@ -17,9 +18,10 @@ type CustomScrollProps = {
   nextMidiEditorTrackID: number;
 };
 
-type TrackScrollPosition = {
+type TrackViewSetting = {
   trackID: number;
-  scrollPosition: number;
+  scrollPos: number;
+  zoom: number;
 };
 
 const CustomScroll = ({
@@ -29,6 +31,7 @@ const CustomScroll = ({
   scaledPlayerPosition,
   isPlaying,
   zoom,
+  setZoom,
   scrollWheelZoom,
   autoscrollBlocked,
   blockAutoscroll,
@@ -39,14 +42,14 @@ const CustomScroll = ({
   children,
 }: PropsWithChildren<CustomScrollProps>) => {
   // TODO: Implement actual defaults
-  const [trackScrollPositions, setTrackScrollPositions] = useState<TrackScrollPosition[]>([
-    { trackID: 0, scrollPosition: 0 },
-    { trackID: 1, scrollPosition: 100 },
-    { trackID: 2, scrollPosition: 200 },
-    { trackID: 3, scrollPosition: 300 },
-    { trackID: 4, scrollPosition: 400 },
-    { trackID: 5, scrollPosition: 500 },
-    { trackID: 6, scrollPosition: 600 },
+  const [trackViewSettings, setTrackViewSettings] = useState<TrackViewSetting[]>([
+    { trackID: 0, scrollPos: 0, zoom: 1 },
+    { trackID: 1, scrollPos: 100, zoom: 4.717 },
+    { trackID: 2, scrollPos: 200, zoom: 4.717 },
+    { trackID: 3, scrollPos: 300, zoom: 4.717 },
+    { trackID: 4, scrollPos: 400, zoom: 4.717 },
+    { trackID: 5, scrollPos: 500, zoom: 4.717 },
+    { trackID: 6, scrollPos: 600, zoom: 4.717 },
   ]);
 
   const contentHRef = useRef<HTMLDivElement>(null);
@@ -335,34 +338,38 @@ const CustomScroll = ({
   }, [scaledPlayerPosition, isPlaying, autoscrollBlocked, sizeH]);
 
   useEffect(() => {
-    // TODO: Figure out way to get the scroll position right before leaving the view
     if (contentVRef.current && midiEditorTrackID !== nextMidiEditorTrackID) {
       const currScrollPos: number = contentVRef.current.scrollTop;
 
-      const newTrackScrollPositions: TrackScrollPosition[] = trackScrollPositions.map((trackScrollPosition) => {
-        if (trackScrollPosition.trackID === midiEditorTrackID) {
-          return { trackID: midiEditorTrackID, scrollPosition: currScrollPos };
+      const newTrackViewSettings: TrackViewSetting[] = trackViewSettings.map((trackViewSetting) => {
+        if (trackViewSetting.trackID === midiEditorTrackID) {
+          return { trackID: midiEditorTrackID, scrollPos: currScrollPos, zoom };
         } else {
           // TODO: Does using original object reference like this cause a memory leak? Need deep copy instead?
-          return trackScrollPosition;
+          return trackViewSetting;
         }
       });
 
       setMidiEditorTrackID(nextMidiEditorTrackID);
-      setTrackScrollPositions(newTrackScrollPositions);
+      setTrackViewSettings(newTrackViewSettings);
     }
   }, [nextMidiEditorTrackID]);
 
   useEffect(() => {
     if (contentVRef.current) {
-      const currTrackScrollPos: number =
-        trackScrollPositions.find((trackScrollPosition) => trackScrollPosition.trackID === midiEditorTrackID)?.scrollPosition || 0;
-      contentVRef.current.scrollTop = currTrackScrollPos;
+      const currTrackViewSetting: TrackViewSetting | undefined = trackViewSettings.find(
+        (trackViewSetting) => trackViewSetting.trackID === midiEditorTrackID
+      );
+
+      if (currTrackViewSetting) {
+        contentVRef.current.scrollTop = currTrackViewSetting.scrollPos;
+        setZoom(currTrackViewSetting.zoom);
+      }
     }
   }, [midiEditorTrackID]);
 
   return (
-    <div className="scroll-container">
+    <>
       <div className="scroll-content-wrapper">
         <div className="content-panel-header">{childrenArray[0]}</div>
         <div className="content-v" ref={contentVRef} onScroll={handleScrollY}>
@@ -406,7 +413,7 @@ const CustomScroll = ({
           <div className="scroll-thumb" ref={thumbVRef} />
         </div>
       )}
-    </div>
+    </>
   );
 };
 

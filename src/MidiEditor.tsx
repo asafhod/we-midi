@@ -1,10 +1,10 @@
 import * as Tone from "tone";
 import { TrackType, NoteType } from "./types";
+import noteNames from "./noteNames";
 
 type MidiEditorProps = {
   track: TrackType;
   setTracks: React.Dispatch<React.SetStateAction<TrackType[]>>;
-  height: number; // needed?
   scaleWidth: number;
   startPosition: number;
 };
@@ -76,13 +76,7 @@ const MidiEditor = ({ track, setTracks, scaleWidth, startPosition }: MidiEditorP
       const clickY: number = Math.round(target.getBoundingClientRect().bottom) - e.clientY;
       const noteNum: number = Math.floor(clickY / 24);
 
-      // Use mapping object instead? If so, change in InstrumentControls as well
-      const pitches: string[] = ["A", "A#", "B", "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#"];
-      const pitch: string = pitches[noteNum % 12];
-      const octave: string = String(noteNum < 3 ? 0 : Math.floor((noteNum - 3) / 12) + 1);
-      const noteName: string = pitch + octave;
-
-      addNote(noteName, noteNum + 21, 0.25, startPosition, 0.6);
+      addNote(noteNames[noteNum], noteNum + 21, 0.25, startPosition, 0.6);
     }
   };
 

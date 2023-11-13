@@ -21,8 +21,13 @@
 } */
 
 .workspace {
+  height: 100vh;
   min-width: 500px;
   overflow-x: hidden;
+}
+
+.track-editor {
+  outline: none;
 }
 
 .track-editor-controls {
@@ -101,6 +106,7 @@
   top: 35px;
   left: 7px;
   width: 138px;
+  outline: none;
 }
 
 .volume-fader::-webkit-slider-runnable-track {
@@ -132,6 +138,7 @@
   top: 53px;
   left: 14px;
   width: 50px;
+  outline: none;
 }
 
 .pan-control::-webkit-slider-runnable-track {
@@ -294,10 +301,6 @@
   width: 90%;
   float: left;
 } */
-
-.track-editor-wrapper .custom-scrollbar-v {
-  margin-left: 90%;
-}
 
 .ruler {
   width: fit-content;

@@ -159,8 +159,29 @@ const TrackEditor = ({}: TrackEditorProps): JSX.Element => {
     if (isPlaying && !autoscrollBlocked) setAutoscrollBlocked(true);
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+
+    if (!target.classList.contains("track-name")) {
+      e.preventDefault();
+
+      // TODO: Clean up and add min/max constraints, scrolling, and blockAuto scroll. Move elsewhere, if needed for consistent focusing.
+      if (e.code === "ArrowRight") {
+        setStartPosition((prevStartPos) => prevStartPos + 0.077);
+      } else if (e.code === "ArrowLeft") {
+        setStartPosition((prevStartPos) => prevStartPos - 0.077);
+      } else if (e.code === "ArrowUp" && zoom < zoomMax) {
+        zoomIn();
+      } else if (e.code === "ArrowDown" && zoom > zoomMin) {
+        zoomOut();
+      } else if (e.code === "Space") {
+        // toggle play
+      }
+    }
+  };
+
   return (
-    <>
+    <div className="track-editor" tabIndex={0} onKeyDown={(e) => handleKeyDown(e)}>
       <div className="track-editor-controls">
         <Player
           isPlaying={isPlaying}
@@ -211,6 +232,7 @@ const TrackEditor = ({}: TrackEditorProps): JSX.Element => {
         scaledPlayerPosition={scaledPlayerPosition}
         isPlaying={isPlaying}
         zoom={zoom}
+        setZoom={setZoom}
         scrollWheelZoom={scrollWheelZoom}
         autoscrollBlocked={autoscrollBlocked}
         blockAutoscroll={blockAutoscroll}
@@ -247,13 +269,7 @@ const TrackEditor = ({}: TrackEditorProps): JSX.Element => {
           onClick={clickChangePosition}
         >
           {midiEditorTrack ? (
-            <MidiEditor
-              track={midiEditorTrack}
-              setTracks={setTracks}
-              height={midiEditorHeight}
-              scaleWidth={scaleWidth}
-              startPosition={startPosition}
-            />
+            <MidiEditor track={midiEditorTrack} setTracks={setTracks} scaleWidth={scaleWidth} startPosition={startPosition} />
           ) : (
             <Tracks
               tracks={tracks}
@@ -265,7 +281,7 @@ const TrackEditor = ({}: TrackEditorProps): JSX.Element => {
           )}
         </Grid>
       </CustomScroll>
-    </>
+    </div>
   );
 };
 
