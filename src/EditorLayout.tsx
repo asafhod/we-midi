@@ -1,7 +1,7 @@
 import { PropsWithChildren, Children, useState, useEffect, useLayoutEffect, useRef } from "react";
 import useResizeObserver from "use-resize-observer";
 
-type CustomScrollProps = {
+type EditorLayoutProps = {
   contentFullSizeH: number;
   contentFullSizeV: number;
   scaledStartPosition: number;
@@ -24,7 +24,7 @@ type TrackViewSetting = {
   zoom: number;
 };
 
-const CustomScroll = ({
+const EditorLayout = ({
   contentFullSizeH,
   contentFullSizeV,
   scaledStartPosition,
@@ -40,7 +40,7 @@ const CustomScroll = ({
   setMidiEditorTrackID,
   nextMidiEditorTrackID,
   children,
-}: PropsWithChildren<CustomScrollProps>) => {
+}: PropsWithChildren<EditorLayoutProps>) => {
   // TODO: Implement actual defaults
   const [trackViewSettings, setTrackViewSettings] = useState<TrackViewSetting[]>([
     { trackID: 0, scrollPos: 0, zoom: 1 },
@@ -235,17 +235,6 @@ const CustomScroll = ({
       const pageRatioH: number = sizeH / contentFullSizeH;
       const newThumbHOffset: number = Math.round(scrollPositionX * pageRatioH);
 
-      // TODO: Fix issue where the zoom-out max pos scroll edge case still causes flickering on certain screen sizes, like laptop full-size
-      // Somehow atEnd repeatedly switches between true and false in that scernario, so the transition isn't kept throughout
-      // Rounding-related? May also affect the vertical axis. Check.
-      const atEnd: boolean = Math.ceil(scrollPositionX) >= contentFullSizeH - sizeH;
-      const transition: string = thumbHRef.current.style.transitionDuration;
-      if (atEnd && !transition) {
-        thumbHRef.current.style.transitionDuration = "0.1s";
-      } else if (!atEnd && transition) {
-        thumbHRef.current.style.transitionDuration = "";
-      }
-
       if (updateSize) {
         const maxThumbHSize: number = sizeH - newThumbHOffset;
         const newThumbHSize: number = Math.min(Math.max(Math.ceil(sizeH * pageRatioH), 17), maxThumbHSize);
@@ -260,14 +249,6 @@ const CustomScroll = ({
     if (thumbVRef.current) {
       const pageRatioV: number = sizeV / contentFullSizeV;
       const newThumbVOffset: number = Math.round(scrollPositionY * pageRatioV);
-
-      const atEnd: boolean = Math.ceil(scrollPositionY) >= contentFullSizeV - sizeV;
-      const transition: string = thumbVRef.current.style.transitionDuration;
-      if (atEnd && !transition) {
-        thumbVRef.current.style.transitionDuration = "0.1s";
-      } else if (!atEnd && transition) {
-        thumbVRef.current.style.transitionDuration = "";
-      }
 
       if (updateSize) {
         const maxThumbVSize: number = sizeV - newThumbVOffset;
@@ -370,7 +351,7 @@ const CustomScroll = ({
 
   return (
     <>
-      <div className="scroll-content-wrapper">
+      <div className="editor-layout">
         <div className="content-panel-header">{childrenArray[0]}</div>
         <div className="content-v" ref={contentVRef} onScroll={handleScrollY}>
           <div className="content-panel" onWheel={handleWheelV}>
@@ -416,4 +397,4 @@ const CustomScroll = ({
   );
 };
 
-export default CustomScroll;
+export default EditorLayout;

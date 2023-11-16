@@ -1,280 +1,34 @@
-import * as Tone from "tone";
-import { useState, useMemo, useContext } from "react";
 import { TrackType } from "./types";
-import TracksContext from "./TracksContext";
-import Player from "./Player";
-import CustomScroll from "./CustomScroll";
-import Ruler from "./Ruler";
-import Grid from "./Grid";
-import Tracks from "./Tracks";
-import TrackControls from "./TrackControls";
-import InstrumentControls from "./InstrumentControls";
-import MidiEditor from "./MidiEditor";
+import Track from "./Track";
 
-type TrackEditorProps = {};
+type TrackEditorProps = {
+  tracks: TrackType[];
+  trackHeight: number;
+  totalWidth: number;
+  scaleWidth: number;
+  setNextMidiEditorTrackID: React.Dispatch<React.SetStateAction<number>>;
+};
 
-const TrackEditor = ({}: TrackEditorProps): JSX.Element => {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [startPosition, setStartPosition] = useState(0);
-  const [playerPosition, setPlayerPosition] = useState(0);
-  const [autoscrollBlocked, setAutoscrollBlocked] = useState(false);
-  const [midiEditorTrackID, setMidiEditorTrackID] = useState(0);
-  const [nextMidiEditorTrackID, setNextMidiEditorTrackID] = useState(0);
-  const { tracks, setTracks } = useContext(TracksContext)!; // TODO: make sure you're getting tracks consistently across components instead of randomly drilling/contexting
+const TrackEditor = ({ tracks, trackHeight, totalWidth, scaleWidth, setNextMidiEditorTrackID }: TrackEditorProps): JSX.Element => {
+  // Figure out exactly how to set up the Track components. Redux/ContextAPI may help clarify.
+  //   How to prevent all tracks from re-rendering when a single track is edited (none are added/removed)
 
-  const [zoom, setZoom] = useState(1);
+  const trackComponents: JSX.Element[] = [];
 
-  const [trackHeight, setTrackHeight] = useState(78);
-
-  const midiEditorHeight: number = 2112;
-  const midiEditorTrack: TrackType | null | undefined = useMemo(() => {
-    // Also re-calcs every time tracks changes. Any way to limit that so its only if the current track is removed from tracks?
-    return midiEditorTrackID !== 0 ? tracks.find((track) => track.id === midiEditorTrackID) : null;
-  }, [midiEditorTrackID, tracks]);
-
-  const zoomFactor: number = 1.21; // Fine-tune the Min, Max, and thresholds?
-  const zoomMin: number = 0.104;
-  const zoomMax: number = 67.708;
-
-  const allTracksHeight: number = tracks.length * trackHeight;
-  const trackHeightMin: number = 30;
-  const trackHeightMax: number = 200;
-
-  const numMeasures: number = 250;
-  const widthFactor: number = 76.824;
-
-  const groupMeasures: boolean = zoom < 0.678;
-  const segmentIsBeat: boolean = zoom > 2.644;
-
-  // ------package all zoom logic into one function and reduce to one tree------
-
-  let measuresPerSegment: number = 1;
-  let divisions: number = 4;
-
-  // Is there an equation for this? Maybe not. Might just be arbitrary cutoffs.
-  if (groupMeasures) {
-    if (zoom > 0.311) measuresPerSegment = 2;
-    else if (zoom > 0.211) measuresPerSegment = 3;
-    else if (zoom > 0.153) measuresPerSegment = 4;
-    else if (zoom > 0.126) measuresPerSegment = 5;
-    else if (zoom > 0.104) measuresPerSegment = 6;
-    else measuresPerSegment = 7;
-
-    divisions = measuresPerSegment;
-  } else if (zoom > 1.574) {
-    if (segmentIsBeat) measuresPerSegment = 0.25;
-
-    divisions = zoom < 6.996 ? 8 : 16;
+  for (const track of tracks) {
+    trackComponents.push(
+      <Track
+        key={track.id}
+        track={track}
+        width={totalWidth}
+        height={trackHeight}
+        scaleWidth={scaleWidth}
+        setNextMidiEditorTrackID={setNextMidiEditorTrackID}
+      />
+    );
   }
 
-  const numSegments: number = Math.ceil(numMeasures / measuresPerSegment);
-
-  const segmentWidth: number = zoom * widthFactor * measuresPerSegment;
-  const gridPatternWidth: number = segmentIsBeat ? segmentWidth * 4 : segmentWidth;
-
-  let colorPatternWidthFactor: number = 2;
-  if (zoom > 25.541) colorPatternWidthFactor = 0.125;
-  else if (zoom > 13.352) colorPatternWidthFactor = 0.25;
-  else if (zoom > 6.543) colorPatternWidthFactor = 0.5;
-  else if (zoom > 3.206) colorPatternWidthFactor = 1;
-
-  const colorPatternWidth: number = gridPatternWidth * colorPatternWidthFactor;
-
-  // ----------------------------------------------------
-
-  const scaleWidth: number = (zoom * widthFactor) / 2;
-  const totalWidth: number = Math.ceil(segmentWidth * numSegments);
-
-  const scaledStartPosition: number = Math.round(startPosition * scaleWidth);
-  const scaledPlayerPosition: number = Math.round(playerPosition * scaleWidth);
-
-  const zoomIn = () => {
-    setZoom(Math.min(Math.round(zoom * zoomFactor * 1000) / 1000, zoomMax));
-  };
-
-  const zoomOut = () => {
-    setZoom(Math.max(Math.round((zoom / zoomFactor) * 1000) / 1000, zoomMin));
-  };
-
-  const scrollWheelZoom = (e: React.WheelEvent<HTMLDivElement>) => {
-    if (e.ctrlKey) return;
-
-    if (e.deltaY !== 0) {
-      if (e.deltaY > 0) {
-        zoomOut();
-      } else if (e.deltaY < 0) {
-        zoomIn();
-      }
-    }
-
-    if (e.deltaX !== 0) blockAutoscroll();
-  };
-
-  const changeStartPosition = (newStartPosition: number) => {
-    setStartPosition(newStartPosition);
-
-    if (!isPlaying) {
-      Tone.Transport.seconds = newStartPosition;
-      setPlayerPosition(newStartPosition);
-    }
-  };
-
-  const changePlayerPosition = (newPlayerPosition: number) => {
-    if (isPlaying) {
-      Tone.Transport.seconds = newPlayerPosition;
-      setPlayerPosition(newPlayerPosition);
-    }
-  };
-
-  const clickChangePosition = (e: React.MouseEvent<HTMLDivElement, MouseEvent>, alsoChangePlayerPos?: boolean) => {
-    const target = e.currentTarget as HTMLDivElement;
-
-    const x: number = e.clientX - Math.round(target.getBoundingClientRect().left);
-
-    // prevent position change in scenario where some browsers trigger the click event
-    // even if the user clicked outside of the target div by up to a full pixel
-    if (x < 0) return;
-
-    const newPosition: number = x / scaleWidth;
-
-    changeStartPosition(newPosition);
-
-    if (alsoChangePlayerPos) {
-      changePlayerPosition(newPosition);
-    } else {
-      blockAutoscroll();
-    }
-  };
-
-  const blockAutoscroll = () => {
-    if (isPlaying && !autoscrollBlocked) setAutoscrollBlocked(true);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    const target = e.target as HTMLElement;
-
-    if (!target.classList.contains("track-name")) {
-      e.preventDefault();
-
-      // TODO: Clean up and add min/max constraints, scrolling, and blockAuto scroll. Move elsewhere, if needed for consistent focusing.
-      //       Probably just change to a document listener and have those wherever needed, like in Player
-      if (e.code === "ArrowRight") {
-        setStartPosition((prevStartPos) => prevStartPos + 0.077);
-      } else if (e.code === "ArrowLeft") {
-        setStartPosition((prevStartPos) => prevStartPos - 0.077);
-      } else if (e.code === "ArrowUp" && zoom < zoomMax) {
-        zoomIn();
-      } else if (e.code === "ArrowDown" && zoom > zoomMin) {
-        zoomOut();
-      } else if (e.code === "Space") {
-        // toggle play
-      }
-    }
-  };
-
-  return (
-    <div className="track-editor" tabIndex={0} onKeyDown={(e) => handleKeyDown(e)}>
-      <div className="track-editor-controls">
-        <Player
-          isPlaying={isPlaying}
-          setIsPlaying={setIsPlaying}
-          startPosition={startPosition}
-          playerPosition={playerPosition}
-          setPlayerPosition={setPlayerPosition}
-          autoscrollBlocked={autoscrollBlocked}
-          setAutoscrollBlocked={setAutoscrollBlocked}
-        />
-        <span className="control-block">
-          {"Zoom: "}
-          <button className="plus-minus-button" type="button" onClick={zoomOut}>
-            -
-          </button>
-          <button className="plus-minus-button" type="button" onClick={zoomIn}>
-            +
-          </button>
-        </span>
-        {midiEditorTrack ? (
-          <button className="midi-editor-close-btn" onClick={() => setNextMidiEditorTrackID(0)}>
-            Close
-          </button>
-        ) : (
-          <span className="control-block">
-            {"Track Height: "}
-            <button
-              className="plus-minus-button"
-              type="button"
-              onClick={() => setTrackHeight(Math.max(trackHeight - 5, trackHeightMin))}
-            >
-              -
-            </button>
-            <button
-              className="track-sizing-button"
-              type="button"
-              onClick={() => setTrackHeight(Math.min(trackHeight + 5, trackHeightMax))}
-            >
-              +
-            </button>
-          </span>
-        )}
-      </div>
-      <CustomScroll
-        contentFullSizeH={totalWidth}
-        contentFullSizeV={midiEditorTrack ? midiEditorHeight : allTracksHeight}
-        scaledStartPosition={scaledStartPosition}
-        scaledPlayerPosition={scaledPlayerPosition}
-        isPlaying={isPlaying}
-        zoom={zoom}
-        setZoom={setZoom}
-        scrollWheelZoom={scrollWheelZoom}
-        autoscrollBlocked={autoscrollBlocked}
-        blockAutoscroll={blockAutoscroll}
-        numMeasures={numMeasures}
-        midiEditorTrackID={midiEditorTrackID}
-        setMidiEditorTrackID={setMidiEditorTrackID}
-        nextMidiEditorTrackID={nextMidiEditorTrackID}
-      >
-        <div className="track-controls-header">
-          <p>{midiEditorTrack ? midiEditorTrack.name : "Tracks"}</p>
-        </div>
-        {midiEditorTrack ? (
-          <InstrumentControls track={midiEditorTrack} />
-        ) : (
-          <TrackControls trackHeight={trackHeight} isPlaying={isPlaying} />
-        )}
-        <Ruler
-          numSegments={numSegments}
-          segmentWidth={segmentWidth}
-          measuresPerSegment={measuresPerSegment}
-          segmentIsBeat={segmentIsBeat}
-          divisions={divisions}
-          markerPatternWidth={gridPatternWidth}
-          totalWidth={totalWidth}
-          onClick={(e) => clickChangePosition(e, true)}
-        />
-        <Grid
-          totalHeight={midiEditorTrack ? midiEditorHeight : allTracksHeight}
-          totalWidth={totalWidth}
-          gridPatternWidth={gridPatternWidth}
-          colorPatternWidth={colorPatternWidth}
-          divisions={divisions}
-          editingMidi={Boolean(midiEditorTrack)}
-          onClick={clickChangePosition}
-        >
-          {midiEditorTrack ? (
-            <MidiEditor track={midiEditorTrack} setTracks={setTracks} scaleWidth={scaleWidth} startPosition={startPosition} />
-          ) : (
-            <Tracks
-              tracks={tracks}
-              trackHeight={trackHeight}
-              totalWidth={totalWidth}
-              scaleWidth={scaleWidth}
-              setNextMidiEditorTrackID={setNextMidiEditorTrackID}
-            />
-          )}
-        </Grid>
-      </CustomScroll>
-    </div>
-  );
+  return <div className="track-editor">{trackComponents}</div>;
 };
 
 export default TrackEditor;

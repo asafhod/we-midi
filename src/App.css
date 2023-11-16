@@ -20,17 +20,17 @@
   overflow: hidden;
 } */
 
-.workspace {
+.workspace-loader {
   height: 100vh;
   min-width: 500px;
   overflow-x: hidden;
 }
 
-.track-editor {
+.workspace {
   outline: none;
 }
 
-.track-editor-controls {
+.controls-bar {
   margin-top: 7px;
   margin-bottom: 8px;
 }
@@ -243,7 +243,7 @@
   color: white;
 }
 
-.scroll-content-wrapper {
+.editor-layout {
   width: calc(100vw);
   float: left;
   position: relative;
@@ -329,7 +329,7 @@
   position: relative;
 }
 
-.tracks {
+.track-editor {
   position: absolute;
   top: 0px;
 }
@@ -428,20 +428,17 @@
 
 .scrollbar-h .scroll-thumb {
   height: 13px;
-  transition-property: left;
   background-color: #9d9d9dff;
 }
 
 .scrollbar-v .scroll-thumb {
   width: 13px;
-  transition-property: top;
   background-color: #9d9d9d33;
 }
 
 .scroll-thumb {
   position: absolute;
   border-radius: 8.5px;
-  transition-timing-function: ease-in-out;
 }
 
 .scroll-thumb:hover {
