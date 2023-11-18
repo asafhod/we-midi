@@ -1,20 +1,10 @@
 import "./App.css";
-import { useState } from "react";
-import WorkspaceLoader from "./WorkspaceLoader";
-import midiURL from "./assets/MIDI_sample.mid"; // Get rid of this later
+import ProjectsList from "./ProjectsList";
 
 function App() {
-  const [showWorkspace, setShowWorkspace] = useState(false);
-
   return (
     <div className="App">
-      {showWorkspace ? (
-        <WorkspaceLoader midiURL={midiURL} />
-      ) : (
-        <button type="button" onClick={() => setShowWorkspace(true)}>
-          Open Workspace
-        </button>
-      )}
+      <ProjectsList />
     </div>
   );
 }

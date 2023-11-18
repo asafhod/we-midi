@@ -20,13 +20,10 @@
   overflow: hidden;
 } */
 
-.workspace-loader {
+.workspace {
   height: 100vh;
   min-width: 500px;
   overflow-x: hidden;
-}
-
-.workspace {
   outline: none;
 }
 

@@ -3,8 +3,8 @@ import { PropsWithChildren } from "react";
 type GridProps = {
   totalHeight: number;
   totalWidth: number;
+  zoom: number;
   gridPatternWidth: number;
-  colorPatternWidth: number;
   divisions: number;
   editingMidi: boolean;
   onClick: (e: React.MouseEvent<HTMLDivElement, MouseEvent>, alsoChangePlayerPos?: boolean) => void;
@@ -13,13 +13,21 @@ type GridProps = {
 const Grid = ({
   totalHeight,
   totalWidth,
+  zoom,
   gridPatternWidth,
-  colorPatternWidth,
   divisions,
   editingMidi,
   onClick,
   children,
 }: PropsWithChildren<GridProps>): JSX.Element => {
+  let colorPatternWidthFactor: number = 2;
+  if (zoom > 25.541) colorPatternWidthFactor = 0.125;
+  else if (zoom > 13.352) colorPatternWidthFactor = 0.25;
+  else if (zoom > 6.543) colorPatternWidthFactor = 0.5;
+  else if (zoom > 3.206) colorPatternWidthFactor = 1;
+
+  const colorPatternWidth: number = gridPatternWidth * colorPatternWidthFactor;
+
   const gridLines: JSX.Element[] = [];
 
   for (let i = 0; i < divisions; i++) {

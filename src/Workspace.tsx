@@ -1,7 +1,9 @@
 import * as Tone from "tone";
-import { useState, useMemo, useContext } from "react";
-import { TrackType } from "./types";
+import { Midi as MidiLoad, MidiJSON, TrackJSON } from "@tonejs/midi";
+import { useState, useEffect, useMemo } from "react";
 import TracksContext from "./TracksContext";
+import { TrackType, NoteType } from "./types";
+import createInstrument from "./instruments/createInstrument";
 import Player from "./Player";
 import EditorLayout from "./EditorLayout";
 import Ruler from "./Ruler";
@@ -11,48 +13,38 @@ import TrackControls from "./TrackControls";
 import InstrumentControls from "./InstrumentControls";
 import MidiEditor from "./MidiEditor";
 
-type WorkspaceProps = {};
+type WorkspaceProps = {
+  midiURL: string;
+};
 
-const Workspace = ({}: WorkspaceProps): JSX.Element => {
+const Workspace = ({ midiURL }: WorkspaceProps): JSX.Element => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [startPosition, setStartPosition] = useState(0);
   const [playerPosition, setPlayerPosition] = useState(0);
   const [autoscrollBlocked, setAutoscrollBlocked] = useState(false);
   const [midiEditorTrackID, setMidiEditorTrackID] = useState(0);
   const [nextMidiEditorTrackID, setNextMidiEditorTrackID] = useState(0);
-  const { tracks, setTracks } = useContext(TracksContext)!; // TODO: make sure you're getting tracks consistently across components instead of randomly drilling/contexting
-
   const [zoom, setZoom] = useState(1);
-
   const [trackHeight, setTrackHeight] = useState(78);
-
-  const midiEditorHeight: number = 2112;
-  const midiEditorTrack: TrackType | null | undefined = useMemo(() => {
-    // Also re-calcs every time tracks changes. Any way to limit that so its only if the current track is removed from tracks?
-    return midiEditorTrackID !== 0 ? tracks.find((track) => track.id === midiEditorTrackID) : null;
-  }, [midiEditorTrackID, tracks]);
+  const [tracks, setTracks] = useState<TrackType[]>([]); // TODO: make sure you're getting tracks consistently across components
 
   const zoomFactor: number = 1.21; // Fine-tune the Min, Max, and thresholds?
   const zoomMin: number = 0.104;
   const zoomMax: number = 67.708;
-
-  const allTracksHeight: number = tracks.length * trackHeight;
+  const widthFactor: number = 76.824;
+  const numMeasures: number = 250;
+  const midiEditorHeight: number = 2112;
   const trackHeightMin: number = 30;
   const trackHeightMax: number = 200;
 
-  const numMeasures: number = 250;
-  const widthFactor: number = 76.824;
-
-  const groupMeasures: boolean = zoom < 0.678;
+  const allTracksHeight: number = tracks.length * trackHeight;
   const segmentIsBeat: boolean = zoom > 2.644;
-
-  // ------package all zoom logic into one function and reduce to one tree------
 
   let measuresPerSegment: number = 1;
   let divisions: number = 4;
 
-  // Is there an equation for this? Maybe not. Might just be arbitrary cutoffs.
-  if (groupMeasures) {
+  if (zoom < 0.678) {
+    // group measures
     if (zoom > 0.311) measuresPerSegment = 2;
     else if (zoom > 0.211) measuresPerSegment = 3;
     else if (zoom > 0.153) measuresPerSegment = 4;
@@ -68,25 +60,16 @@ const Workspace = ({}: WorkspaceProps): JSX.Element => {
   }
 
   const numSegments: number = Math.ceil(numMeasures / measuresPerSegment);
-
   const segmentWidth: number = zoom * widthFactor * measuresPerSegment;
   const gridPatternWidth: number = segmentIsBeat ? segmentWidth * 4 : segmentWidth;
-
-  let colorPatternWidthFactor: number = 2;
-  if (zoom > 25.541) colorPatternWidthFactor = 0.125;
-  else if (zoom > 13.352) colorPatternWidthFactor = 0.25;
-  else if (zoom > 6.543) colorPatternWidthFactor = 0.5;
-  else if (zoom > 3.206) colorPatternWidthFactor = 1;
-
-  const colorPatternWidth: number = gridPatternWidth * colorPatternWidthFactor;
-
-  // ----------------------------------------------------
 
   const scaleWidth: number = (zoom * widthFactor) / 2;
   const totalWidth: number = Math.ceil(segmentWidth * numSegments);
 
-  const scaledStartPosition: number = Math.round(startPosition * scaleWidth);
-  const scaledPlayerPosition: number = Math.round(playerPosition * scaleWidth);
+  const midiEditorTrack: TrackType | null | undefined = useMemo(() => {
+    // Also re-calcs every time tracks changes. Any way to limit that so its only if the current track is removed from tracks?
+    return midiEditorTrackID !== 0 ? tracks.find((track) => track.id === midiEditorTrackID) : null;
+  }, [midiEditorTrackID, tracks]);
 
   const zoomIn = () => {
     setZoom(Math.min(Math.round(zoom * zoomFactor * 1000) / 1000, zoomMax));
@@ -151,6 +134,7 @@ const Workspace = ({}: WorkspaceProps): JSX.Element => {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    // Is any of this triggerable before the workspace finishes loading?
     const target = e.target as HTMLElement;
 
     if (!target.classList.contains("track-name")) {
@@ -172,108 +156,181 @@ const Workspace = ({}: WorkspaceProps): JSX.Element => {
     }
   };
 
+  useEffect(() => {
+    // clear it in a cleanup function for unmount and in case url changes (dispose of instruments, volumes, etc.)
+    const loadMidi = async (midiURL: string) => {
+      const midi: MidiJSON = await MidiLoad.fromUrl(midiURL);
+      if (!midi || !Object.keys(midi).length) throw new Error("Cannot schedule notes: Invalid MIDI file");
+
+      console.log(midi);
+
+      // TODO: Retrieve trackIDs from database
+      const trackIDs: number[] = [];
+
+      await Tone.start();
+
+      Tone.Transport.PPQ = midi.header.ppq;
+      Tone.Transport.bpm.value = midi.header.tempos[0].bpm;
+
+      const tracks: TrackType[] = [];
+
+      for (let i = 1; i < midi.tracks.length; i++) {
+        const track: TrackJSON = midi.tracks[i];
+        const { instrument, instrumentName } = createInstrument(track.instrument.family, track.instrument.number);
+
+        const panVol: Tone.PanVol = new Tone.PanVol(0, instrument.volume.value); //later, change vol to -16 and have track vols/pans saved for each song
+
+        await Tone.loaded();
+
+        const notes: NoteType[] = [];
+        let minNote: number = 128;
+        let maxNote: number = -1;
+
+        for (const { name, midi: midiNum, duration, time: noteTime, velocity } of track.notes) {
+          const noteID: number = Tone.Transport.schedule((time) => {
+            instrument.triggerAttackRelease(name, duration, time, velocity);
+          }, noteTime);
+
+          notes.push({ id: noteID, name, midiNum, duration, noteTime, velocity });
+
+          minNote = Math.min(minNote, midiNum);
+          maxNote = Math.max(maxNote, midiNum);
+        }
+
+        tracks.push({
+          id: trackIDs[i - 1] || i,
+          name: track.name || `Track ${i - 1}`,
+          instrumentName,
+          instrument,
+          panVol,
+          notes,
+          minNote,
+          maxNote,
+        });
+      }
+
+      setTracks(tracks);
+    };
+
+    try {
+      loadMidi(midiURL);
+    } catch (error) {
+      console.error(error);
+    }
+  }, [midiURL]);
+
   return (
-    <div className="track-editor" tabIndex={0} onKeyDown={(e) => handleKeyDown(e)}>
-      <div className="controls-bar">
-        <Player
-          isPlaying={isPlaying}
-          setIsPlaying={setIsPlaying}
-          startPosition={startPosition}
-          playerPosition={playerPosition}
-          setPlayerPosition={setPlayerPosition}
-          autoscrollBlocked={autoscrollBlocked}
-          setAutoscrollBlocked={setAutoscrollBlocked}
-        />
-        <span className="control-block">
-          {"Zoom: "}
-          <button className="plus-minus-button" type="button" onClick={zoomOut}>
-            -
-          </button>
-          <button className="plus-minus-button" type="button" onClick={zoomIn}>
-            +
-          </button>
-        </span>
-        {midiEditorTrack ? (
-          <button className="midi-editor-close-btn" onClick={() => setNextMidiEditorTrackID(0)}>
-            Close
-          </button>
+    <TracksContext.Provider value={{ tracks, setTracks }}>
+      <div className="workspace" tabIndex={0} onKeyDown={(e) => handleKeyDown(e)}>
+        {!tracks.length ? (
+          <p>Loading...</p>
         ) : (
-          <span className="control-block">
-            {"Track Height: "}
-            <button
-              className="plus-minus-button"
-              type="button"
-              onClick={() => setTrackHeight(Math.max(trackHeight - 5, trackHeightMin))}
+          <>
+            <div className="controls-bar">
+              <Player
+                isPlaying={isPlaying}
+                setIsPlaying={setIsPlaying}
+                startPosition={startPosition}
+                playerPosition={playerPosition}
+                setPlayerPosition={setPlayerPosition}
+                autoscrollBlocked={autoscrollBlocked}
+                setAutoscrollBlocked={setAutoscrollBlocked}
+              />
+              <span className="control-block">
+                {"Zoom: "}
+                <button className="plus-minus-button" type="button" onClick={zoomOut}>
+                  -
+                </button>
+                <button className="plus-minus-button" type="button" onClick={zoomIn}>
+                  +
+                </button>
+              </span>
+              {midiEditorTrack ? (
+                <button className="midi-editor-close-btn" onClick={() => setNextMidiEditorTrackID(0)}>
+                  Close
+                </button>
+              ) : (
+                <span className="control-block">
+                  {"Track Height: "}
+                  <button
+                    className="plus-minus-button"
+                    type="button"
+                    onClick={() => setTrackHeight(Math.max(trackHeight - 5, trackHeightMin))}
+                  >
+                    -
+                  </button>
+                  <button
+                    className="track-sizing-button"
+                    type="button"
+                    onClick={() => setTrackHeight(Math.min(trackHeight + 5, trackHeightMax))}
+                  >
+                    +
+                  </button>
+                </span>
+              )}
+            </div>
+            <EditorLayout
+              contentFullSizeH={totalWidth}
+              contentFullSizeV={midiEditorTrack ? midiEditorHeight : allTracksHeight}
+              startPosition={startPosition}
+              playerPosition={playerPosition}
+              scaleWidth={scaleWidth}
+              isPlaying={isPlaying}
+              zoom={zoom}
+              setZoom={setZoom}
+              scrollWheelZoom={scrollWheelZoom}
+              autoscrollBlocked={autoscrollBlocked}
+              blockAutoscroll={blockAutoscroll}
+              numMeasures={numMeasures}
+              tracks={tracks}
+              midiEditorTrackID={midiEditorTrackID}
+              setMidiEditorTrackID={setMidiEditorTrackID}
+              nextMidiEditorTrackID={nextMidiEditorTrackID}
             >
-              -
-            </button>
-            <button
-              className="track-sizing-button"
-              type="button"
-              onClick={() => setTrackHeight(Math.min(trackHeight + 5, trackHeightMax))}
-            >
-              +
-            </button>
-          </span>
+              <div className="track-controls-header">
+                <p>{midiEditorTrack ? midiEditorTrack.name : "Tracks"}</p>
+              </div>
+              {midiEditorTrack ? (
+                <InstrumentControls track={midiEditorTrack} />
+              ) : (
+                <TrackControls trackHeight={trackHeight} isPlaying={isPlaying} />
+              )}
+              <Ruler
+                numSegments={numSegments}
+                segmentWidth={segmentWidth}
+                measuresPerSegment={measuresPerSegment}
+                segmentIsBeat={segmentIsBeat}
+                divisions={divisions}
+                markerPatternWidth={gridPatternWidth}
+                totalWidth={totalWidth}
+                onClick={(e) => clickChangePosition(e, true)}
+              />
+              <Grid
+                totalHeight={midiEditorTrack ? midiEditorHeight : allTracksHeight}
+                totalWidth={totalWidth}
+                zoom={zoom}
+                gridPatternWidth={gridPatternWidth}
+                divisions={divisions}
+                editingMidi={Boolean(midiEditorTrack)}
+                onClick={clickChangePosition}
+              >
+                {midiEditorTrack ? (
+                  <MidiEditor track={midiEditorTrack} setTracks={setTracks} scaleWidth={scaleWidth} startPosition={startPosition} />
+                ) : (
+                  <TrackEditor
+                    tracks={tracks}
+                    trackHeight={trackHeight}
+                    totalWidth={totalWidth}
+                    scaleWidth={scaleWidth}
+                    setNextMidiEditorTrackID={setNextMidiEditorTrackID}
+                  />
+                )}
+              </Grid>
+            </EditorLayout>
+          </>
         )}
       </div>
-      <EditorLayout
-        contentFullSizeH={totalWidth}
-        contentFullSizeV={midiEditorTrack ? midiEditorHeight : allTracksHeight}
-        scaledStartPosition={scaledStartPosition}
-        scaledPlayerPosition={scaledPlayerPosition}
-        isPlaying={isPlaying}
-        zoom={zoom}
-        setZoom={setZoom}
-        scrollWheelZoom={scrollWheelZoom}
-        autoscrollBlocked={autoscrollBlocked}
-        blockAutoscroll={blockAutoscroll}
-        numMeasures={numMeasures}
-        midiEditorTrackID={midiEditorTrackID}
-        setMidiEditorTrackID={setMidiEditorTrackID}
-        nextMidiEditorTrackID={nextMidiEditorTrackID}
-      >
-        <div className="track-controls-header">
-          <p>{midiEditorTrack ? midiEditorTrack.name : "Tracks"}</p>
-        </div>
-        {midiEditorTrack ? (
-          <InstrumentControls track={midiEditorTrack} />
-        ) : (
-          <TrackControls trackHeight={trackHeight} isPlaying={isPlaying} />
-        )}
-        <Ruler
-          numSegments={numSegments}
-          segmentWidth={segmentWidth}
-          measuresPerSegment={measuresPerSegment}
-          segmentIsBeat={segmentIsBeat}
-          divisions={divisions}
-          markerPatternWidth={gridPatternWidth}
-          totalWidth={totalWidth}
-          onClick={(e) => clickChangePosition(e, true)}
-        />
-        <Grid
-          totalHeight={midiEditorTrack ? midiEditorHeight : allTracksHeight}
-          totalWidth={totalWidth}
-          gridPatternWidth={gridPatternWidth}
-          colorPatternWidth={colorPatternWidth}
-          divisions={divisions}
-          editingMidi={Boolean(midiEditorTrack)}
-          onClick={clickChangePosition}
-        >
-          {midiEditorTrack ? (
-            <MidiEditor track={midiEditorTrack} setTracks={setTracks} scaleWidth={scaleWidth} startPosition={startPosition} />
-          ) : (
-            <TrackEditor
-              tracks={tracks}
-              trackHeight={trackHeight}
-              totalWidth={totalWidth}
-              scaleWidth={scaleWidth}
-              setNextMidiEditorTrackID={setNextMidiEditorTrackID}
-            />
-          )}
-        </Grid>
-      </EditorLayout>
-    </div>
+    </TracksContext.Provider>
   );
 };
 

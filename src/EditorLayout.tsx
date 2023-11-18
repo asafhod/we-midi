@@ -1,11 +1,13 @@
 import { PropsWithChildren, Children, useState, useEffect, useLayoutEffect, useRef } from "react";
 import useResizeObserver from "use-resize-observer";
+import { TrackType } from "./types";
 
 type EditorLayoutProps = {
   contentFullSizeH: number;
   contentFullSizeV: number;
-  scaledStartPosition: number;
-  scaledPlayerPosition: number;
+  startPosition: number;
+  playerPosition: number;
+  scaleWidth: number;
   isPlaying: boolean;
   zoom: number;
   setZoom: React.Dispatch<React.SetStateAction<number>>;
@@ -13,6 +15,7 @@ type EditorLayoutProps = {
   autoscrollBlocked: boolean;
   blockAutoscroll: () => void;
   numMeasures: number;
+  tracks: TrackType[];
   midiEditorTrackID: number;
   setMidiEditorTrackID: React.Dispatch<React.SetStateAction<number>>;
   nextMidiEditorTrackID: number;
@@ -27,8 +30,9 @@ type TrackViewSetting = {
 const EditorLayout = ({
   contentFullSizeH,
   contentFullSizeV,
-  scaledStartPosition,
-  scaledPlayerPosition,
+  startPosition,
+  playerPosition,
+  scaleWidth,
   isPlaying,
   zoom,
   setZoom,
@@ -36,22 +40,13 @@ const EditorLayout = ({
   autoscrollBlocked,
   blockAutoscroll,
   numMeasures,
+  tracks,
   midiEditorTrackID,
   setMidiEditorTrackID,
   nextMidiEditorTrackID,
   children,
 }: PropsWithChildren<EditorLayoutProps>) => {
-  // TODO: Implement actual defaults
-  const [trackViewSettings, setTrackViewSettings] = useState<TrackViewSetting[]>([
-    { trackID: 0, scrollPos: 0, zoom: 1 },
-    { trackID: 1, scrollPos: 100, zoom: 4.717 },
-    { trackID: 2, scrollPos: 200, zoom: 4.717 },
-    { trackID: 3, scrollPos: 300, zoom: 4.717 },
-    { trackID: 4, scrollPos: 400, zoom: 4.717 },
-    { trackID: 5, scrollPos: 500, zoom: 4.717 },
-    { trackID: 6, scrollPos: 600, zoom: 4.717 },
-  ]);
-
+  const [trackViewSettings, setTrackViewSettings] = useState<TrackViewSetting[]>([{ trackID: 0, scrollPos: 0, zoom: 1 }]);
   const contentHRef = useRef<HTMLDivElement>(null);
   const contentVRef = useRef<HTMLDivElement>(null);
   const contentHeaderRef = useRef<HTMLDivElement>(null);
@@ -68,11 +63,12 @@ const EditorLayout = ({
     throw new Error(`Scrollable content size is invalid - Width: ${contentFullSizeH} Height: ${contentFullSizeV}`);
   }
 
-  const playerPositionMarkerDisplay: string = isPlaying ? "inline" : "none"; // use render flag instead?
-
   // optimize so doesn't re-calc on every render
   const showScrollbarV: boolean = contentFullSizeV > window.innerHeight * 0.8 - 35; // can this break the ref? maybe gets rid of it, but harmless?
 
+  const scaledStartPosition: number = Math.round(startPosition * scaleWidth);
+  const scaledPlayerPosition: number = Math.round(playerPosition * scaleWidth);
+  const playerPositionMarkerDisplay: string = isPlaying ? "inline" : "none"; // use render flag instead?
   const childrenArray = Children.toArray(children);
 
   const handleMouseDownH = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
@@ -279,6 +275,24 @@ const EditorLayout = ({
   };
 
   useEffect(() => {
+    if (sizeV && trackViewSettings.length === 1) {
+      const defaultTrackZoom: number = 4.717;
+      const newTrackViewSettings: TrackViewSetting[] = [...trackViewSettings];
+
+      for (const track of tracks) {
+        const { id, minNote, maxNote } = track;
+
+        const scrollPos: number = minNote >= 0 ? ((87 - ((minNote + maxNote) / 2 - 21)) / 87) * 2112 : 1056;
+        const centeredScrollPos: number = scrollPos - sizeV / 2;
+
+        newTrackViewSettings.push({ trackID: id, scrollPos: centeredScrollPos, zoom: defaultTrackZoom });
+      }
+
+      setTrackViewSettings(newTrackViewSettings);
+    }
+  }, [sizeV]);
+
+  useEffect(() => {
     if (contentVRef.current) {
       const currentScrollPositionY: number = contentVRef.current.scrollTop;
       updateThumbV(currentScrollPositionY, true);
@@ -343,6 +357,8 @@ const EditorLayout = ({
       );
 
       if (currTrackViewSetting) {
+        console.log(currTrackViewSetting.scrollPos);
+
         contentVRef.current.scrollTop = currTrackViewSetting.scrollPos;
         setZoom(currTrackViewSetting.zoom);
       }
