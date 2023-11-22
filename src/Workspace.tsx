@@ -1,6 +1,7 @@
 import * as Tone from "tone";
 import { Midi as MidiLoad, MidiJSON, TrackJSON } from "@tonejs/midi";
 import { useState, useEffect, useMemo } from "react";
+import { useParams } from "react-router-dom";
 import TracksContext from "./TracksContext";
 import { TrackType, NoteType } from "./types";
 import createInstrument from "./instruments/createInstrument";
@@ -12,12 +13,11 @@ import TrackEditor from "./TrackEditor";
 import TrackControls from "./TrackControls";
 import InstrumentControls from "./InstrumentControls";
 import MidiEditor from "./MidiEditor";
+import midiURL from "./assets/MIDI_sample.mid"; // Get rid of this later
+import midiURL2 from "./assets/teddybear.mid"; // Get rid of this later
 
-type WorkspaceProps = {
-  midiURL: string;
-};
-
-const Workspace = ({ midiURL }: WorkspaceProps): JSX.Element => {
+const Workspace = (): JSX.Element => {
+  const { id } = useParams();
   const [isPlaying, setIsPlaying] = useState(false);
   const [startPosition, setStartPosition] = useState(0);
   const [playerPosition, setPlayerPosition] = useState(0);
@@ -31,7 +31,8 @@ const Workspace = ({ midiURL }: WorkspaceProps): JSX.Element => {
   const zoomFactor: number = 1.21; // Fine-tune the Min, Max, and thresholds?
   const zoomMin: number = 0.104;
   const zoomMax: number = 67.708;
-  const widthFactor: number = 76.824;
+  // const widthFactor: number = 76.824;
+  const widthFactor: number = 9218.88 / Tone.Transport.bpm.value; // TODO: Figure out how to calculate this. Currently only works for 120 BPM.
   const numMeasures: number = 250;
   const midiEditorHeight: number = 2112;
   const trackHeightMin: number = 30;
@@ -159,7 +160,9 @@ const Workspace = ({ midiURL }: WorkspaceProps): JSX.Element => {
   useEffect(() => {
     // clear it in a cleanup function for unmount and in case url changes (dispose of instruments, volumes, etc.)
     const loadMidi = async (midiURL: string) => {
-      const midi: MidiJSON = await MidiLoad.fromUrl(midiURL);
+      const url = id === "1" ? midiURL : midiURL2;
+
+      const midi: MidiJSON = await MidiLoad.fromUrl(url);
       if (!midi || !Object.keys(midi).length) throw new Error("Cannot schedule notes: Invalid MIDI file");
 
       console.log(midi);
@@ -217,7 +220,7 @@ const Workspace = ({ midiURL }: WorkspaceProps): JSX.Element => {
     } catch (error) {
       console.error(error);
     }
-  }, [midiURL]);
+  }, [id]);
 
   return (
     <TracksContext.Provider value={{ tracks, setTracks }}>
@@ -235,6 +238,7 @@ const Workspace = ({ midiURL }: WorkspaceProps): JSX.Element => {
                 setPlayerPosition={setPlayerPosition}
                 autoscrollBlocked={autoscrollBlocked}
                 setAutoscrollBlocked={setAutoscrollBlocked}
+                numMeasures={numMeasures}
               />
               <span className="control-block">
                 {"Zoom: "}

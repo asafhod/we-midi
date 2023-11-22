@@ -1,20 +1,13 @@
-import { useState } from "react";
-import midiURL from "./assets/MIDI_sample.mid"; // Get rid of this later
-import Workspace from "./Workspace";
-
 const ProjectsList = (): JSX.Element => {
-  const [showWorkspace, setShowWorkspace] = useState(false);
-
   return (
-    <div className="projects-list">
-      {showWorkspace ? (
-        <Workspace midiURL={midiURL} />
-      ) : (
-        <button type="button" onClick={() => setShowWorkspace(true)}>
-          Open Workspace
-        </button>
-      )}
-    </div>
+    <ul className="projects-list">
+      <li>
+        <a href="./project/1">Project 1</a>
+      </li>
+      <li>
+        <a href="./project/2">Project 2</a>
+      </li>
+    </ul>
   );
 };
 

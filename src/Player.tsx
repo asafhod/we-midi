@@ -9,6 +9,7 @@ type playerProps = {
   setPlayerPosition: React.Dispatch<React.SetStateAction<number>>;
   autoscrollBlocked: boolean;
   setAutoscrollBlocked: React.Dispatch<React.SetStateAction<boolean>>;
+  numMeasures: number;
 };
 
 const Player = ({
@@ -19,41 +20,46 @@ const Player = ({
   setPlayerPosition,
   autoscrollBlocked,
   setAutoscrollBlocked,
+  numMeasures,
 }: playerProps): JSX.Element => {
-  const formatPositionBars = (position: number) => {
-    const posBars: string = Tone.TransportTime(position).toBarsBeatsSixteenths();
-    const [whole] = posBars.split(".");
-    const [measures, beats] = whole.split(":");
+  const posRoundedToSec: number = Math.round(playerPosition);
+  const minute: number = Math.floor(posRoundedToSec / 60);
+  const second: number = posRoundedToSec % 60;
 
-    return `${Number(measures) + 1} bar ${Number(beats) + 1} beat`;
+  const measureBeat: string[] = Tone.TransportTime(playerPosition).toBarsBeatsSixteenths().split(".")[0].split(":");
+  const measure: number = Number(measureBeat[0]) + 1;
+  const beat: number = Number(measureBeat[1]) + 1;
+
+  const start = () => {
+    Tone.Transport.start();
+    setIsPlaying(true);
   };
 
-  const formatPosition = (position: number): string => {
-    const posRoundedToSec: number = Math.round(position);
+  const stop = () => {
+    Tone.Transport.stop();
+    Tone.Transport.seconds = startPosition;
+    setIsPlaying(false);
+    setPlayerPosition(startPosition);
 
-    const minutes: number = Math.floor(posRoundedToSec / 60);
-    const seconds: number = posRoundedToSec % 60;
-
-    return `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
+    if (autoscrollBlocked) setAutoscrollBlocked(false);
   };
 
   const togglePlay = () => {
     if (isPlaying) {
-      Tone.Transport.stop();
-      setIsPlaying(false);
-
-      if (autoscrollBlocked) setAutoscrollBlocked(false);
+      stop();
     } else {
-      Tone.Transport.seconds = startPosition;
-      setPlayerPosition(startPosition);
-      Tone.Transport.start();
-      setIsPlaying(true);
+      start();
     }
   };
 
+  // automatically stop if player reaches end of song
+  if (isPlaying && measure > numMeasures) stop();
+
   useEffect(() => {
     Tone.Transport.scheduleRepeat((time) => {
-      Tone.Draw.schedule(() => setPlayerPosition(Math.max(Tone.Transport.seconds - 0.085, 0)), time); // offset is compromise between desktop and mobile
+      Tone.Draw.schedule(() => {
+        if (Tone.Transport.state !== "stopped") setPlayerPosition(Math.max(Tone.Transport.seconds - 0.085, 0));
+      }, time); // offset is compromise between desktop and mobile
     }, "32n");
     // clear it in a cleanup function?
   }, [setPlayerPosition]);
@@ -63,7 +69,7 @@ const Player = ({
       <button type="button" className="play-button" onClick={togglePlay}>
         {isPlaying ? "Stop" : "Play"}
       </button>
-      {`${formatPosition(playerPosition)} / ${formatPositionBars(playerPosition)}`}
+      {`${minute}:${second < 10 ? "0" : ""}${second} / ${measure} bar ${beat} beat`}
     </>
   );
 };

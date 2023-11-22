@@ -282,6 +282,7 @@ const EditorLayout = ({
       for (const track of tracks) {
         const { id, minNote, maxNote } = track;
 
+        // TODO: Use constants for these (Keep them consistent across app. Globals? Props? Google/ChatGPT where to put them.)
         const scrollPos: number = minNote >= 0 ? ((87 - ((minNote + maxNote) / 2 - 21)) / 87) * 2112 : 1056;
         const centeredScrollPos: number = scrollPos - sizeV / 2;
 
@@ -357,8 +358,6 @@ const EditorLayout = ({
       );
 
       if (currTrackViewSetting) {
-        console.log(currTrackViewSetting.scrollPos);
-
         contentVRef.current.scrollTop = currTrackViewSetting.scrollPos;
         setZoom(currTrackViewSetting.zoom);
       }
