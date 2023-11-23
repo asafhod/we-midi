@@ -7,7 +7,7 @@ type EditorLayoutProps = {
   contentFullSizeV: number;
   startPosition: number;
   playerPosition: number;
-  scaleWidth: number;
+  widthFactor: number;
   isPlaying: boolean;
   zoom: number;
   setZoom: React.Dispatch<React.SetStateAction<number>>;
@@ -32,7 +32,7 @@ const EditorLayout = ({
   contentFullSizeV,
   startPosition,
   playerPosition,
-  scaleWidth,
+  widthFactor,
   isPlaying,
   zoom,
   setZoom,
@@ -66,8 +66,8 @@ const EditorLayout = ({
   // optimize so doesn't re-calc on every render
   const showScrollbarV: boolean = contentFullSizeV > window.innerHeight * 0.8 - 35; // can this break the ref? maybe gets rid of it, but harmless?
 
-  const scaledStartPosition: number = Math.round(startPosition * scaleWidth);
-  const scaledPlayerPosition: number = Math.round(playerPosition * scaleWidth);
+  const scaledStartPosition: number = Math.round(startPosition * widthFactor);
+  const scaledPlayerPosition: number = Math.round(playerPosition * widthFactor);
   const playerPositionMarkerDisplay: string = isPlaying ? "inline" : "none"; // use render flag instead?
   const childrenArray = Children.toArray(children);
 

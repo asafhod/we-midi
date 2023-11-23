@@ -7,11 +7,11 @@ type TrackProps = {
   track: TrackType;
   width: number;
   height: number;
-  scaleWidth: number;
+  widthFactor: number;
   setNextMidiEditorTrackID: React.Dispatch<React.SetStateAction<number>>;
 };
 
-const Track = ({ track, width, height, scaleWidth, setNextMidiEditorTrackID }: TrackProps): JSX.Element => {
+const Track = ({ track, width, height, widthFactor, setNextMidiEditorTrackID }: TrackProps): JSX.Element => {
   // TODO: change to use Redux state instead of context API
   const { tracks } = useContext(TracksContext)!;
   const [regions, setRegions] = useState<RegionType[]>([]);
@@ -32,8 +32,8 @@ const Track = ({ track, width, height, scaleWidth, setNextMidiEditorTrackID }: T
     const availableTrackHeight: number = scaledHeight - noteHeight;
 
     for (const note of track.notes) {
-      const noteLeft: number = Math.round(note.noteTime * scaleWidth) + 1;
-      const noteWidth: number = Math.max(Math.round(Number(note.duration) * scaleWidth), 1);
+      const noteLeft: number = Math.round(note.noteTime * widthFactor) + 1;
+      const noteWidth: number = Math.max(Math.round(Number(note.duration) * widthFactor), 1);
 
       const normalizedNotePosition: number = noteRange === 0 ? 0.5 : 1 - (note.midiNum - minNote) / noteRange;
       const noteTop: number = Math.round(normalizedNotePosition * availableTrackHeight) + heightOffset;
@@ -179,8 +179,8 @@ const Track = ({ track, width, height, scaleWidth, setNextMidiEditorTrackID }: T
             className="region"
             key={i}
             style={{
-              left: Math.round(region.startTime * scaleWidth) + 1,
-              width: Math.round((region.endTime - region.startTime) * scaleWidth),
+              left: Math.round(region.startTime * widthFactor) + 1,
+              width: Math.round((region.endTime - region.startTime) * widthFactor),
               height: height - 2,
             }}
           />

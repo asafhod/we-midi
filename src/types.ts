@@ -25,3 +25,9 @@ export type TrackType = {
   minNote: number;
   maxNote: number;
 };
+
+export type SongData = {
+  // id: number;
+  // name: string;
+  tempo: number;
+};

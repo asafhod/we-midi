@@ -5,11 +5,11 @@ import { noteNames } from "./noteNames";
 type MidiEditorProps = {
   track: TrackType;
   setTracks: React.Dispatch<React.SetStateAction<TrackType[]>>;
-  scaleWidth: number;
+  widthFactor: number;
   startPosition: number;
 };
 
-const MidiEditor = ({ track, setTracks, scaleWidth, startPosition }: MidiEditorProps): JSX.Element => {
+const MidiEditor = ({ track, setTracks, widthFactor, startPosition }: MidiEditorProps): JSX.Element => {
   const notes: JSX.Element[] = [];
 
   if (track.notes.length) {
@@ -17,8 +17,8 @@ const MidiEditor = ({ track, setTracks, scaleWidth, startPosition }: MidiEditorP
     const noteHeight: number = 24;
 
     for (const note of track.notes) {
-      const noteLeft: number = Math.round(note.noteTime * scaleWidth) + 1;
-      const noteWidth: number = Math.max(Math.round(Number(note.duration) * scaleWidth), 1);
+      const noteLeft: number = Math.round(note.noteTime * widthFactor) + 1;
+      const noteWidth: number = Math.max(Math.round(Number(note.duration) * widthFactor), 1);
       const noteTop: number = (108 - note.midiNum) * noteHeight;
 
       notes.push(<EditorNote key={note.id} noteID={note.id} left={noteLeft} top={noteTop} width={noteWidth} height={noteHeight} />);

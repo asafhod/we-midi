@@ -1,9 +1,9 @@
 import * as Tone from "tone";
 import { Midi as MidiLoad, MidiJSON, TrackJSON } from "@tonejs/midi";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useLayoutEffect, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import TracksContext from "./TracksContext";
-import { TrackType, NoteType } from "./types";
+import { SongData, TrackType, NoteType } from "./types";
 import createInstrument from "./instruments/createInstrument";
 import Player from "./Player";
 import EditorLayout from "./EditorLayout";
@@ -18,6 +18,8 @@ import midiURL2 from "./assets/teddybear.mid"; // Get rid of this later
 
 const Workspace = (): JSX.Element => {
   const { id } = useParams();
+  const [songData, setSongData] = useState<SongData>({ tempo: -1 });
+  const [tracks, setTracks] = useState<TrackType[]>([]); // TODO: make sure you're getting tracks consistently across components
   const [isPlaying, setIsPlaying] = useState(false);
   const [startPosition, setStartPosition] = useState(0);
   const [playerPosition, setPlayerPosition] = useState(0);
@@ -25,20 +27,19 @@ const Workspace = (): JSX.Element => {
   const [midiEditorTrackID, setMidiEditorTrackID] = useState(0);
   const [nextMidiEditorTrackID, setNextMidiEditorTrackID] = useState(0);
   const [zoom, setZoom] = useState(1);
+  const [tempo, setTempo] = useState(String(songData.tempo));
   const [trackHeight, setTrackHeight] = useState(78);
-  const [tracks, setTracks] = useState<TrackType[]>([]); // TODO: make sure you're getting tracks consistently across components
 
   const zoomFactor: number = 1.21; // Fine-tune the Min, Max, and thresholds?
-  const zoomMin: number = 0.104;
+  const zoomMin: number = 0.104; // TODO: Limit so can't be smaller than screen size
   const zoomMax: number = 67.708;
-  // const widthFactor: number = 76.824;
-  const widthFactor: number = 9218.88 / Tone.Transport.bpm.value; // TODO: Figure out how to calculate this. Currently only works for 120 BPM.
   const numMeasures: number = 250;
   const midiEditorHeight: number = 2112;
   const trackHeightMin: number = 30;
   const trackHeightMax: number = 200;
 
   const allTracksHeight: number = tracks.length * trackHeight;
+  const widthFactor: number = (zoom * 4609.44) / songData.tempo;
   const segmentIsBeat: boolean = zoom > 2.644;
 
   let measuresPerSegment: number = 1;
@@ -61,11 +62,10 @@ const Workspace = (): JSX.Element => {
   }
 
   const numSegments: number = Math.ceil(numMeasures / measuresPerSegment);
-  const segmentWidth: number = zoom * widthFactor * measuresPerSegment;
-  const gridPatternWidth: number = segmentIsBeat ? segmentWidth * 4 : segmentWidth;
-
-  const scaleWidth: number = (zoom * widthFactor) / 2;
+  const segmentWidth: number = 2 * widthFactor * measuresPerSegment * (120 / songData.tempo);
   const totalWidth: number = Math.ceil(segmentWidth * numSegments);
+
+  const gridPatternWidth: number = segmentIsBeat ? segmentWidth * 4 : segmentWidth;
 
   const midiEditorTrack: TrackType | null | undefined = useMemo(() => {
     // Also re-calcs every time tracks changes. Any way to limit that so its only if the current track is removed from tracks?
@@ -119,7 +119,7 @@ const Workspace = (): JSX.Element => {
     // even if the user clicked outside of the target div by up to a full pixel
     if (x < 0) return;
 
-    const newPosition: number = x / scaleWidth;
+    const newPosition: number = x / widthFactor;
 
     changeStartPosition(newPosition);
 
@@ -134,11 +134,19 @@ const Workspace = (): JSX.Element => {
     if (isPlaying && !autoscrollBlocked) setAutoscrollBlocked(true);
   };
 
+  const changeTempo = (newTempo: number) => {
+    if (newTempo > 0 && newTempo <= 300) {
+      setSongData({ ...songData, tempo: newTempo });
+    } else {
+      setTempo(String(songData.tempo));
+    }
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     // Is any of this triggerable before the workspace finishes loading?
     const target = e.target as HTMLElement;
 
-    if (!target.classList.contains("track-name")) {
+    if (!target.classList.contains("track-name") && !target.classList.contains("tempo-input")) {
       e.preventDefault();
 
       // TODO: Clean up and add min/max constraints, scrolling, and blockAuto scroll. Move elsewhere, if needed for consistent focusing.
@@ -212,6 +220,8 @@ const Workspace = (): JSX.Element => {
         });
       }
 
+      setTempo(String(Tone.Transport.bpm.value));
+      setSongData({ tempo: Tone.Transport.bpm.value });
       setTracks(tracks);
     };
 
@@ -221,6 +231,34 @@ const Workspace = (): JSX.Element => {
       console.error(error);
     }
   }, [id]);
+
+  useLayoutEffect(() => {
+    // TODO: Implement duration (may kill real-time tempo change, but oh well if need be)
+    // prevents from running unnecessarily
+    if (songData.tempo !== -1 && songData.tempo !== Tone.Transport.bpm.value) {
+      const tempoConversionFactor: number = Tone.Transport.bpm.value / songData.tempo;
+
+      const newTracks: TrackType[] = [];
+
+      for (const track of tracks) {
+        const newNotes: NoteType[] = [];
+
+        for (const note of track.notes) {
+          const newNoteTime: number = note.noteTime * tempoConversionFactor;
+          const newNoteDuration: number = Number(note.duration) * tempoConversionFactor;
+
+          const newNote: NoteType = { ...note, noteTime: newNoteTime, duration: newNoteDuration };
+          newNotes.push(newNote);
+        }
+
+        const newTrack: TrackType = { ...track, notes: newNotes };
+        newTracks.push(newTrack);
+      }
+
+      Tone.Transport.bpm.value = songData.tempo;
+      setTracks(newTracks);
+    }
+  }, [songData]);
 
   return (
     <TracksContext.Provider value={{ tracks, setTracks }}>
@@ -240,6 +278,17 @@ const Workspace = (): JSX.Element => {
                 setAutoscrollBlocked={setAutoscrollBlocked}
                 numMeasures={numMeasures}
               />
+              <span className="control-block">
+                {"Tempo: "}
+                <input
+                  type="text"
+                  className="tempo-input"
+                  maxLength={3}
+                  value={tempo}
+                  onChange={(e) => setTempo(e.target.value)}
+                  onBlur={(e) => changeTempo(Number(e.target.value))}
+                />
+              </span>
               <span className="control-block">
                 {"Zoom: "}
                 <button className="plus-minus-button" type="button" onClick={zoomOut}>
@@ -278,7 +327,7 @@ const Workspace = (): JSX.Element => {
               contentFullSizeV={midiEditorTrack ? midiEditorHeight : allTracksHeight}
               startPosition={startPosition}
               playerPosition={playerPosition}
-              scaleWidth={scaleWidth}
+              widthFactor={widthFactor}
               isPlaying={isPlaying}
               zoom={zoom}
               setZoom={setZoom}
@@ -319,13 +368,13 @@ const Workspace = (): JSX.Element => {
                 onClick={clickChangePosition}
               >
                 {midiEditorTrack ? (
-                  <MidiEditor track={midiEditorTrack} setTracks={setTracks} scaleWidth={scaleWidth} startPosition={startPosition} />
+                  <MidiEditor track={midiEditorTrack} setTracks={setTracks} widthFactor={widthFactor} startPosition={startPosition} />
                 ) : (
                   <TrackEditor
                     tracks={tracks}
                     trackHeight={trackHeight}
                     totalWidth={totalWidth}
-                    scaleWidth={scaleWidth}
+                    widthFactor={widthFactor}
                     setNextMidiEditorTrackID={setNextMidiEditorTrackID}
                   />
                 )}
