@@ -233,10 +233,13 @@ const Workspace = (): JSX.Element => {
   }, [id]);
 
   useLayoutEffect(() => {
-    // TODO: Implement duration (may kill real-time tempo change, but oh well if need be)
+    // TODO: Correct zoom settings for other tempos
     // prevents from running unnecessarily
     if (songData.tempo !== -1 && songData.tempo !== Tone.Transport.bpm.value) {
       const tempoConversionFactor: number = Tone.Transport.bpm.value / songData.tempo;
+
+      // Needlessly shifts the existing notes first. Any way around this? Maybe clearing the entire transport at once here, instead of per note.
+      Tone.Transport.bpm.value = songData.tempo;
 
       const newTracks: TrackType[] = [];
 
@@ -244,10 +247,18 @@ const Workspace = (): JSX.Element => {
         const newNotes: NoteType[] = [];
 
         for (const note of track.notes) {
-          const newNoteTime: number = note.noteTime * tempoConversionFactor;
-          const newNoteDuration: number = Number(note.duration) * tempoConversionFactor;
+          const { id: noteID, name, midiNum, duration, noteTime, velocity } = note;
 
-          const newNote: NoteType = { ...note, noteTime: newNoteTime, duration: newNoteDuration };
+          const newNoteTime: number = noteTime * tempoConversionFactor;
+          const newDuration: number = Number(duration) * tempoConversionFactor;
+
+          Tone.Transport.clear(noteID);
+
+          const newNoteID: number = Tone.Transport.schedule((time) => {
+            track.instrument.triggerAttackRelease(name, newDuration, time, velocity);
+          }, newNoteTime);
+
+          const newNote: NoteType = { id: newNoteID, name, midiNum, duration: newDuration, noteTime: newNoteTime, velocity };
           newNotes.push(newNote);
         }
 
@@ -255,8 +266,9 @@ const Workspace = (): JSX.Element => {
         newTracks.push(newTrack);
       }
 
-      Tone.Transport.bpm.value = songData.tempo;
       setTracks(newTracks);
+      changeStartPosition(startPosition * tempoConversionFactor);
+      changePlayerPosition(playerPosition * tempoConversionFactor);
     }
   }, [songData]);
 
