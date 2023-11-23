@@ -110,6 +110,11 @@ const Workspace = (): JSX.Element => {
     }
   };
 
+  const toBeginning = () => {
+    changePlayerPosition(0);
+    changeStartPosition(0);
+  };
+
   const clickChangePosition = (e: React.MouseEvent<HTMLDivElement, MouseEvent>, alsoChangePlayerPos?: boolean) => {
     const target = e.currentTarget as HTMLDivElement;
 
@@ -267,8 +272,8 @@ const Workspace = (): JSX.Element => {
       }
 
       setTracks(newTracks);
-      changeStartPosition(startPosition * tempoConversionFactor);
       changePlayerPosition(playerPosition * tempoConversionFactor);
+      changeStartPosition(startPosition * tempoConversionFactor);
     }
   }, [songData]);
 
@@ -280,6 +285,9 @@ const Workspace = (): JSX.Element => {
         ) : (
           <>
             <div className="controls-bar">
+              <button type="button" className="beginning-button" onClick={toBeginning}>
+                {"<<"}
+              </button>
               <Player
                 isPlaying={isPlaying}
                 setIsPlaying={setIsPlaying}

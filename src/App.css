@@ -393,7 +393,8 @@
   fill: orange;
 }
 
-.play-button {
+.play-button,
+.beginning-button {
   margin-right: 5px;
 }
 
