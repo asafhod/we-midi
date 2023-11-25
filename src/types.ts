@@ -30,4 +30,5 @@ export type SongData = {
   // id: number;
   // name: string;
   tempo: number;
+  lastTrackID: number;
 };

@@ -46,6 +46,7 @@ const EditorLayout = ({
   nextMidiEditorTrackID,
   children,
 }: PropsWithChildren<EditorLayoutProps>) => {
+  // TODO: TrackViewSettings needs to adjust when adding and removing tracks. Likely move it to a custom hook (useTrackViewSettings).
   const [trackViewSettings, setTrackViewSettings] = useState<TrackViewSetting[]>([{ trackID: 0, scrollPos: 0, zoom: 1 }]);
   const contentHRef = useRef<HTMLDivElement>(null);
   const contentVRef = useRef<HTMLDivElement>(null);

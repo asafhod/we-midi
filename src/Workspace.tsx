@@ -10,6 +10,7 @@ import EditorLayout from "./EditorLayout";
 import Ruler from "./Ruler";
 import Grid from "./Grid";
 import TrackEditor from "./TrackEditor";
+import TrackControlsHeader from "./TrackControlsHeader";
 import TrackControls from "./TrackControls";
 import InstrumentControls from "./InstrumentControls";
 import MidiEditor from "./MidiEditor";
@@ -18,7 +19,8 @@ import midiURL2 from "./assets/teddybear.mid"; // Get rid of this later
 
 const Workspace = (): JSX.Element => {
   const { id } = useParams();
-  const [songData, setSongData] = useState<SongData>({ tempo: -1 });
+  const [loading, setLoading] = useState(true);
+  const [songData, setSongData] = useState<SongData>({ tempo: -1, lastTrackID: 0 });
   const [tracks, setTracks] = useState<TrackType[]>([]); // TODO: make sure you're getting tracks consistently across components
   const [isPlaying, setIsPlaying] = useState(false);
   const [startPosition, setStartPosition] = useState(0);
@@ -38,7 +40,7 @@ const Workspace = (): JSX.Element => {
   const trackHeightMin: number = 30;
   const trackHeightMax: number = 200;
 
-  const allTracksHeight: number = tracks.length * trackHeight;
+  const allTracksHeight: number = tracks.length * trackHeight || 1;
   const widthFactor: number = (zoom * 4609.44) / songData.tempo;
   const segmentIsBeat: boolean = zoom > 2.644;
 
@@ -180,8 +182,9 @@ const Workspace = (): JSX.Element => {
 
       console.log(midi);
 
-      // TODO: Retrieve trackIDs from database
+      // TODO: Retrieve song data from database (with these as the defaults)
       const trackIDs: number[] = [];
+      let lastTrackID: number = 0;
 
       await Tone.start();
 
@@ -213,9 +216,13 @@ const Workspace = (): JSX.Element => {
           maxNote = Math.max(maxNote, midiNum);
         }
 
+        const trackID: number = trackIDs[i - 1] || i;
+
+        if (!lastTrackID && i === midi.tracks.length - 1) lastTrackID = i;
+
         tracks.push({
-          id: trackIDs[i - 1] || i,
-          name: track.name || `Track ${i - 1}`,
+          id: trackID,
+          name: track.name || `Track ${i}`,
           instrumentName,
           instrument,
           panVol,
@@ -226,8 +233,9 @@ const Workspace = (): JSX.Element => {
       }
 
       setTempo(String(Tone.Transport.bpm.value));
-      setSongData({ tempo: Tone.Transport.bpm.value });
+      setSongData({ tempo: Tone.Transport.bpm.value, lastTrackID });
       setTracks(tracks);
+      setLoading(false);
     };
 
     try {
@@ -280,7 +288,7 @@ const Workspace = (): JSX.Element => {
   return (
     <TracksContext.Provider value={{ tracks, setTracks }}>
       <div className="workspace" tabIndex={0} onKeyDown={(e) => handleKeyDown(e)}>
-        {!tracks.length ? (
+        {loading ? (
           <p>Loading...</p>
         ) : (
           <>
@@ -360,9 +368,13 @@ const Workspace = (): JSX.Element => {
               setMidiEditorTrackID={setMidiEditorTrackID}
               nextMidiEditorTrackID={nextMidiEditorTrackID}
             >
-              <div className="track-controls-header">
-                <p>{midiEditorTrack ? midiEditorTrack.name : "Tracks"}</p>
-              </div>
+              <TrackControlsHeader
+                tracks={tracks}
+                setTracks={setTracks}
+                midiEditorTrack={midiEditorTrack}
+                songData={songData}
+                setSongData={setSongData}
+              />
               {midiEditorTrack ? (
                 <InstrumentControls track={midiEditorTrack} />
               ) : (

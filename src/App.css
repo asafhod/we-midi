@@ -42,6 +42,14 @@
   background-color: black;
 }
 
+.add-track-btn {
+  display: inline-block;
+}
+
+.track-controls-header-lbl {
+  display: inline-block;
+}
+
 .track-controls,
 .instrument-controls {
   margin-top: 35px;

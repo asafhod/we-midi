@@ -28,6 +28,46 @@ const TrackControls = ({ trackHeight, isPlaying }: TrackControlsProps): JSX.Elem
     return mutedTracks;
   });
 
+  const removeTrack = (trackID: number) => {
+    const track: TrackType | undefined = tracks.find((track) => track.id === trackID);
+
+    if (track) {
+      for (const note of track.notes) {
+        Tone.Transport.clear(note.id);
+      }
+
+      track.panVol.dispose();
+      track.instrument.dispose();
+
+      const newTracks: TrackType[] = tracks.filter((track) => track.id !== trackID);
+
+      setTracks(newTracks);
+    } else {
+      throw new Error(`Cannot remove track ${trackID}: Not Found`);
+    }
+  };
+
+  const handleRightClick = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
+    e.preventDefault();
+
+    let target: HTMLElement | null = e.target as HTMLElement;
+    let trackID: number = 0;
+
+    while (!trackID) {
+      if (target.classList.contains("track-controls")) return;
+
+      if (target.dataset.trackid) {
+        trackID = Number(target.dataset.trackid);
+        if (!trackID || trackID < 0) return;
+      } else {
+        target = target.parentElement;
+        if (!target) return;
+      }
+    }
+
+    removeTrack(trackID);
+  };
+
   useEffect(() => {
     const soloExists: boolean = soloTracks.some((track) => track.isSolo);
 
@@ -82,7 +122,11 @@ const TrackControls = ({ trackHeight, isPlaying }: TrackControlsProps): JSX.Elem
     );
   }
 
-  return <div className="track-controls">{trackControls}</div>;
+  return (
+    <div className="track-controls" onContextMenu={(e) => handleRightClick(e)}>
+      {trackControls}
+    </div>
+  );
 };
 
 type TrackControlProps = {
@@ -213,7 +257,7 @@ const TrackControl = ({
   }, [trackName]);
 
   return (
-    <div className="track-control" style={{ height: trackHeight }}>
+    <div className="track-control" data-trackid={track.id} style={{ height: trackHeight }}>
       <input
         className="track-name"
         type="text"
