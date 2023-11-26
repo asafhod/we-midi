@@ -168,6 +168,7 @@ const Track = ({ track, width, height, widthFactor, setNextMidiEditorTrackID }: 
   };
 
   useEffect(() => {
+    // TODO: If you keep this logic here, fix the deps
     generateRegions();
   }, [tracks]);
 

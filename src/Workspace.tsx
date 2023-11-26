@@ -1,6 +1,6 @@
 import * as Tone from "tone";
 import { Midi as MidiLoad, MidiJSON, TrackJSON } from "@tonejs/midi";
-import { useState, useEffect, useLayoutEffect, useMemo } from "react";
+import { useState, useEffect, useLayoutEffect, useCallback, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import TracksContext from "./TracksContext";
 import { SongData, TrackType, NoteType } from "./types";
@@ -96,21 +96,27 @@ const Workspace = (): JSX.Element => {
     if (e.deltaX !== 0) blockAutoscroll();
   };
 
-  const changeStartPosition = (newStartPosition: number) => {
-    setStartPosition(newStartPosition);
+  const changeStartPosition = useCallback(
+    (newStartPosition: number) => {
+      setStartPosition(newStartPosition);
 
-    if (!isPlaying) {
-      Tone.Transport.seconds = newStartPosition;
-      setPlayerPosition(newStartPosition);
-    }
-  };
+      if (!isPlaying) {
+        Tone.Transport.seconds = newStartPosition;
+        setPlayerPosition(newStartPosition);
+      }
+    },
+    [isPlaying]
+  );
 
-  const changePlayerPosition = (newPlayerPosition: number) => {
-    if (isPlaying) {
-      Tone.Transport.seconds = newPlayerPosition;
-      setPlayerPosition(newPlayerPosition);
-    }
-  };
+  const changePlayerPosition = useCallback(
+    (newPlayerPosition: number) => {
+      if (isPlaying) {
+        Tone.Transport.seconds = newPlayerPosition;
+        setPlayerPosition(newPlayerPosition);
+      }
+    },
+    [isPlaying]
+  );
 
   const toBeginning = () => {
     changePlayerPosition(0);
@@ -283,7 +289,7 @@ const Workspace = (): JSX.Element => {
       changePlayerPosition(playerPosition * tempoConversionFactor);
       changeStartPosition(startPosition * tempoConversionFactor);
     }
-  }, [songData]);
+  }, [songData, playerPosition, changePlayerPosition, startPosition, changeStartPosition, tracks]);
 
   return (
     <TracksContext.Provider value={{ tracks, setTracks }}>
@@ -362,7 +368,6 @@ const Workspace = (): JSX.Element => {
               scrollWheelZoom={scrollWheelZoom}
               autoscrollBlocked={autoscrollBlocked}
               blockAutoscroll={blockAutoscroll}
-              numMeasures={numMeasures}
               tracks={tracks}
               midiEditorTrackID={midiEditorTrackID}
               setMidiEditorTrackID={setMidiEditorTrackID}

@@ -1,4 +1,4 @@
-import { PropsWithChildren, Children, useState, useEffect, useLayoutEffect, useRef } from "react";
+import { PropsWithChildren, Children, useState, useEffect, useLayoutEffect, useRef, useCallback } from "react";
 import useResizeObserver from "use-resize-observer";
 import { TrackType } from "./types";
 
@@ -14,7 +14,6 @@ type EditorLayoutProps = {
   scrollWheelZoom: (e: React.WheelEvent<HTMLDivElement>) => void;
   autoscrollBlocked: boolean;
   blockAutoscroll: () => void;
-  numMeasures: number;
   tracks: TrackType[];
   midiEditorTrackID: number;
   setMidiEditorTrackID: React.Dispatch<React.SetStateAction<number>>;
@@ -39,7 +38,6 @@ const EditorLayout = ({
   scrollWheelZoom,
   autoscrollBlocked,
   blockAutoscroll,
-  numMeasures,
   tracks,
   midiEditorTrackID,
   setMidiEditorTrackID,
@@ -48,13 +46,16 @@ const EditorLayout = ({
 }: PropsWithChildren<EditorLayoutProps>) => {
   // TODO: TrackViewSettings needs to adjust when adding and removing tracks. Likely move it to a custom hook (useTrackViewSettings).
   const [trackViewSettings, setTrackViewSettings] = useState<TrackViewSetting[]>([{ trackID: 0, scrollPos: 0, zoom: 1 }]);
-  const contentHRef = useRef<HTMLDivElement>(null);
   const contentVRef = useRef<HTMLDivElement>(null);
+  const contentHRef = useRef<HTMLDivElement>(null);
   const contentHeaderRef = useRef<HTMLDivElement>(null);
   const thumbHRef = useRef<HTMLDivElement>(null);
   const thumbVRef = useRef<HTMLDivElement>(null);
-  const { width: sizeH = 0 } = useResizeObserver<HTMLDivElement>({ ref: contentHRef });
   const { height = 0 } = useResizeObserver<HTMLDivElement>({ ref: contentVRef });
+  const { width: sizeH = 0 } = useResizeObserver<HTMLDivElement>({ ref: contentHRef });
+  const prevSizeHRef = useRef(sizeH);
+  const prevContentFullSizeHRef = useRef(contentFullSizeH);
+  const prevZoomRef = useRef(zoom);
 
   // TODO: Fix ratio issue between sizeV and contentFullSizeV (currently removed the +35 on the prop)
   // Appears to slightly affect page amount for vertical click scrolling (anything else?)
@@ -227,35 +228,41 @@ const EditorLayout = ({
     // Would also scroll the entire window if it's scrollable. Make sure it never is, even on browser zoom-in.
   };
 
-  const updateThumbH = (scrollPositionX: number, updateSize: boolean, updatePosition: boolean) => {
-    if (thumbHRef.current) {
-      const pageRatioH: number = sizeH / contentFullSizeH;
-      const newThumbHOffset: number = Math.round(scrollPositionX * pageRatioH);
+  const updateThumbH = useCallback(
+    (scrollPositionX: number, updateSize: boolean, updatePosition: boolean) => {
+      if (thumbHRef.current) {
+        const pageRatioH: number = sizeH / contentFullSizeH;
+        const newThumbHOffset: number = Math.round(scrollPositionX * pageRatioH);
 
-      if (updateSize) {
-        const maxThumbHSize: number = sizeH - newThumbHOffset;
-        const newThumbHSize: number = Math.min(Math.max(Math.ceil(sizeH * pageRatioH), 17), maxThumbHSize);
-        thumbHRef.current.style.width = `${newThumbHSize}px`;
+        if (updateSize) {
+          const maxThumbHSize: number = sizeH - newThumbHOffset;
+          const newThumbHSize: number = Math.min(Math.max(Math.ceil(sizeH * pageRatioH), 17), maxThumbHSize);
+          thumbHRef.current.style.width = `${newThumbHSize}px`;
+        }
+
+        if (updatePosition) thumbHRef.current.style.left = `${newThumbHOffset}px`;
       }
+    },
+    [sizeH, contentFullSizeH]
+  );
 
-      if (updatePosition) thumbHRef.current.style.left = `${newThumbHOffset}px`;
-    }
-  };
+  const updateThumbV = useCallback(
+    (scrollPositionY: number, updateSize: boolean) => {
+      if (thumbVRef.current) {
+        const pageRatioV: number = sizeV / contentFullSizeV;
+        const newThumbVOffset: number = Math.round(scrollPositionY * pageRatioV);
 
-  const updateThumbV = (scrollPositionY: number, updateSize: boolean) => {
-    if (thumbVRef.current) {
-      const pageRatioV: number = sizeV / contentFullSizeV;
-      const newThumbVOffset: number = Math.round(scrollPositionY * pageRatioV);
+        if (updateSize) {
+          const maxThumbVSize: number = sizeV - newThumbVOffset;
+          const newThumbVSize: number = Math.min(Math.max(Math.ceil(sizeV * pageRatioV), 17), maxThumbVSize);
+          thumbVRef.current.style.height = `${newThumbVSize}px`;
+        }
 
-      if (updateSize) {
-        const maxThumbVSize: number = sizeV - newThumbVOffset;
-        const newThumbVSize: number = Math.min(Math.max(Math.ceil(sizeV * pageRatioV), 17), maxThumbVSize);
-        thumbVRef.current.style.height = `${newThumbVSize}px`;
+        thumbVRef.current.style.top = `${newThumbVOffset}px`;
       }
-
-      thumbVRef.current.style.top = `${newThumbVOffset}px`;
-    }
-  };
+    },
+    [sizeV, contentFullSizeV]
+  );
 
   const handleScrollX = (e: React.UIEvent<HTMLDivElement, UIEvent>) => {
     // Note: Offset will be set twice on the max position zoom-out edge case (regardless of whether handleScrollX or the UE fires first), but it's harmless
@@ -299,25 +306,42 @@ const EditorLayout = ({
       const currentScrollPositionY: number = contentVRef.current.scrollTop;
       updateThumbV(currentScrollPositionY, true);
     }
-  }, [sizeV, contentFullSizeV]);
-
-  useEffect(() => {
-    if (contentHRef.current) {
-      const currentScrollPositionX: number = contentHRef.current.scrollLeft;
-      updateThumbH(currentScrollPositionX, true, true);
-    }
-  }, [sizeH, numMeasures]);
+  }, [updateThumbV]);
 
   useLayoutEffect(() => {
-    if (contentHRef.current) {
+    // check if the horizontal content has changed size (can happen due to zoom or a change in the number of measures),
+    // or if the view was resized horizontally (such as on window resize)
+    if ((prevContentFullSizeHRef.current !== contentFullSizeH || prevSizeHRef.current !== sizeH) && contentHRef.current) {
       const currentScrollPositionX: number = contentHRef.current.scrollLeft;
-      updateThumbH(currentScrollPositionX, true, false); // add return flag for max pos?
 
-      // trigger zoom-centering scroll
-      const zoomCenterPosition: number = isPlaying && !autoscrollBlocked ? scaledPlayerPosition : scaledStartPosition;
-      contentHRef.current.scrollTo(Math.floor(zoomCenterPosition - sizeH / 2), 0); //round?
+      if (zoom !== prevZoomRef.current) {
+        // user has zoomed in or out
+
+        // update width of horizontal scroll thumb
+        updateThumbH(currentScrollPositionX, true, false);
+
+        // calculate scroll position needed to center the view on the start position marker or on the player position marker,
+        // depending on whether the song is currently playing and on whether autoscroll is blocked
+        const markerCenterPosition: number = Math.floor(
+          (isPlaying && !autoscrollBlocked ? scaledPlayerPosition : scaledStartPosition) - sizeH / 2
+        );
+
+        // scroll to the centered position
+        contentHRef.current.scrollTo(markerCenterPosition, 0); //round?
+
+        // update previous zoom value to match current value
+        prevZoomRef.current = zoom;
+      } else {
+        // update position and width of the horizontal scroll thumb if the view was resized horizontally
+        // or if the width of the content has changed due to factors other than zoom (namely, due to a change in the number of measures)
+        updateThumbH(currentScrollPositionX, true, true);
+      }
+
+      // update previous contentFullSize and sizeH values to match the current values
+      prevContentFullSizeHRef.current = contentFullSizeH;
+      prevSizeHRef.current = sizeH;
     }
-  }, [zoom]);
+  }, [updateThumbH, contentFullSizeH, sizeH, zoom, isPlaying, scaledPlayerPosition, scaledStartPosition, autoscrollBlocked]);
 
   useEffect(() => {
     const autoscroll = () => {
@@ -350,20 +374,24 @@ const EditorLayout = ({
       setMidiEditorTrackID(nextMidiEditorTrackID);
       setTrackViewSettings(newTrackViewSettings);
     }
-  }, [nextMidiEditorTrackID]);
+  }, [nextMidiEditorTrackID, setMidiEditorTrackID, zoom]);
 
   useLayoutEffect(() => {
     if (contentVRef.current) {
+      // find track view settings for the current MIDI Editor track (or for the Track Editor)
       const currTrackViewSetting: TrackViewSetting | undefined = trackViewSettings.find(
         (trackViewSetting) => trackViewSetting.trackID === midiEditorTrackID
       );
 
       if (currTrackViewSetting) {
+        // scroll to the saved scroll position
         contentVRef.current.scrollTop = currTrackViewSetting.scrollPos;
+
+        // zoom to the saved zoom level
         setZoom(currTrackViewSetting.zoom);
       }
     }
-  }, [midiEditorTrackID]);
+  }, [midiEditorTrackID, setZoom]);
 
   return (
     <>

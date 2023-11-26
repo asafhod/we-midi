@@ -33,7 +33,7 @@ const InstrumentControls = ({ track }: InstrumentControlsProps) => {
     }
 
     return instrumentNotes;
-  }, []); // Deps?
+  }, [track.instrumentName]);
 
   return (
     <div className="instrument-controls" onClick={(e) => playNote(e)}>
