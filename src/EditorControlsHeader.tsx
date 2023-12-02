@@ -2,7 +2,7 @@ import * as Tone from "tone";
 import { SongData, TrackType } from "./types";
 import createInstrument from "./instruments/createInstrument";
 
-type TrackControlsHeaderProps = {
+type EditorControlsHeaderProps = {
   tracks: TrackType[];
   setTracks: React.Dispatch<React.SetStateAction<TrackType[]>>;
   midiEditorTrack: TrackType | null | undefined;
@@ -10,10 +10,17 @@ type TrackControlsHeaderProps = {
   setSongData: React.Dispatch<React.SetStateAction<SongData>>;
 };
 
-const TrackControlsHeader = ({ tracks, setTracks, midiEditorTrack, songData, setSongData }: TrackControlsHeaderProps): JSX.Element => {
+const EditorControlsHeader = ({
+  tracks,
+  setTracks,
+  midiEditorTrack,
+  songData,
+  setSongData,
+}: EditorControlsHeaderProps): JSX.Element => {
   const maxTracks: number = 100;
 
   const addTrack = () => {
+    // TODO: Also chain the instrument to the panVol and add it to the other tracks list(s)
     if (tracks.length >= maxTracks) {
       alert(`The maximum amount of tracks is ${maxTracks}.`);
     } else {
@@ -56,4 +63,4 @@ const TrackControlsHeader = ({ tracks, setTracks, midiEditorTrack, songData, set
   );
 };
 
-export default TrackControlsHeader;
+export default EditorControlsHeader;

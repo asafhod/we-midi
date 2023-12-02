@@ -7,7 +7,6 @@ import f2 from "../assets/samples/bass/bass-f2.wav";
 
 // electric bass (finger)
 const bass: Partial<Tone.SamplerOptions> = {
-  volume: -1,
   release: 1,
   urls: {
     C1: c1,

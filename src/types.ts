@@ -26,9 +26,29 @@ export type TrackType = {
   maxNote: number;
 };
 
+export type TrackData = {
+  id: number;
+  muted: boolean;
+  solo: boolean;
+  volume: number;
+  pan: number;
+};
+
+export type TrackVol = {
+  id: number;
+  volume: number;
+  muted: boolean;
+};
+
+export type SoloTrack = {
+  id: number;
+  solo: boolean;
+};
+
 export type SongData = {
   // id: number;
   // name: string;
   tempo: number;
   lastTrackID: number;
+  trackIDs: number[];
 };

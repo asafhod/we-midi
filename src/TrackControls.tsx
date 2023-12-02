@@ -1,52 +1,34 @@
-import { useState, useEffect, useRef, useContext } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import * as Tone from "tone";
-import { TrackType, NoteType } from "./types";
-import TracksContext from "./TracksContext";
+import { TrackVol, SoloTrack, TrackType, NoteType } from "./types";
 import createInstrument from "./instruments/createInstrument";
 import instrumentIcons from "./instruments/instrumentIcons";
 import { ReactComponent as GlobeIcon } from "./assets/icons/globe.svg";
 
+// TODO: Make sure all the useEffects are safe, and streamline how you're handling trackData. Is the trackVol setting in TrackControl okay?
 type TrackControlsProps = {
+  tracks: TrackType[];
+  setTracks: React.Dispatch<React.SetStateAction<TrackType[]>>;
+  trackVols: TrackVol[];
+  setTrackVols: React.Dispatch<React.SetStateAction<TrackVol[]>>;
+  soloTracks: SoloTrack[];
+  toggleTrackSolo: (trackID: number) => void;
+  removeTrack: (trackID: number) => void;
   trackHeight: number;
   isPlaying: boolean;
 };
 
-const TrackControls = ({ trackHeight, isPlaying }: TrackControlsProps): JSX.Element => {
-  const { tracks, setTracks } = useContext(TracksContext)!;
-  const [soloTracks, setSoloTracks] = useState<{ id: number; isSolo: boolean }[]>(() => {
-    const soloTracks: { id: number; isSolo: boolean }[] = [];
-    for (const track of tracks) {
-      soloTracks.push({ id: track.id, isSolo: false });
-    }
-    return soloTracks;
-  });
-  const [mutedTracks, setMutedTracks] = useState<{ id: number; isMuted: boolean }[]>(() => {
-    const mutedTracks: { id: number; isMuted: boolean }[] = [];
-    for (const track of tracks) {
-      mutedTracks.push({ id: track.id, isMuted: false });
-    }
-    return mutedTracks;
-  });
-
-  const removeTrack = (trackID: number) => {
-    const track: TrackType | undefined = tracks.find((track) => track.id === trackID);
-
-    if (track) {
-      for (const note of track.notes) {
-        Tone.Transport.clear(note.id);
-      }
-
-      track.panVol.dispose();
-      track.instrument.dispose();
-
-      const newTracks: TrackType[] = tracks.filter((track) => track.id !== trackID);
-
-      setTracks(newTracks);
-    } else {
-      throw new Error(`Cannot remove track ${trackID}: Not Found`);
-    }
-  };
-
+const TrackControls = ({
+  tracks,
+  setTracks,
+  trackVols,
+  setTrackVols,
+  soloTracks,
+  toggleTrackSolo,
+  removeTrack,
+  trackHeight,
+  isPlaying,
+}: TrackControlsProps): JSX.Element => {
   const handleRightClick = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
     e.preventDefault();
 
@@ -68,44 +50,18 @@ const TrackControls = ({ trackHeight, isPlaying }: TrackControlsProps): JSX.Elem
     removeTrack(trackID);
   };
 
-  useEffect(() => {
-    const soloExists: boolean = soloTracks.some((track) => track.isSolo);
-
-    for (const track of tracks) {
-      const panVolNode: Tone.PanVol | undefined = track.panVol;
-
-      if (panVolNode) {
-        const isSolo: boolean | undefined = soloTracks.find((tr) => tr.id === track.id)?.isSolo;
-        const isManuallyMuted: boolean | undefined = mutedTracks.find((tr) => tr.id === track.id)?.isMuted;
-
-        // simplify?
-        if (soloExists) {
-          if (isSolo) {
-            // unmute
-            panVolNode.mute = false;
-          } else {
-            // mute
-            panVolNode.mute = true;
-          }
-        } else {
-          // unmute, unless manually muted
-          if (!isManuallyMuted) {
-            panVolNode.mute = false;
-          } else {
-            panVolNode.mute = true;
-          }
-        }
-      }
-    }
-  }, [soloTracks]);
+  // TODO: Narrow down so only re-calcs specifically if a solo change occurs?
+  const soloExists: boolean = useMemo(() => soloTracks.some((track) => track.solo), [soloTracks]);
 
   const trackControls: JSX.Element[] = [];
 
-  //   possibly put track id on actual tracks object instead and use that here and in Tracks component
   for (const track of tracks) {
+    // use trackVols here instead?
     // efficient enough?
-    const isSolo: boolean = Boolean(soloTracks.find((tr) => tr.id === track.id)?.isSolo);
-    const isMuted: boolean = Boolean(mutedTracks.find((tr) => tr.id === track.id)?.isMuted);
+    const trackVol: TrackVol | undefined = trackVols.find((tr) => tr.id === track.id);
+    const soloTrack: SoloTrack | undefined = soloTracks.find((tr) => tr.id === track.id);
+
+    if (!trackVol || !soloTrack) throw new Error("Invalid Track Control settings");
 
     trackControls.push(
       <TrackControl
@@ -113,10 +69,12 @@ const TrackControls = ({ trackHeight, isPlaying }: TrackControlsProps): JSX.Elem
         track={track}
         trackHeight={trackHeight}
         setTracks={setTracks}
-        isSolo={isSolo}
-        setSoloTracks={setSoloTracks}
-        isMuted={isMuted}
-        setMutedTracks={setMutedTracks}
+        soloExists={soloExists}
+        solo={soloTrack.solo}
+        toggleTrackSolo={toggleTrackSolo}
+        volume={trackVol.volume}
+        muted={trackVol.muted}
+        setTrackVols={setTrackVols}
         isPlaying={isPlaying}
       />
     );
@@ -133,24 +91,12 @@ type TrackControlProps = {
   track: TrackType;
   trackHeight: number;
   setTracks: React.Dispatch<React.SetStateAction<TrackType[]>>;
-  isSolo: boolean;
-  setSoloTracks: React.Dispatch<
-    React.SetStateAction<
-      {
-        id: number;
-        isSolo: boolean;
-      }[]
-    >
-  >;
-  isMuted: boolean;
-  setMutedTracks: React.Dispatch<
-    React.SetStateAction<
-      {
-        id: number;
-        isMuted: boolean;
-      }[]
-    >
-  >;
+  soloExists: boolean;
+  solo: boolean;
+  toggleTrackSolo: (trackID: number) => void;
+  volume: number;
+  muted: boolean;
+  setTrackVols: React.Dispatch<React.SetStateAction<TrackVol[]>>;
   isPlaying: boolean;
 };
 
@@ -158,50 +104,42 @@ const TrackControl = ({
   track,
   trackHeight,
   setTracks,
-  isSolo,
-  setSoloTracks,
-  isMuted,
-  setMutedTracks,
+  soloExists,
+  solo,
+  toggleTrackSolo,
+  volume,
+  muted,
+  setTrackVols,
   isPlaying,
 }: TrackControlProps): JSX.Element => {
-  const [volume, setVolume] = useState(track.panVol.volume.value); // set these initials based on settings for each song (see Workspace component)
-  const [pan, setPan] = useState(0); // set these initials based on settings for each song (see Workspace component)
+  const [pan, setPan] = useState(track.panVol.pan.value * 8); // cleaner way?
   const [trackName, setTrackName] = useState(track.name);
   const [instrument, setInstrument] = useState(track.instrumentName);
   const [isGlobal, setIsGlobal] = useState(false);
 
   const handleMute = () => {
-    setMutedTracks((prevMutedTracks) => {
-      return prevMutedTracks.map((tr) => (tr.id === track.id ? { ...tr, isMuted: !tr.isMuted } : tr));
+    setTrackVols((prevTrackVols) => {
+      return prevTrackVols.map((tr) => (tr.id === track.id ? { ...tr, muted: !tr.muted } : tr));
     });
   };
-
-  const handleSolo = () => {
-    setSoloTracks((prevSoloTracks) => {
-      return prevSoloTracks.map((tr) => (tr.id === track.id ? { ...tr, isSolo: !tr.isSolo } : tr));
-    });
-  };
-
-  useEffect(() => {
-    // how come when I tried to do this in the Workspace component instead, it resulted in two nodes for each track where the controls only affected one?
-    track.instrument.chain(track.panVol, Tone.Destination);
-  }, []);
-
-  useEffect(() => {
-    if (!isSolo) track.panVol.mute = isMuted;
-  }, [isMuted]);
 
   // useEffect(() => {
   //   //  TODO: Implement using the shared state. Either tracks or another.
   // }, [isGlobal]);
 
   useEffect(() => {
-    track.panVol.volume.value = volume;
-  }, [volume]);
+    if (soloExists) {
+      // Unmute track's panVol if the track is soloed, mute it if it is not
+      track.panVol.volume.value = solo ? volume : -Infinity;
+    } else {
+      // No track is soloed. Unmute the track's panVol, unless the track has been manually muted in the UI.
+      track.panVol.volume.value = muted ? -Infinity : volume;
+    }
+  }, [volume, muted, solo, soloExists, track.panVol.volume]);
 
   useEffect(() => {
     track.panVol.pan.value = pan / 8;
-  }, [pan]);
+  }, [pan, track.panVol.pan]);
 
   useEffect(() => {
     if (track.instrumentName !== instrument) {
@@ -273,8 +211,18 @@ const TrackControl = ({
         min="-40"
         max="8"
         value={volume}
-        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setVolume(Number(e.target.value))}
-        onDoubleClick={() => setVolume(-16)}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+          setTrackVols((prevTrackVols) => {
+            return prevTrackVols.map((trackVol) =>
+              trackVol.id === track.id ? { ...trackVol, volume: Number(e.target.value) } : trackVol
+            );
+          })
+        }
+        onDoubleClick={() =>
+          setTrackVols((prevTrackVols) => {
+            return prevTrackVols.map((trackVol) => (trackVol.id === track.id ? { ...trackVol, volume: -16 } : trackVol));
+          })
+        }
       />
       <input
         className="pan-control"
@@ -287,13 +235,13 @@ const TrackControl = ({
       />
       <div className="track-control-btn-container">
         <label>
-          <input type="checkbox" className="track-control-chk" checked={isMuted} onChange={handleMute} />
+          <input type="checkbox" className="track-control-chk" checked={muted} onChange={handleMute} />
           <div className="mute-btn">
             <div className="track-control-btn-content mute-btn-text">M</div>
           </div>
         </label>
         <label>
-          <input type="checkbox" className="track-control-chk" checked={isSolo} onChange={handleSolo} />
+          <input type="checkbox" className="track-control-chk" checked={solo} onChange={() => toggleTrackSolo(track.id)} />
           <div className="solo-btn">
             <div className="track-control-btn-content solo-btn-text">S</div>
           </div>

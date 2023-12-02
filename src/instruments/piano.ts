@@ -72,7 +72,6 @@ import c8 from "../assets/samples/piano/piano-88.wav";
 
 // acoustic grand piano
 const piano: Partial<Tone.SamplerOptions> = {
-  volume: -3,
   release: 1,
   urls: {
     A0: a0,

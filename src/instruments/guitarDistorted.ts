@@ -16,7 +16,6 @@ import a5 from "../assets/samples/guitar-distorted/guitar-dist-a5.wav";
 
 // electric guitar (distortion)
 const guitarDistorted: Partial<Tone.SamplerOptions> = {
-  volume: -1,
   release: 1,
   urls: {
     e2: e2,

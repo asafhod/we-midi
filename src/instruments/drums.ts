@@ -19,7 +19,6 @@ import kick from "../assets/samples/drums/kick.wav";
 
 // drums - standard kit
 const drums: Partial<Tone.SamplerOptions> = {
-  volume: 8,
   release: 1,
   urls: {
     // Likely control notes of some kind. Haven't done these as of now. Implement?

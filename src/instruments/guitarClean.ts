@@ -43,7 +43,6 @@ import e5 from "../assets/samples/guitar-clean/guitar-clean-76.wav";
 
 // electric guitar (clean)
 const guitarClean: Partial<Tone.SamplerOptions> = {
-  volume: 0,
   release: 1,
   urls: {
     D2: d2,

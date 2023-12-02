@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import * as Tone from "tone";
 
 type playerProps = {
@@ -22,6 +22,7 @@ const Player = ({
   setAutoscrollBlocked,
   numMeasures,
 }: playerProps): JSX.Element => {
+  const posSamplerEventIDRef = useRef(-1);
   const posRoundedToSec: number = Math.round(playerPosition);
   const minute: number = Math.floor(posRoundedToSec / 60);
   const second: number = posRoundedToSec % 60;
@@ -56,12 +57,18 @@ const Player = ({
   if (isPlaying && measure > numMeasures) stop();
 
   useEffect(() => {
-    Tone.Transport.scheduleRepeat((time) => {
+    const eventID: number = Tone.Transport.scheduleRepeat((time) => {
       Tone.Draw.schedule(() => {
         if (Tone.Transport.state !== "stopped") setPlayerPosition(Math.max(Tone.Transport.seconds - 0.085, 0));
-      }, time); // offset is compromise between desktop and mobile
-    }, "32n");
-    // clear it in a cleanup function?
+      }, time); // 0.085 second offset is compromise between desktop and mobile latencies
+    }, "32n"); // TODO: Change for diff tempos?
+    posSamplerEventIDRef.current = eventID;
+
+    return () => {
+      // clear repeating setPlayerPosition event from transport in cleanup function
+      Tone.Transport.clear(posSamplerEventIDRef.current);
+      posSamplerEventIDRef.current = -1;
+    };
   }, [setPlayerPosition]);
 
   return (
