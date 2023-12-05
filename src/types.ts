@@ -26,23 +26,12 @@ export type TrackType = {
   maxNote: number;
 };
 
-export type TrackData = {
+export type TrackControlType = {
   id: number;
+  volume: number;
   muted: boolean;
   solo: boolean;
-  volume: number;
   pan: number;
-};
-
-export type TrackVol = {
-  id: number;
-  volume: number;
-  muted: boolean;
-};
-
-export type SoloTrack = {
-  id: number;
-  solo: boolean;
 };
 
 export type SongData = {

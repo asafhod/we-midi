@@ -9,7 +9,8 @@ function App() {
       <Router>
         <Routes>
           <Route index element={<ProjectsList />} />
-          <Route path="project/:id" element={<Workspace />} />
+          <Route path="/project" element={<Workspace />} />
+          <Route path="/project/:id" element={<Workspace />} />
         </Routes>
       </Router>
     </div>

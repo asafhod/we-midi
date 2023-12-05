@@ -1,17 +1,16 @@
 import { useRef } from "react";
 import * as Tone from "tone";
-import { TrackType, TrackVol, SoloTrack } from "./types";
+import { TrackType, TrackControlType } from "./types";
 import TrackControls from "./TrackControls";
 import InstrumentControls from "./InstrumentControls";
 
+// TODO: Can probably get rid of this component and put the functions directly in TrackControls again. Still persistent because of Workspace states.
 type EditorControlsProps = {
   tracks: TrackType[];
   setTracks: React.Dispatch<React.SetStateAction<TrackType[]>>;
   midiEditorTrack: TrackType | null | undefined;
-  trackVols: TrackVol[];
-  setTrackVols: React.Dispatch<React.SetStateAction<TrackVol[]>>;
-  soloTracks: SoloTrack[];
-  setSoloTracks: React.Dispatch<React.SetStateAction<SoloTrack[]>>;
+  trackControls: TrackControlType[];
+  setTrackControls: React.Dispatch<React.SetStateAction<TrackControlType[]>>;
   trackHeight: number;
   isPlaying: boolean;
 };
@@ -20,10 +19,8 @@ const EditorControls = ({
   tracks,
   setTracks,
   midiEditorTrack,
-  trackVols,
-  setTrackVols,
-  soloTracks,
-  setSoloTracks,
+  trackControls,
+  setTrackControls,
   trackHeight,
   isPlaying,
 }: EditorControlsProps): JSX.Element => {
@@ -51,11 +48,13 @@ const EditorControls = ({
     }
   };
 
-  //   useCallback?
+  //   TODO: Needed? ref needed? useCallback?
   const toggleTrackSolo = (trackID: number) => {
     soloChangedRef.current = true;
-    setSoloTracks((prevSoloTracks) => {
-      return prevSoloTracks.map((tr) => (tr.id === trackID ? { ...tr, solo: !tr.solo } : tr));
+    setTrackControls((prevTrackControls) => {
+      return prevTrackControls.map((trackControl) =>
+        trackControl.id === trackID ? { ...trackControl, solo: !trackControl.solo } : trackControl
+      );
     });
   };
 
@@ -98,9 +97,8 @@ const EditorControls = ({
         <TrackControls
           tracks={tracks}
           setTracks={setTracks}
-          trackVols={trackVols}
-          setTrackVols={setTrackVols}
-          soloTracks={soloTracks}
+          trackControls={trackControls}
+          setTrackControls={setTrackControls}
           toggleTrackSolo={toggleTrackSolo}
           removeTrack={removeTrack}
           trackHeight={trackHeight}

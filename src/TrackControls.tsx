@@ -1,17 +1,19 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import * as Tone from "tone";
-import { TrackVol, SoloTrack, TrackType, NoteType } from "./types";
+import { TrackControlType, TrackType, NoteType } from "./types";
 import createInstrument from "./instruments/createInstrument";
 import instrumentIcons from "./instruments/instrumentIcons";
 import { ReactComponent as GlobeIcon } from "./assets/icons/globe.svg";
 
+// TODO: Make sure the change from trackVols+soloTracks to trackControls didn't break anything, especially deps
+// TODO: Set up Pan so it uses trackControls
 // TODO: Make sure all the useEffects are safe, and streamline how you're handling trackData. Is the trackVol setting in TrackControl okay?
+
 type TrackControlsProps = {
   tracks: TrackType[];
   setTracks: React.Dispatch<React.SetStateAction<TrackType[]>>;
-  trackVols: TrackVol[];
-  setTrackVols: React.Dispatch<React.SetStateAction<TrackVol[]>>;
-  soloTracks: SoloTrack[];
+  trackControls: TrackControlType[];
+  setTrackControls: React.Dispatch<React.SetStateAction<TrackControlType[]>>;
   toggleTrackSolo: (trackID: number) => void;
   removeTrack: (trackID: number) => void;
   trackHeight: number;
@@ -21,9 +23,8 @@ type TrackControlsProps = {
 const TrackControls = ({
   tracks,
   setTracks,
-  trackVols,
-  setTrackVols,
-  soloTracks,
+  trackControls,
+  setTrackControls,
   toggleTrackSolo,
   removeTrack,
   trackHeight,
@@ -51,30 +52,29 @@ const TrackControls = ({
   };
 
   // TODO: Narrow down so only re-calcs specifically if a solo change occurs?
-  const soloExists: boolean = useMemo(() => soloTracks.some((track) => track.solo), [soloTracks]);
+  const soloExists: boolean = useMemo(() => trackControls.some((trackControl) => trackControl.solo), [trackControls]);
 
-  const trackControls: JSX.Element[] = [];
+  const trackControlComponents: JSX.Element[] = [];
 
+  // use trackControls here instead?
   for (const track of tracks) {
-    // use trackVols here instead?
     // efficient enough?
-    const trackVol: TrackVol | undefined = trackVols.find((tr) => tr.id === track.id);
-    const soloTrack: SoloTrack | undefined = soloTracks.find((tr) => tr.id === track.id);
+    const trackControl: TrackControlType | undefined = trackControls.find((trackControl) => trackControl.id === track.id);
 
-    if (!trackVol || !soloTrack) throw new Error("Invalid Track Control settings");
+    if (!trackControl) throw new Error("Invalid Track Control settings");
 
-    trackControls.push(
+    trackControlComponents.push(
       <TrackControl
         key={track.id}
         track={track}
         trackHeight={trackHeight}
         setTracks={setTracks}
         soloExists={soloExists}
-        solo={soloTrack.solo}
+        solo={trackControl.solo}
         toggleTrackSolo={toggleTrackSolo}
-        volume={trackVol.volume}
-        muted={trackVol.muted}
-        setTrackVols={setTrackVols}
+        volume={trackControl.volume}
+        muted={trackControl.muted}
+        setTrackControls={setTrackControls}
         isPlaying={isPlaying}
       />
     );
@@ -82,7 +82,7 @@ const TrackControls = ({
 
   return (
     <div className="track-controls" onContextMenu={(e) => handleRightClick(e)}>
-      {trackControls}
+      {trackControlComponents}
     </div>
   );
 };
@@ -96,7 +96,7 @@ type TrackControlProps = {
   toggleTrackSolo: (trackID: number) => void;
   volume: number;
   muted: boolean;
-  setTrackVols: React.Dispatch<React.SetStateAction<TrackVol[]>>;
+  setTrackControls: React.Dispatch<React.SetStateAction<TrackControlType[]>>;
   isPlaying: boolean;
 };
 
@@ -109,7 +109,7 @@ const TrackControl = ({
   toggleTrackSolo,
   volume,
   muted,
-  setTrackVols,
+  setTrackControls,
   isPlaying,
 }: TrackControlProps): JSX.Element => {
   const [pan, setPan] = useState(track.panVol.pan.value * 8); // cleaner way?
@@ -118,8 +118,10 @@ const TrackControl = ({
   const [isGlobal, setIsGlobal] = useState(false);
 
   const handleMute = () => {
-    setTrackVols((prevTrackVols) => {
-      return prevTrackVols.map((tr) => (tr.id === track.id ? { ...tr, muted: !tr.muted } : tr));
+    setTrackControls((prevTrackControls) => {
+      return prevTrackControls.map((trackControl) =>
+        trackControl.id === track.id ? { ...trackControl, muted: !trackControl.muted } : trackControl
+      );
     });
   };
 
@@ -128,12 +130,15 @@ const TrackControl = ({
   // }, [isGlobal]);
 
   useEffect(() => {
+    // if volume slider is at lowest value, adjust it to -Infinity so Tone can silence the track
+    const adjustedVolume: number = volume === -40 ? -Infinity : volume;
+
     if (soloExists) {
       // Unmute track's panVol if the track is soloed, mute it if it is not
-      track.panVol.volume.value = solo ? volume : -Infinity;
+      track.panVol.volume.value = solo ? adjustedVolume : -Infinity;
     } else {
       // No track is soloed. Unmute the track's panVol, unless the track has been manually muted in the UI.
-      track.panVol.volume.value = muted ? -Infinity : volume;
+      track.panVol.volume.value = muted ? -Infinity : adjustedVolume;
     }
   }, [volume, muted, solo, soloExists, track.panVol.volume]);
 
@@ -142,43 +147,53 @@ const TrackControl = ({
   }, [pan, track.panVol.pan]);
 
   useEffect(() => {
-    if (track.instrumentName !== instrument) {
-      track.instrument.dispose();
+    const changeInstrument = async () => {
+      if (track.instrumentName !== instrument) {
+        track.instrument.dispose();
 
-      const { instrument: newInstrument } = createInstrument(instrument);
-      newInstrument.chain(track.panVol);
+        const { instrument: newInstrument } = createInstrument(instrument);
+        newInstrument.chain(track.panVol);
 
-      const newNotes: NoteType[] = [];
+        await Tone.loaded();
 
-      for (const note of track.notes) {
-        const { id: noteID, name, midiNum, duration, noteTime, velocity } = note;
-        Tone.Transport.clear(noteID);
+        const newNotes: NoteType[] = [];
 
-        const newNoteID: number = Tone.Transport.schedule((time) => {
-          newInstrument.triggerAttackRelease(name, duration, time, velocity);
-        }, noteTime);
+        for (const note of track.notes) {
+          const { id: noteID, name, midiNum, duration, noteTime, velocity } = note;
+          Tone.Transport.clear(noteID);
 
-        const newNote: NoteType = { id: newNoteID, name, midiNum, duration, noteTime, velocity };
-        newNotes.push(newNote);
+          const newNoteID: number = Tone.Transport.schedule((time) => {
+            newInstrument.triggerAttackRelease(name, duration, time, velocity);
+          }, noteTime);
+
+          const newNote: NoteType = { id: newNoteID, name, midiNum, duration, noteTime, velocity };
+          newNotes.push(newNote);
+        }
+
+        const newTrack: TrackType = {
+          id: track.id,
+          name: track.name,
+          instrumentName: instrument,
+          instrument: newInstrument,
+          panVol: track.panVol, // dispose and make new panVol instead?
+          notes: newNotes,
+          minNote: track.minNote,
+          maxNote: track.maxNote,
+        };
+
+        setTracks((prevTracks) => {
+          const newTracks: TrackType[] = prevTracks.map((tr) => (tr.id === track.id ? newTrack : tr));
+          return newTracks;
+        });
       }
+    };
 
-      const newTrack: TrackType = {
-        id: track.id,
-        name: track.name,
-        instrumentName: instrument,
-        instrument: newInstrument,
-        panVol: track.panVol, // dispose and make new panVol instead?
-        notes: newNotes,
-        minNote: track.minNote,
-        maxNote: track.maxNote,
-      };
-
-      setTracks((prevTracks) => {
-        const newTracks: TrackType[] = prevTracks.map((tr) => (tr.id === track.id ? newTrack : tr));
-        return newTracks;
-      });
+    try {
+      changeInstrument();
+    } catch (error) {
+      console.error(error);
     }
-  }, [instrument]);
+  }, [instrument, track, setTracks]);
 
   useEffect(() => {
     // Will likely need to have a state on the component for the Track name, then only update the global name onBlur
@@ -192,13 +207,14 @@ const TrackControl = ({
         return newTracks;
       });
     }
-  }, [trackName]);
+  }, [trackName, track, setTracks]);
 
   return (
     <div className="track-control" data-trackid={track.id} style={{ height: trackHeight }}>
       <input
-        className="track-name"
         type="text"
+        name="track-name"
+        className="track-name"
         maxLength={15}
         value={trackName}
         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTrackName(e.target.value)}
@@ -206,25 +222,29 @@ const TrackControl = ({
       />
       <InstrumentSelect instrument={instrument} setInstrument={setInstrument} trackID={track.id} isPlaying={isPlaying} />
       <input
+        name="volume-fader"
         className="volume-fader"
         type="range"
         min="-40"
         max="8"
         value={volume}
         onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-          setTrackVols((prevTrackVols) => {
-            return prevTrackVols.map((trackVol) =>
-              trackVol.id === track.id ? { ...trackVol, volume: Number(e.target.value) } : trackVol
+          setTrackControls((prevTrackControls) => {
+            return prevTrackControls.map((trackControl) =>
+              trackControl.id === track.id ? { ...trackControl, volume: Number(e.target.value) } : trackControl
             );
           })
         }
         onDoubleClick={() =>
-          setTrackVols((prevTrackVols) => {
-            return prevTrackVols.map((trackVol) => (trackVol.id === track.id ? { ...trackVol, volume: -16 } : trackVol));
+          setTrackControls((prevTrackControls) => {
+            return prevTrackControls.map((trackControl) =>
+              trackControl.id === track.id ? { ...trackControl, volume: -16 } : trackControl
+            );
           })
         }
       />
       <input
+        name="pan-control"
         className="pan-control"
         type="range"
         min="-8"
@@ -235,21 +255,33 @@ const TrackControl = ({
       />
       <div className="track-control-btn-container">
         <label>
-          <input type="checkbox" className="track-control-chk" checked={muted} onChange={handleMute} />
+          <input type="checkbox" name="mute-chk" className="track-control-chk" checked={muted} onChange={handleMute} />
           <div className="mute-btn">
             <div className="track-control-btn-content mute-btn-text">M</div>
           </div>
         </label>
         <label>
-          <input type="checkbox" className="track-control-chk" checked={solo} onChange={() => toggleTrackSolo(track.id)} />
+          <input
+            type="checkbox"
+            name="solo-chk"
+            className="track-control-chk"
+            checked={solo}
+            onChange={() => toggleTrackSolo(track.id)}
+          />
           <div className="solo-btn">
             <div className="track-control-btn-content solo-btn-text">S</div>
           </div>
         </label>
         <label>
-          <input type="checkbox" className="track-control-chk" checked={isGlobal} onChange={() => setIsGlobal(!isGlobal)} />
-          <div className="global-btn">
-            <GlobeIcon className="global-btn-icon" width="16" height="16" />
+          <input
+            type="checkbox"
+            name="global-revert-btn"
+            className="track-control-chk"
+            checked={isGlobal}
+            onChange={() => setIsGlobal(!isGlobal)}
+          />
+          <div className="global-revert-btn">
+            <GlobeIcon className="global-revert-btn-icon" width="16" height="16" />
           </div>
         </label>
       </div>
@@ -268,25 +300,25 @@ const InstrumentSelect = ({ instrument, setInstrument, trackID, isPlaying }: Ins
   const [isSelecting, setIsSelecting] = useState(false);
   const initialClick = useRef(false);
 
-  const handleClick = (e: MouseEvent) => {
-    if (initialClick.current) {
-      initialClick.current = false;
-      return;
-    }
-
-    const selectedElement = e.target as HTMLElement;
-
-    if (selectedElement.classList.contains("instrument-select")) {
-      return;
-    } else if (selectedElement.classList.contains("instrument-option") && Number(selectedElement.dataset.trackid) === trackID) {
-      const instrumentName: string | undefined = selectedElement.dataset.instrument;
-      if (instrumentName) setInstrument(instrumentName);
-    }
-
-    setIsSelecting(false);
-  };
-
   useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (initialClick.current) {
+        initialClick.current = false;
+        return;
+      }
+
+      const selectedElement = e.target as HTMLElement;
+
+      if (selectedElement.classList.contains("instrument-select")) {
+        return;
+      } else if (selectedElement.classList.contains("instrument-option") && Number(selectedElement.dataset.trackid) === trackID) {
+        const instrumentName: string | undefined = selectedElement.dataset.instrument;
+        if (instrumentName) setInstrument(instrumentName);
+      }
+
+      setIsSelecting(false);
+    };
+
     if (isSelecting) {
       initialClick.current = true;
       document.addEventListener("click", handleClick);
@@ -298,7 +330,7 @@ const InstrumentSelect = ({ instrument, setInstrument, trackID, isPlaying }: Ins
     return () => {
       document.removeEventListener("click", handleClick);
     };
-  }, [isSelecting]);
+  }, [isSelecting, trackID, setInstrument]);
 
   return (
     <>

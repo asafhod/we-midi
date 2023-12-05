@@ -19,31 +19,38 @@ const EditorControlsHeader = ({
 }: EditorControlsHeaderProps): JSX.Element => {
   const maxTracks: number = 100;
 
-  const addTrack = () => {
-    // TODO: Also chain the instrument to the panVol and add it to the other tracks list(s)
-    if (tracks.length >= maxTracks) {
-      alert(`The maximum amount of tracks is ${maxTracks}.`);
-    } else {
-      const { instrument, instrumentName } = createInstrument("piano");
-      const panVol: Tone.PanVol = new Tone.PanVol(0, instrument.volume.value); //later, change vol to -16 and have track vols/pans saved for each song
+  const addTrack = async () => {
+    try {
+      // TODO: Also chain the instrument to the panVol and add it to the other tracks list(s)
+      if (tracks.length >= maxTracks) {
+        alert(`The maximum amount of tracks is ${maxTracks}.`);
+      } else {
+        const { instrument, instrumentName } = createInstrument("piano");
+        const panVol: Tone.PanVol = new Tone.PanVol(0, instrument.volume.value); //later, change vol to -16 and have track vols/pans saved for each song
+        // chain
+        await Tone.loaded();
 
-      const newTrackID: number = songData.lastTrackID + 1;
+        const newTrackID: number = songData.lastTrackID + 1;
 
-      const newTrack: TrackType = {
-        id: newTrackID,
-        name: `Track ${newTrackID}`,
-        instrumentName,
-        instrument,
-        panVol,
-        notes: [],
-        minNote: 128,
-        maxNote: -1,
-      };
+        const newTrack: TrackType = {
+          id: newTrackID,
+          name: `Track ${newTrackID}`,
+          instrumentName,
+          instrument,
+          panVol,
+          notes: [],
+          minNote: 128,
+          maxNote: -1,
+        };
 
-      setTracks([...tracks, newTrack]);
-      setSongData({ ...songData, lastTrackID: newTrackID });
+        setTracks([...tracks, newTrack]);
+        setSongData({ ...songData, lastTrackID: newTrackID });
 
-      // TODO: Logic somewhere to scroll to the end after the new track is added
+        // TODO: Logic somewhere to scroll to the end after the new track is added
+      }
+    } catch (error) {
+      console.log(error);
+      // TODO: Dispose of instrument and panVol?
     }
   };
 

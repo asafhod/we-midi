@@ -7,6 +7,7 @@ type TrackEditorProps = {
   totalWidth: number;
   widthFactor: number;
   setNextMidiEditorTrackID: React.Dispatch<React.SetStateAction<number>>;
+  setMidiFile: React.Dispatch<React.SetStateAction<File | null>>;
 };
 
 const TrackEditor = ({ tracks, trackHeight, totalWidth, widthFactor, setNextMidiEditorTrackID }: TrackEditorProps): JSX.Element => {

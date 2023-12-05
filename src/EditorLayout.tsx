@@ -299,7 +299,7 @@ const EditorLayout = ({
 
       setTrackViewSettings(newTrackViewSettings);
     }
-  }, [sizeV]);
+  }, [sizeV]); // TODO: Would using a ref for the midiEditorTrackID handshake help at all?
 
   useEffect(() => {
     if (contentVRef.current) {

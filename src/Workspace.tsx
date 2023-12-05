@@ -1,10 +1,9 @@
 import * as Tone from "tone";
-import { Midi as MidiLoad, MidiJSON, TrackJSON } from "@tonejs/midi";
-import { useState, useEffect, useLayoutEffect, useCallback, useMemo } from "react";
+import { useState, useLayoutEffect, useCallback, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import TracksContext from "./TracksContext";
-import { SongData, TrackData, TrackVol, SoloTrack, TrackType, NoteType } from "./types";
-import createInstrument from "./instruments/createInstrument";
+import { TrackType, NoteType } from "./types";
+import useLoadSong from "./useLoadSong";
 import Player from "./Player";
 import EditorLayout from "./EditorLayout";
 import Ruler from "./Ruler";
@@ -13,17 +12,10 @@ import TrackEditor from "./TrackEditor";
 import EditorControlsHeader from "./EditorControlsHeader";
 import EditorControls from "./EditorControls";
 import MidiEditor from "./MidiEditor";
-import midiURL from "./assets/MIDI_sample.mid"; // Get rid of this later
-import midiURL2 from "./assets/teddybear.mid"; // Get rid of this later
+import MidiUploader from "./MidiUploader";
 
 const Workspace = (): JSX.Element => {
   const { id } = useParams();
-  const [loading, setLoading] = useState(true);
-  // TODO: If you keep trackIDs, trackVols, and soloTracks, account for them when adding/removing tracks
-  const [songData, setSongData] = useState<SongData>({ tempo: -1, lastTrackID: 0, trackIDs: [] }); // TODO: Split into Global and Local
-  const [tracks, setTracks] = useState<TrackType[]>([]); // TODO: make sure you're getting tracks consistently across components
-  const [trackVols, setTrackVols] = useState<TrackVol[]>([]);
-  const [soloTracks, setSoloTracks] = useState<SoloTrack[]>([]);
   const [isPlaying, setIsPlaying] = useState(false);
   const [startPosition, setStartPosition] = useState(0);
   const [playerPosition, setPlayerPosition] = useState(0);
@@ -31,8 +23,11 @@ const Workspace = (): JSX.Element => {
   const [midiEditorTrackID, setMidiEditorTrackID] = useState(0);
   const [nextMidiEditorTrackID, setNextMidiEditorTrackID] = useState(0);
   const [zoom, setZoom] = useState(1);
-  const [tempo, setTempo] = useState(String(songData.tempo));
   const [trackHeight, setTrackHeight] = useState(78);
+  const [midiFile, setMidiFile] = useState<File | null>(null);
+  // TODO: Get track reordering working with songData's trackIDs or whichever way is best. Index Map? Map instead of tracks Array? Re-order tracks directly?
+  const { loading, setLoading, songData, setSongData, tracks, setTracks, trackControls, setTrackControls, tempo, setTempo } =
+    useLoadSong(id, midiFile, setMidiFile);
 
   const zoomFactor: number = 1.21; // Fine-tune the Min, Max, and thresholds?
   const zoomMin: number = 0.104; // TODO: Limit so can't be smaller than screen size
@@ -42,7 +37,7 @@ const Workspace = (): JSX.Element => {
   const trackHeightMin: number = 30;
   const trackHeightMax: number = 200;
 
-  const allTracksHeight: number = tracks.length * trackHeight || 1;
+  const allTracksHeight: number = tracks.length * trackHeight || 100;
   const widthFactor: number = (zoom * 4609.44) / songData.tempo;
   const segmentIsBeat: boolean = zoom > 2.644;
 
@@ -180,131 +175,9 @@ const Workspace = (): JSX.Element => {
     }
   };
 
-  // TODO: Move to custom hook for modularity (useLoadMidi)
-  useEffect(() => {
-    // TODO: Fix so it more elegantly checks whether it's a normally saved song, one where tracks have been removed (if needed), or a midi import which has not yet been saved
-    const loadMidi = async (midiURL: string) => {
-      const url = id === "1" ? midiURL : midiURL2;
-
-      const midi: MidiJSON = await MidiLoad.fromUrl(url);
-      if (!midi || !Object.keys(midi).length) throw new Error("Cannot schedule notes: Invalid MIDI file");
-
-      console.log(midi);
-
-      // TODO: Retrieve song data from database (with these as the defaults)
-      // const tracksData: TrackData[] = [];
-      // Test Data
-      const tracksData: TrackData[] = [
-        { id: 1, muted: false, solo: false, volume: -1, pan: 0 },
-        { id: 2, muted: false, solo: false, volume: -3, pan: 0 },
-        { id: 3, muted: false, solo: false, volume: 8, pan: 0 },
-        { id: 4, muted: false, solo: false, volume: 8, pan: 0 },
-        { id: 5, muted: false, solo: false, volume: -3, pan: 0 },
-        { id: 6, muted: false, solo: false, volume: 0, pan: 0 },
-      ];
-      let lastTrackID: number = 0;
-
-      await Tone.start();
-
-      Tone.Transport.PPQ = midi.header.ppq;
-      Tone.Transport.bpm.value = midi.header.tempos[0].bpm;
-
-      const tracks: TrackType[] = [];
-      const trackIDs: number[] = [];
-      const trackVols: TrackVol[] = [];
-      const soloTracks: SoloTrack[] = [];
-
-      for (let i = 1; i < midi.tracks.length; i++) {
-        const track: TrackJSON = midi.tracks[i];
-        const trackData: TrackData = tracksData[i - 1];
-        const trackID: number = trackData ? trackData.id : i;
-        const trackVolume: number = trackData ? trackData.volume : -16;
-        const trackPan: number = trackData ? trackData.pan : 0;
-        const muted: boolean = trackData ? trackData.muted : false;
-        const solo: boolean = trackData ? trackData.solo : false;
-
-        const { instrument, instrumentName } = createInstrument(track.instrument.family, track.instrument.number);
-        const panVol: Tone.PanVol = new Tone.PanVol(trackPan, trackVolume);
-        instrument.chain(panVol, Tone.Destination);
-
-        await Tone.loaded();
-
-        const notes: NoteType[] = [];
-        let minNote: number = 128;
-        let maxNote: number = -1;
-
-        for (const { name, midi: midiNum, duration, time: noteTime, velocity } of track.notes) {
-          const noteID: number = Tone.Transport.schedule((time) => {
-            instrument.triggerAttackRelease(name, duration, time, velocity);
-          }, noteTime);
-
-          notes.push({ id: noteID, name, midiNum, duration, noteTime, velocity });
-
-          minNote = Math.min(minNote, midiNum);
-          maxNote = Math.max(maxNote, midiNum);
-        }
-
-        trackIDs.push(trackID);
-        // Combine probably
-        trackVols.push({ id: trackID, volume: trackVolume, muted });
-        soloTracks.push({ id: trackID, solo });
-
-        if (!lastTrackID && i === midi.tracks.length - 1) lastTrackID = i;
-
-        tracks.push({
-          id: trackID,
-          name: track.name || `Track ${i}`,
-          instrumentName,
-          instrument,
-          panVol,
-          notes,
-          minNote,
-          maxNote,
-        });
-      }
-
-      setTempo(String(Tone.Transport.bpm.value));
-      setSongData({ tempo: Tone.Transport.bpm.value, lastTrackID, trackIDs });
-      setTrackVols(trackVols);
-      setSoloTracks(soloTracks);
-      setTracks((currTracks) => {
-        for (const track of currTracks) {
-          for (const note of track.notes) {
-            Tone.Transport.clear(note.id);
-          }
-
-          track.panVol.dispose();
-          track.instrument.dispose();
-        }
-
-        return tracks;
-      });
-      setLoading(false);
-    };
-
-    try {
-      loadMidi(midiURL);
-    } catch (error) {
-      console.error(error);
-    }
-
-    return () => {
-      Tone.Transport.stop();
-      Tone.Transport.cancel();
-
-      setTracks((currTracks) => {
-        for (const track of currTracks) {
-          track.panVol.dispose();
-          track.instrument.dispose();
-        }
-
-        return [];
-      });
-    };
-  }, [id]);
-
   useLayoutEffect(() => {
     // TODO: Correct zoom settings for other tempos
+
     // prevents from running unnecessarily
     if (songData.tempo !== -1 && songData.tempo !== Tone.Transport.bpm.value) {
       const tempoConversionFactor: number = Tone.Transport.bpm.value / songData.tempo;
@@ -341,7 +214,7 @@ const Workspace = (): JSX.Element => {
       changePlayerPosition(playerPosition * tempoConversionFactor);
       changeStartPosition(startPosition * tempoConversionFactor);
     }
-  }, [songData, playerPosition, changePlayerPosition, startPosition, changeStartPosition, tracks]);
+  }, [songData, playerPosition, changePlayerPosition, startPosition, changeStartPosition, tracks, setTracks]);
 
   return (
     <TracksContext.Provider value={{ tracks, setTracks }}>
@@ -369,6 +242,7 @@ const Workspace = (): JSX.Element => {
                 {"Tempo: "}
                 <input
                   type="text"
+                  name="tempo-input"
                   className="tempo-input"
                   maxLength={3}
                   value={tempo}
@@ -437,10 +311,8 @@ const Workspace = (): JSX.Element => {
                 tracks={tracks}
                 setTracks={setTracks}
                 midiEditorTrack={midiEditorTrack}
-                trackVols={trackVols}
-                setTrackVols={setTrackVols}
-                soloTracks={soloTracks}
-                setSoloTracks={setSoloTracks}
+                trackControls={trackControls}
+                setTrackControls={setTrackControls}
                 trackHeight={trackHeight}
                 isPlaying={isPlaying}
               />
@@ -454,27 +326,37 @@ const Workspace = (): JSX.Element => {
                 totalWidth={totalWidth}
                 onClick={(e) => clickChangePosition(e, true)}
               />
-              <Grid
-                totalHeight={midiEditorTrack ? midiEditorHeight : allTracksHeight}
-                totalWidth={totalWidth}
-                zoom={zoom}
-                gridPatternWidth={gridPatternWidth}
-                divisions={divisions}
-                editingMidi={Boolean(midiEditorTrack)}
-                onClick={clickChangePosition}
-              >
-                {midiEditorTrack ? (
-                  <MidiEditor track={midiEditorTrack} setTracks={setTracks} widthFactor={widthFactor} startPosition={startPosition} />
-                ) : (
-                  <TrackEditor
-                    tracks={tracks}
-                    trackHeight={trackHeight}
-                    totalWidth={totalWidth}
-                    widthFactor={widthFactor}
-                    setNextMidiEditorTrackID={setNextMidiEditorTrackID}
-                  />
-                )}
-              </Grid>
+              {tracks.length ? (
+                <Grid
+                  totalHeight={midiEditorTrack ? midiEditorHeight : allTracksHeight}
+                  totalWidth={totalWidth}
+                  zoom={zoom}
+                  gridPatternWidth={gridPatternWidth}
+                  divisions={divisions}
+                  editingMidi={Boolean(midiEditorTrack)}
+                  onClick={clickChangePosition}
+                >
+                  {midiEditorTrack ? (
+                    <MidiEditor
+                      track={midiEditorTrack}
+                      setTracks={setTracks}
+                      widthFactor={widthFactor}
+                      startPosition={startPosition}
+                    />
+                  ) : (
+                    <TrackEditor
+                      tracks={tracks}
+                      trackHeight={trackHeight}
+                      totalWidth={totalWidth}
+                      widthFactor={widthFactor}
+                      setNextMidiEditorTrackID={setNextMidiEditorTrackID}
+                      setMidiFile={setMidiFile}
+                    />
+                  )}
+                </Grid>
+              ) : (
+                <MidiUploader setMidiFile={setMidiFile} setLoading={setLoading} />
+              )}
             </EditorLayout>
           </>
         )}

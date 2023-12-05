@@ -184,7 +184,7 @@
 
 .mute-btn,
 .solo-btn,
-.global-btn {
+.global-revert-btn {
   font-family: monospace;
   display: inline-block;
   position: relative;
@@ -212,7 +212,7 @@
   color: yellow;
 }
 
-.global-btn-icon {
+.global-revert-btn-icon {
   position: absolute;
   top: 1px;
   left: 1px;
@@ -229,7 +229,7 @@
   background-color: rgb(231, 195, 17);
 }
 
-.track-control-chk:checked + .global-btn {
+.track-control-chk:checked + .global-revert-btn {
   background-color: rgb(95, 6, 95);
 }
 
@@ -238,7 +238,7 @@
   color: white;
 }
 
-.track-control-chk:checked + .global-btn .global-btn-icon {
+.track-control-chk:checked + .global-revert-btn .global-revert-btn-icon {
   stroke: white;
   fill: white;
 }
@@ -281,7 +281,6 @@
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: none;
-  background-color: #181d20; /* move to track-editor when you make it */
   position: relative;
 }
 
@@ -337,6 +336,7 @@
   width: 100%;
   border-bottom: 1px solid black;
   position: relative;
+  background-color: #181d20;
 }
 
 .track-editor {
