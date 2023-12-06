@@ -56,6 +56,7 @@ const EditorLayout = ({
   const prevSizeHRef = useRef(sizeH);
   const prevContentFullSizeHRef = useRef(contentFullSizeH);
   const prevZoomRef = useRef(zoom);
+  const prevMidiEditorTrackIDRef = useRef(midiEditorTrackID);
 
   // TODO: Fix ratio issue between sizeV and contentFullSizeV (currently removed the +35 on the prop)
   // Appears to slightly affect page amount for vertical click scrolling (anything else?)
@@ -283,23 +284,34 @@ const EditorLayout = ({
   };
 
   useEffect(() => {
-    if (sizeV && trackViewSettings.length === 1) {
-      const defaultTrackZoom: number = 4.717;
-      const newTrackViewSettings: TrackViewSetting[] = [...trackViewSettings];
+    if (sizeV && tracks.length !== trackViewSettings.length - 1) {
+      let newTrackViewSettings: TrackViewSetting[];
 
-      for (const track of tracks) {
-        const { id, minNote, maxNote } = track;
+      if (tracks.length > trackViewSettings.length - 1) {
+        const defaultTrackZoom: number = 4.717;
 
-        // TODO: Use constants for these (Keep them consistent across app. Globals? Props? Google/ChatGPT where to put them.)
-        const scrollPos: number = minNote >= 0 ? ((87 - ((minNote + maxNote) / 2 - 21)) / 87) * 2112 : 1056;
-        const centeredScrollPos: number = scrollPos - sizeV / 2;
+        newTrackViewSettings = [...trackViewSettings];
 
-        newTrackViewSettings.push({ trackID: id, scrollPos: centeredScrollPos, zoom: defaultTrackZoom });
+        for (const track of tracks) {
+          if (!trackViewSettings.find((trackViewSetting) => trackViewSetting.trackID === track.id)) {
+            const { id, minNote, maxNote } = track;
+
+            // TODO: Use constants for these (Keep them consistent across app. Globals? Props? Google/ChatGPT where to put them.)
+            const scrollPos: number = minNote >= 0 ? ((87 - ((minNote + maxNote) / 2 - 21)) / 87) * 2112 : 1056;
+            const centeredScrollPos: number = scrollPos - sizeV / 2;
+
+            newTrackViewSettings.push({ trackID: id, scrollPos: centeredScrollPos, zoom: defaultTrackZoom });
+          }
+        }
+      } else {
+        newTrackViewSettings = trackViewSettings.filter(
+          (trackViewSetting) => tracks.find((track) => track.id === trackViewSetting.trackID) || trackViewSetting.trackID === 0
+        );
       }
 
       setTrackViewSettings(newTrackViewSettings);
     }
-  }, [sizeV]); // TODO: Would using a ref for the midiEditorTrackID handshake help at all?
+  }, [sizeV, tracks, trackViewSettings]);
 
   useEffect(() => {
     if (contentVRef.current) {
@@ -366,7 +378,7 @@ const EditorLayout = ({
         if (trackViewSetting.trackID === midiEditorTrackID) {
           return { trackID: midiEditorTrackID, scrollPos: currScrollPos, zoom };
         } else {
-          // TODO: Does using original object reference like this cause a memory leak? Need deep copy instead?
+          // TODO: Does using original object reference like this cause a memory leak? Need deep copy instead? Or does garbage collector handle it?
           return trackViewSetting;
         }
       });
@@ -374,10 +386,12 @@ const EditorLayout = ({
       setMidiEditorTrackID(nextMidiEditorTrackID);
       setTrackViewSettings(newTrackViewSettings);
     }
-  }, [nextMidiEditorTrackID, setMidiEditorTrackID, zoom]);
+  }, [nextMidiEditorTrackID, setMidiEditorTrackID, midiEditorTrackID, trackViewSettings, zoom]);
 
   useLayoutEffect(() => {
-    if (contentVRef.current) {
+    if (midiEditorTrackID !== prevMidiEditorTrackIDRef.current && contentVRef.current) {
+      prevMidiEditorTrackIDRef.current = midiEditorTrackID;
+
       // find track view settings for the current MIDI Editor track (or for the Track Editor)
       const currTrackViewSetting: TrackViewSetting | undefined = trackViewSettings.find(
         (trackViewSetting) => trackViewSetting.trackID === midiEditorTrackID
@@ -391,7 +405,7 @@ const EditorLayout = ({
         setZoom(currTrackViewSetting.zoom);
       }
     }
-  }, [midiEditorTrackID, setZoom]);
+  }, [midiEditorTrackID, trackViewSettings, setZoom]);
 
   return (
     <>
