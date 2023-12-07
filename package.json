@@ -1,6 +1,7 @@
 {
-  "name": "we-midi",
+  "name": "we-midi-client",
   "version": "0.1.0",
+  "description": "Frontend for the We-Midi application",
   "private": true,
   "dependencies": {
     "@testing-library/jest-dom": "^5.17.0",
