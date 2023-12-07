@@ -1,0 +1,29 @@
+{
+  "name": "we-midi",
+  "version": "0.1.0",
+  "description": "Collaborative MIDI editor application",
+  "scripts": {
+    "start": "concurrently \"npm run start:client\" \"npm run start:server\"",
+    "start:client": "cd client && npm start",
+    "start:server": "cd server && npm start",
+    "build": "concurrently \"npm run build:client\" \"npm run build:server\"",
+    "build:client": "cd client && npm run build",
+    "build:server": "cd server && npm run build",
+    "dev": "concurrently \"npm run dev:client\" \"npm run dev:server\"",
+    "dev:client": "cd client && npm start",
+    "dev:server": "cd server && npm run dev"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/asafhod/we-midi.git"
+  },
+  "author": "Asaf Hod",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/asafhod/we-midi/issues"
+  },
+  "homepage": "https://github.com/asafhod/we-midi#readme",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

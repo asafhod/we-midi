@@ -30,6 +30,8 @@
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
+  "author": "Asaf Hod",
+  "license": "ISC",
   "eslintConfig": {
     "extends": [
       "react-app",
