@@ -1,3 +1,4 @@
+import { useLayoutEffect } from "react";
 import { TrackType } from "./types";
 import Track from "./Track";
 
@@ -8,9 +9,17 @@ type TrackEditorProps = {
   widthFactor: number;
   setNextMidiEditorTrackID: React.Dispatch<React.SetStateAction<number>>;
   setMidiFile: React.Dispatch<React.SetStateAction<File | null>>;
+  setAutoscrollBlocked: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
-const TrackEditor = ({ tracks, trackHeight, totalWidth, widthFactor, setNextMidiEditorTrackID }: TrackEditorProps): JSX.Element => {
+const TrackEditor = ({
+  tracks,
+  trackHeight,
+  totalWidth,
+  widthFactor,
+  setNextMidiEditorTrackID,
+  setAutoscrollBlocked,
+}: TrackEditorProps): JSX.Element => {
   // Figure out exactly how to set up the Track components. Redux/ContextAPI may help clarify.
   //   How to prevent all tracks from re-rendering when a single track is edited (none are added/removed)
 
@@ -28,6 +37,10 @@ const TrackEditor = ({ tracks, trackHeight, totalWidth, widthFactor, setNextMidi
       />
     );
   }
+
+  useLayoutEffect(() => {
+    setAutoscrollBlocked(false);
+  }, [setAutoscrollBlocked]);
 
   return <div className="track-editor">{trackComponents}</div>;
 };

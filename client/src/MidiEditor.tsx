@@ -1,3 +1,4 @@
+import { useLayoutEffect } from "react";
 import * as Tone from "tone";
 import { TrackType, NoteType } from "./types";
 import { noteNames } from "./noteNames";
@@ -7,9 +8,10 @@ type MidiEditorProps = {
   setTracks: React.Dispatch<React.SetStateAction<TrackType[]>>;
   widthFactor: number;
   startPosition: number;
+  setAutoscrollBlocked: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
-const MidiEditor = ({ track, setTracks, widthFactor, startPosition }: MidiEditorProps): JSX.Element => {
+const MidiEditor = ({ track, setTracks, widthFactor, startPosition, setAutoscrollBlocked }: MidiEditorProps): JSX.Element => {
   const notes: JSX.Element[] = [];
 
   if (track.notes.length) {
@@ -79,6 +81,10 @@ const MidiEditor = ({ track, setTracks, widthFactor, startPosition }: MidiEditor
       addNote(noteNames[noteNum], noteNum + 21, 0.25, startPosition, 0.6);
     }
   };
+
+  useLayoutEffect(() => {
+    setAutoscrollBlocked(false);
+  }, [setAutoscrollBlocked]);
 
   return (
     <div className="midi-editor" onDoubleClick={(e) => addRemoveNote(e)}>

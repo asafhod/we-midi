@@ -342,6 +342,7 @@ const Workspace = (): JSX.Element => {
                       setTracks={setTracks}
                       widthFactor={widthFactor}
                       startPosition={startPosition}
+                      setAutoscrollBlocked={setAutoscrollBlocked}
                     />
                   ) : (
                     <TrackEditor
@@ -351,6 +352,7 @@ const Workspace = (): JSX.Element => {
                       widthFactor={widthFactor}
                       setNextMidiEditorTrackID={setNextMidiEditorTrackID}
                       setMidiFile={setMidiFile}
+                      setAutoscrollBlocked={setAutoscrollBlocked}
                     />
                   )}
                 </Grid>
