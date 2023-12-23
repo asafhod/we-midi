@@ -5,8 +5,28 @@ import * as dotenv from "dotenv";
 // initialize environment variables
 dotenv.config();
 
+// import routers
+import usersRouter from "./routes/users";
+import projectsRouter from "./routes/projects";
+
+// import middleware
+import errorHandler from "./middleware/errorHandler";
+import routeNotFound from "./middleware/routeNotFound";
+
+// initialize Express
 const app = express();
-const port = process.env.PORT || 5000;
+
+// middleware
+app.use(express.static("public"));
+app.use(express.json());
+
+// routes
+app.use("/users");
+app.use("/projects");
+app.use(routeNotFound);
+
+// error handler
+app.use(errorHandler);
 
 // @ts-ignore Currently not using req
 app.get("/", (req: Request, res: Response) => {
@@ -19,6 +39,9 @@ if (!mongoDbURI) {
   console.error("Could not connect to database. The environment variable MONGODB_URI is not defined.");
   process.exit(1);
 }
+
+// get port on server from environment variable
+const port: string | undefined = process.env.PORT || "5000";
 
 // connect to database
 mongoose

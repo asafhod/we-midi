@@ -1,8 +1,8 @@
-import mongoose, { Document, Schema } from "mongoose";
+import mongoose, { Document, Schema, Types } from "mongoose";
 
 // define Project interface
 interface IProject extends Document {
-  id: string; // TODO: Change to _id and ObjectId("[the-id]")?
+  _id: Types.ObjectId;
   name: string;
   midiFile: {
     data: Buffer;
@@ -16,14 +16,14 @@ interface IProject extends Document {
 
 // database schema for Project
 const projectSchema = new Schema<IProject>({
-  id: {
-    type: String,
-    required: [true, "Required field"],
+  _id: {
+    type: Schema.Types.ObjectId,
+    required: [true, "_id is required"],
     unique: true,
   },
   name: {
     type: String,
-    required: [true, "Required field"],
+    required: [true, "Name is required"],
   },
   midiFile: {
     type: {

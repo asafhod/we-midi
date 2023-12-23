@@ -1,10 +1,10 @@
-import mongoose, { Document, Schema } from "mongoose";
+import mongoose, { Document, Schema, Types } from "mongoose";
 
 // define UserProject interface
 interface IUserProject extends Document {
-  id: string; // TODO: Change to _id and ObjectId("[the-id]")?
-  userID: string; // TODO: Change to _id and ObjectId("[the-id]")?
-  projectID: string; // TODO: Change to _id and ObjectId("[the-id]")?
+  _id: Types.ObjectId;
+  userID: string;
+  projectID: Types.ObjectId;
   admin: boolean;
   trackControls: {
     trackID: number;
@@ -17,18 +17,18 @@ interface IUserProject extends Document {
 
 // database schema for UserProject
 const userProjectSchema = new Schema<IUserProject>({
-  id: {
-    type: String,
-    required: [true, "Required field"],
+  _id: {
+    type: Schema.Types.ObjectId,
+    required: [true, "_id is required"],
     unique: true,
   },
   userID: {
     type: String,
-    required: [true, "Required field"],
+    required: [true, "UserID is required"],
   },
   projectID: {
-    type: String,
-    required: [true, "Required field"],
+    type: Schema.Types.ObjectId,
+    required: [true, "ProjectID is required"],
   },
   admin: { type: Boolean, default: false },
   trackControls: {
@@ -36,7 +36,7 @@ const userProjectSchema = new Schema<IUserProject>({
       {
         trackID: {
           type: Number,
-          required: [true, "Required field"],
+          required: [true, "TrackID is required"],
           unique: true,
         },
         volume: { type: Number, default: -16 },
