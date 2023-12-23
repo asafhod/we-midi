@@ -14,7 +14,11 @@ import EditorControls from "./EditorControls";
 import MidiEditor from "./MidiEditor";
 import MidiUploader from "./MidiUploader";
 
-const Workspace = (): JSX.Element => {
+type WorkspaceProps = {
+  userID: string | undefined;
+};
+
+const Workspace = ({ userID }: WorkspaceProps): JSX.Element => {
   const { id } = useParams();
   const [isPlaying, setIsPlaying] = useState(false);
   const [startPosition, setStartPosition] = useState(0);
@@ -27,7 +31,7 @@ const Workspace = (): JSX.Element => {
   const [midiFile, setMidiFile] = useState<File | null>(null);
   // TODO: Get track reordering working with songData's trackIDs or whichever way is best. Index Map? Map instead of tracks Array? Re-order tracks directly?
   const { loading, setLoading, songData, setSongData, tracks, setTracks, trackControls, setTrackControls, tempo, setTempo } =
-    useLoadSong(id, midiFile, setMidiFile);
+    useLoadSong(userID, id, midiFile, setMidiFile);
 
   const zoomFactor: number = 1.21; // Fine-tune the Min, Max, and thresholds?
   const zoomMin: number = 0.104; // TODO: Limit so can't be smaller than screen size
@@ -223,7 +227,7 @@ const Workspace = (): JSX.Element => {
           <p>Loading...</p>
         ) : (
           <>
-            <a href="/">Home</a>
+            <a href="/dashboard">Projects</a>
             <div className="controls-bar">
               <button type="button" className="beginning-button" onClick={toBeginning}>
                 {"<<"}

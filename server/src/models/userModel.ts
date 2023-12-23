@@ -4,6 +4,7 @@ import mongoose, { Document, Schema } from "mongoose";
 
 // define User interface
 interface IUser extends Document {
+  id: string; // TODO: Change to _id and ObjectId("[the-id]")?
   username: string;
   password: string;
   admin: boolean;
@@ -11,6 +12,11 @@ interface IUser extends Document {
 
 // database schema for User
 const userSchema = new Schema<IUser>({
+  id: {
+    type: String,
+    required: [true, "Required field"],
+    unique: true,
+  },
   username: { type: String, required: true, unique: true, minLength: 5, maxlength: 25 },
   password: { type: String, required: true },
   admin: { type: Boolean, default: false },

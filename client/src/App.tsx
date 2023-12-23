@@ -1,16 +1,16 @@
 import "./App.css";
+import "@aws-amplify/ui-react/styles.css";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import ProjectsList from "./ProjectsList";
-import Workspace from "./Workspace";
+import Home from "./Home";
+import ProtectedApp from "./ProtectedApp";
 
 function App() {
   return (
     <div className="App">
       <Router>
         <Routes>
-          <Route index element={<ProjectsList />} />
-          <Route path="/project" element={<Workspace />} />
-          <Route path="/project/:id" element={<Workspace />} />
+          <Route index element={<Home />} />
+          <Route path="/*" element={<ProtectedApp />} />
         </Routes>
       </Router>
     </div>

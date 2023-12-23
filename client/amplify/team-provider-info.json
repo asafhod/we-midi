@@ -1,0 +1,20 @@
+{
+  "dev": {
+    "awscloudformation": {
+      "AuthRoleName": "amplify-wemidi-dev-235159-authRole",
+      "UnauthRoleArn": "arn:aws:iam::871470698165:role/amplify-wemidi-dev-235159-unauthRole",
+      "AuthRoleArn": "arn:aws:iam::871470698165:role/amplify-wemidi-dev-235159-authRole",
+      "Region": "us-east-1",
+      "DeploymentBucketName": "amplify-wemidi-dev-235159-deployment",
+      "UnauthRoleName": "amplify-wemidi-dev-235159-unauthRole",
+      "StackName": "amplify-wemidi-dev-235159",
+      "StackId": "arn:aws:cloudformation:us-east-1:871470698165:stack/amplify-wemidi-dev-235159/56d56eb0-a114-11ee-9c35-0e73af72a9c1",
+      "AmplifyAppId": "d3csrn2cw9kvn2"
+    },
+    "categories": {
+      "auth": {
+        "wemidi86160646": {}
+      }
+    }
+  }
+}
