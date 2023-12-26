@@ -1,0 +1,14 @@
+{
+  "name": "registerusermongo",
+  "version": "0.1.0",
+  "description": "Lambda function that inserts data for new users into the MongoDB database after they have registered and confirmed their emails through Cognito",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Assaf Hod",
+  "license": "ISC",
+  "dependencies": {
+    "mongodb": "^6.3.0"
+  }
+}

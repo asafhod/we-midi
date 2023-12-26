@@ -1,20 +1,30 @@
-import express, { Request, Response } from "express";
+import express from "express";
 import mongoose from "mongoose";
 import * as dotenv from "dotenv";
+import AWS from "aws-sdk";
+import usersRouter from "./routes/users";
+import projectsRouter from "./routes/projects";
+import errorHandler from "./middleware/errorHandler";
+import routeNotFound from "./middleware/routeNotFound";
 
 // initialize environment variables
 dotenv.config();
 
-// import routers
-import usersRouter from "./routes/users";
-import projectsRouter from "./routes/projects";
+// retrieve environment variables
+const { MONGODB_URI, AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY } = process.env;
+const PORT: string = process.env.PORT || "5000"; // default port to 5000
 
-// import middleware
-import errorHandler from "./middleware/errorHandler";
-import routeNotFound from "./middleware/routeNotFound";
+// validate environment variables
+if (!MONGODB_URI || !AWS_REGION || !AWS_ACCESS_KEY_ID || !AWS_SECRET_ACCESS_KEY) {
+  console.error("Environment variables MONGODB_URI, AWS_REGION, AWS_ACCESS_KEY_ID, and AWS_SECRET_ACCESS_KEY are required.");
+  process.exit(1);
+}
 
 // initialize Express
 const app = express();
+
+// configure AWS SDK (TODO: If deploying on EC2, get this from IAM roles instead)
+AWS.config.update({ region: AWS_REGION, accessKeyId: AWS_ACCESS_KEY_ID, secretAccessKey: AWS_SECRET_ACCESS_KEY });
 
 // middleware
 app.use(express.static("public"));
@@ -28,28 +38,13 @@ app.use(routeNotFound);
 // error handler
 app.use(errorHandler);
 
-// @ts-ignore Currently not using req
-app.get("/", (req: Request, res: Response) => {
-  res.send("Hello World!");
-});
-
-// retrieve and validate database URI environment variable
-const mongoDbURI: string | undefined = process.env.MONGODB_URI;
-if (!mongoDbURI) {
-  console.error("Could not connect to database. The environment variable MONGODB_URI is not defined.");
-  process.exit(1);
-}
-
-// get port on server from environment variable
-const port: string | undefined = process.env.PORT || "5000";
-
 // connect to database
 mongoose
-  .connect(mongoDbURI)
+  .connect(MONGODB_URI)
   .then(() => {
     console.log("Connected to MongoDB");
-    app.listen(port, () => {
-      console.log(`WeMidi server is listening on port ${port}...`);
+    app.listen(PORT, () => {
+      console.log(`WeMidi server is listening on port ${PORT}...`);
     });
   })
   .catch((error) => {

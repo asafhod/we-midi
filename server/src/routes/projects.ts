@@ -1,12 +1,6 @@
 import { Router } from "express";
-
-// import authentication middleware
 import auth from "../middleware/auth";
-
-// import validation middleware
 import { validateAddProject, validateAddProjects, validateUpdateProject } from "../middleware/validator";
-
-// import Project controllers
 import {
   getProjects,
   getProject,
@@ -21,8 +15,19 @@ import {
 const router = Router();
 
 // routes
-router.route("/").get(getProjects).post(auth, validateAddProject, addProject).delete(auth, deleteProjects);
-router.route("/batch").post(auth, validateAddProjects, addProjects);
-router.route("/:id").get(getProject).patch(auth, validateUpdateProject, updateProject).delete(auth, deleteProject);
+router.route("/").get(auth, getProjects).post(auth, validateAddProject, addProject);
+router.route("/:id").get(auth, getProject).patch(auth, validateUpdateProject, updateProject).delete(auth, deleteProject);
+router
+  .route("/:id/users")
+  .get(auth, getProjectUsers)
+  .post(auth, validateAddProjectUser, addProjectUser)
+  .patch(auth, validateUpdateProjectUsers, updateProjectUsers)
+  .delete(auth, deleteProjectUsers);
+router.route("/:id/users/batch").post(auth, validateAddProjectUsers, addProjectUsers);
+router
+  .route("/:id/users/:username")
+  .get(auth, getProjectUser)
+  .patch(auth, validateUpdateProjectUser, updateProjectUser)
+  .delete(auth, deleteProjectUser);
 
 export default router;

@@ -2,18 +2,18 @@ import mongoose, { Document, Schema } from "mongoose";
 
 // define User interface
 interface IUser extends Document {
-  _id: string;
-  admin: boolean;
+  username: string;
+  isAdmin: boolean;
 }
 
 // database schema for User
 const userSchema = new Schema<IUser>({
-  _id: {
+  username: {
     type: String,
-    required: [true, "_id is required"],
+    required: [true, "Username is required"],
     unique: true,
   },
-  admin: { type: Boolean, default: false },
+  isAdmin: { type: Boolean, default: false },
 });
 
 // create model for User using schema

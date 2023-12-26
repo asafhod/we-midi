@@ -1,11 +1,11 @@
 import mongoose, { Document, Schema, Types } from "mongoose";
 
-// define UserProject interface
-interface IUserProject extends Document {
+// define ProjectUser interface
+interface IProjectUser extends Document {
   _id: Types.ObjectId;
-  userID: string;
   projectID: Types.ObjectId;
-  admin: boolean;
+  username: string;
+  isProjectAdmin: boolean;
   trackControls: {
     trackID: number;
     volume: number;
@@ -15,22 +15,22 @@ interface IUserProject extends Document {
   }[];
 }
 
-// database schema for UserProject
-const userProjectSchema = new Schema<IUserProject>({
+// database schema for ProjectUser
+const projectUserSchema = new Schema<IProjectUser>({
   _id: {
     type: Schema.Types.ObjectId,
     required: [true, "_id is required"],
     unique: true,
   },
-  userID: {
-    type: String,
-    required: [true, "UserID is required"],
-  },
   projectID: {
     type: Schema.Types.ObjectId,
     required: [true, "ProjectID is required"],
   },
-  admin: { type: Boolean, default: false },
+  username: {
+    type: String,
+    required: [true, "Username is required"],
+  },
+  isProjectAdmin: { type: Boolean, default: false },
   trackControls: {
     type: [
       {
@@ -49,7 +49,7 @@ const userProjectSchema = new Schema<IUserProject>({
   },
 });
 
-// create model for UserProject using schema
-const UserProject = mongoose.model("UserProject", userProjectSchema);
+// create model for ProjectUser using schema
+const ProjectUser = mongoose.model("ProjectUser", projectUserSchema);
 
-export default UserProject;
+export default ProjectUser;
