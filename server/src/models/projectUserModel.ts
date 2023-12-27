@@ -36,13 +36,13 @@ const projectUserSchema = new Schema<IProjectUser>({
       {
         trackID: {
           type: Number,
-          required: [true, "TrackID is required"],
+          required: [true, "TrackControl TrackID is required"],
           unique: true,
         },
-        volume: { type: Number, default: -16 },
-        pan: { type: Number, default: 0 },
-        solo: { type: Boolean, default: false },
-        mute: { type: Boolean, default: false },
+        volume: { type: Number, required: [true, "User TrackControl Volume is required"] },
+        pan: { type: Number, required: [true, "User TrackControl Pan is required"] },
+        solo: { type: Boolean, required: [true, "User TrackControl Solo is required"] },
+        mute: { type: Boolean, required: [true, "User TrackControl Mute is required"] },
       },
     ],
     default: [],

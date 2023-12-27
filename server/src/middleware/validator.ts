@@ -1,6 +1,14 @@
 import { Request, Response, NextFunction } from "express";
 import { ObjectSchema, ArraySchema } from "joi";
-import { addProjectSchema, addProjectsSchema, updateProjectSchema, userLoginRegSchema } from "../validation/schemas";
+import {
+  updateUserSchema,
+  addProjectSchema,
+  updateProjectSchema,
+  addProjectUsersSchema,
+  addProjectUserSchema,
+  updateProjectUsersSchema,
+  updateProjectUserSchema,
+} from "../validation/schemas";
 import { BadRequestError } from "../errors";
 
 // closure which accepts joi schema and returns validation middleware for it
@@ -15,7 +23,10 @@ const validator = (schema: ObjectSchema<any> | ArraySchema<any[]>) => {
 };
 
 // use validator function to generate validation middleware for all schemas
+export const validateUpdateUser = validator(updateUserSchema);
 export const validateAddProject = validator(addProjectSchema);
-export const validateAddProjects = validator(addProjectsSchema);
 export const validateUpdateProject = validator(updateProjectSchema);
-export const validateLoginReg = validator(userLoginRegSchema);
+export const validateAddProjectUsers = validator(addProjectUsersSchema);
+export const validateAddProjectUser = validator(addProjectUserSchema);
+export const validateUpdateProjectUsers = validator(updateProjectUsersSchema);
+export const validateUpdateProjectUser = validator(updateProjectUserSchema);

@@ -4,14 +4,16 @@ import mongoose, { Document, Schema, Types } from "mongoose";
 interface IProject extends Document {
   _id: Types.ObjectId;
   name: string;
-  midiFile: {
-    data: Buffer;
-    filename: string;
-  };
-  metadata: {
-    trackIDs: number[];
-    lastTrackID: number;
-  };
+  midiFile: Buffer;
+  trackIDs: number[];
+  lastTrackID: number;
+  trackControls: {
+    trackID: number;
+    volume: number;
+    pan: number;
+    solo: boolean;
+    mute: boolean;
+  }[];
 }
 
 // database schema for Project
@@ -26,18 +28,26 @@ const projectSchema = new Schema<IProject>({
     required: [true, "Name is required"],
   },
   midiFile: {
-    type: {
-      data: { type: Buffer, default: null },
-      filename: { type: String, default: "" },
-    },
+    type: Buffer,
     default: null,
   },
-  metadata: {
-    type: {
-      trackIDs: { type: [Number], default: [] },
-      lastTrackID: { type: Number, default: 0 },
-    },
-    default: null,
+  trackIDs: { type: [Number], default: [] },
+  lastTrackID: { type: Number, default: 0 },
+  trackControls: {
+    type: [
+      {
+        trackID: {
+          type: Number,
+          required: [true, "TrackControl TrackID is required"],
+          unique: true,
+        },
+        volume: { type: Number, required: [true, "Project TrackControl Volume is required"] },
+        pan: { type: Number, required: [true, "Project TrackControl Pan is required"] },
+        solo: { type: Boolean, required: [true, "Project TrackControl Solo is required"] },
+        mute: { type: Boolean, required: [true, "Project TrackControl Mute is required"] },
+      },
+    ],
+    default: [],
   },
 });
 
