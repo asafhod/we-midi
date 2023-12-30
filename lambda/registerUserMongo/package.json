@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "Assaf Hod",
+  "author": "Asaf Hod",
   "license": "ISC",
   "dependencies": {
     "mongodb": "^6.3.0"

@@ -1,4 +1,3 @@
-// TODO: Determine what routes are necessary and what needs validation, then implement
 import { Router } from "express";
 import auth from "../middleware/auth";
 import { validateUpdateUser } from "../middleware/validator";
