@@ -1,9 +1,9 @@
 import { Request, Response, NextFunction } from "express";
 import { UnauthorizedError } from "../errors";
-import verifier from "./verifier";
+import cognitoTokenVerifier from "../utilities/cognitoTokenVerifier";
 
 // user authentication middleware
-const auth = async (req: Request, _res: Response, next: NextFunction) => {
+export const auth = async (req: Request, _res: Response, next: NextFunction) => {
   // get authorization header
   const authHeader: string | undefined = req.headers.authorization;
 
@@ -17,7 +17,7 @@ const auth = async (req: Request, _res: Response, next: NextFunction) => {
 
   try {
     // verify and decode Cognito token
-    const payload = await verifier.verify(token);
+    const payload = await cognitoTokenVerifier.verify(token);
 
     // set user's username obtained from Cognito token on request body
     req.username = payload.username;
@@ -28,5 +28,3 @@ const auth = async (req: Request, _res: Response, next: NextFunction) => {
     throw new UnauthorizedError("Authentication token is invalid or expired");
   }
 };
-
-export default auth;

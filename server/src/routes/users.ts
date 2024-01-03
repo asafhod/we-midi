@@ -1,5 +1,5 @@
 import { Router } from "express";
-import auth from "../middleware/auth";
+import { auth } from "../middleware/auth";
 import { validateUpdateUser } from "../middleware/validator";
 import { getUsers, getUser, updateUser, deleteUser } from "../controllers/users";
 

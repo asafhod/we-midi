@@ -9,11 +9,11 @@ if (!AWS_USER_POOL_ID || !AWS_CLIENT_ID) {
   process.exit(1);
 }
 
-// create Cognito JWT verifier
-const verifier = CognitoJwtVerifier.create({
+// create Cognito token verifier
+const cognitoTokenVerifier = CognitoJwtVerifier.create({
   userPoolId: AWS_USER_POOL_ID,
   tokenUse: "access",
   clientId: AWS_CLIENT_ID,
 });
 
-export default verifier;
+export default cognitoTokenVerifier;

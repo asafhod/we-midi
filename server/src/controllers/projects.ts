@@ -2,20 +2,11 @@ import { Request, Response, NextFunction } from "express";
 import mongoose from "mongoose";
 import Project from "../models/projectModel";
 import { NotFoundError, BadRequestError } from "../errors";
+// Do I need formatQueryArray? Or can I somehow extract the right kind of array directly from the query params? Or at least extract as array instead of string to save formatQueryArray a step?
+import { formatQueryArray } from "./helpers";
 
 // TODO: Make sure aligns with TypeScript. What type to give the query results variables? Do I type the responses? Ask ChatGPT.
 // getProjects, getProject, addProject, updateProject, deleteProject
-
-// helper function which formats url query arguments into arrays Mongoose can use to query the db
-const formatQueryArray = (data: string): RegExp[] => {
-  // split query argument string into array
-  const queryArray: string[] = data.split(",");
-
-  // map each entry to a RegExp with the "i" flag to allow for case-insensitive querying
-  const queryRegExpArray: RegExp[] = queryArray.map((entry: string) => RegExp(`^${entry}$`, "i"));
-
-  return queryRegExpArray;
-};
 
 // get countries based on url query arguments
 export const getCountries = async (req: Request, res: Response, next: NextFunction) => {
