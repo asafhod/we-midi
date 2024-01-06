@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import User from "../models/userModel";
+import UserModel from "../models/userModel";
 import { BadRequestError, NotFoundError } from "../errors";
 // Do I need formatQueryArray? Or can I somehow extract the right kind of array directly from the query params? Or at least extract as array instead of string to save formatQueryArray a step?
 import { formatQueryArray } from "./helpers";
@@ -13,7 +13,7 @@ import { formatQueryArray } from "./helpers";
 export const getUsers = async (req: Request, res: Response, next: NextFunction) => {
   try {
     // query database for all users
-    const users = await User.find({}, { __v: 0 });
+    const users = await UserModel.find({}, { __v: 0 });
 
     // respond successfully with result count and user data
     res.status(200).json({ success: true, resultCount: users.length, data: users });
@@ -33,7 +33,7 @@ export const getUser = async (req: Request, res: Response, next: NextFunction) =
 
     // query database for user matching username
     // TODO: Confirm leaving out __v using the projection is necessary. Probably is.
-    const user = await User.findOne({ username }, { __v: 0 });
+    const user = await UserModel.findOne({ username }, { __v: 0 });
     if (!user) throw new NotFoundError(`No user found matching username: ${username}`);
 
     // respond successfully with user data
@@ -65,7 +65,7 @@ export const deleteUser = async (req: Request, res: Response, next: NextFunction
     if (username.length > 128) throw new BadRequestError("Username cannot exceed 128 characters");
 
     // delete user matching username in database
-    const user = await User.findOneAndDelete({ username }, { projection: { __v: 0 } });
+    const user = await UserModel.findOneAndDelete({ username }, { projection: { __v: 0 } });
     if (!user) throw new NotFoundError(`No user found matching username: ${username}`);
 
     // log successful user deletion to the console

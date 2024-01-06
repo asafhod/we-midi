@@ -20,6 +20,7 @@ export const configureHttpServer = (app: express.Application) => {
   // error handler
   app.use(errorHandler);
 
+  // TODO: Change to https with cert and key
   const server: http.Server = http.createServer(app);
 
   return server;

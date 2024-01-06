@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import mongoose from "mongoose";
-import Project from "../models/projectModel";
+import ProjectModel from "../models/projectModel";
 import { NotFoundError, BadRequestError } from "../errors";
 // Do I need formatQueryArray? Or can I somehow extract the right kind of array directly from the query params? Or at least extract as array instead of string to save formatQueryArray a step?
 import { formatQueryArray } from "./helpers";

@@ -1,22 +1,25 @@
 import mongoose, { Document, Schema } from "mongoose";
 
 // define User interface
-interface IUser extends Document {
+export interface User extends Document {
   username: string;
   isAdmin: boolean;
 }
 
 // database schema for User
-const userSchema = new Schema<IUser>({
-  username: {
-    type: String,
-    required: [true, "Username is required"],
-    unique: true,
+const userSchema = new Schema<User>(
+  {
+    username: {
+      type: String,
+      required: [true, "Username is required"],
+      unique: true,
+    },
+    isAdmin: { type: Boolean, default: false },
   },
-  isAdmin: { type: Boolean, default: false },
-});
+  { _id: false }
+);
 
 // create model for User using schema
-const User = mongoose.model("User", userSchema);
+const UserModel = mongoose.model("User", userSchema);
 
-export default User;
+export default UserModel;

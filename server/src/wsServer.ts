@@ -1,24 +1,19 @@
 import WebSocket from "ws";
 import http, { IncomingMessage } from "http";
 import cognitoTokenVerifier from "./utilities/cognitoTokenVerifier";
+import ProjectUserModel, { ProjectUser } from "./models/projectUserModel";
+import webSocketManager from "./webSocketManager";
 
-interface Project {
-  data: string; // Placeholder for actual structure. Replace with multiple properties.
-  projectUsers: string[]; //Replace with more complex structure if needed
-  clients: Map<WebSocket, string>;
-}
+// TODO: Middleware pattern? Like for validator or error handler?
+// TODO: Anything special with socket for HTTPS?
 
-// TODO: Change name?
-interface CustomIncomingMessage extends IncomingMessage {
+interface WebSocketConnectionRequest extends IncomingMessage {
   username?: string;
-  projectID?: string; // TODO: Does this need type change to match ObjectID?
+  projectID?: string;
 }
 
-const projects: Record<string, Project> = {};
-
-// TODO: Refine
 // WebSocket connection handshake authentication function
-const verifyClient: WebSocket.VerifyClientCallbackAsync = async (info: { req: CustomIncomingMessage }, cb) => {
+const verifyClient: WebSocket.VerifyClientCallbackAsync = async (info: { req: WebSocketConnectionRequest }, cb) => {
   // get authorization header
   const authHeader: string | undefined = info.req.headers.authorization;
 
@@ -44,18 +39,12 @@ const verifyClient: WebSocket.VerifyClientCallbackAsync = async (info: { req: Cu
     const projectID: string | null = url.searchParams.get("projectID");
     if (!projectID) return cb(false, 400, "Project ID is required");
 
-    if (!projects[projectID]) {
-      // TODO: retrieve project data
-      const data: string = "test";
-      const projectUsers: string[] = ["TestUser"];
-
-      // check if username is a ProjectUser for the project
-      if (!projectUsers.includes(username)) return cb(false, 403, "User is not a member of this project");
-
-      projects[projectID] = { data, projectUsers, clients: new Map() };
-    } else {
-      // check if username is a ProjectUser for the project
-      if (!projects[projectID].projectUsers.includes(username)) return cb(false, 403, "User is not a member of this project");
+    try {
+      // check if ProjectUser matching the projectID and username exists
+      const projectUser: ProjectUser | null = await ProjectUserModel.findOne({ projectID, username }, { __v: 0 });
+      if (!projectUser) return cb(false, 403, "User is not a member of this project");
+    } catch (error) {
+      return cb(false, 500, "Server error - Please try again later");
     }
 
     // set username and projectID on request body
@@ -74,26 +63,47 @@ export const configureWsServer = (server: http.Server) => {
   const wss: WebSocket.Server = new WebSocket.Server({ server, verifyClient });
 
   // WebSocket event handling
-  wss.on("connection", (ws: WebSocket, req: CustomIncomingMessage) => {
-    console.log("WebSocket connection established");
-
+  wss.on("connection", (ws: WebSocket, req: WebSocketConnectionRequest) => {
     // get username and projectID from request body
     const { username, projectID } = req;
-    if (!username || !projectID) return ws.close(1008, "WebSocket request is missing required values");
+    if (!username || !projectID) return ws.close(1008, "WebSocket connection request is missing required values");
 
-    // TODO: Logic to replace user with their new session if they already have an old client?
-    // TODO: Anything special with socket for HTTPS?
-    // add the WebSocket to the clients map
-    projects[projectID].clients.set(ws, username);
+    console.log(`A WebSocket connection has been established with user ${username} for project ID ${projectID}`);
 
+    if (!webSocketManager[projectID]) {
+      // client dictionary does not currently exist for the project, create it and add the username & WebSocket connection pair
+      webSocketManager[projectID] = { [username]: ws };
+    } else {
+      // get any prior WebSocket connection for the project with matching username
+      const existingConnection: WebSocket | undefined = webSocketManager[projectID][username];
+
+      // set username entry in the project's client dictionary to the new WebSocket connection
+      webSocketManager[projectID][username] = ws;
+
+      if (existingConnection) {
+        // close the out-of-date WebSocket connection
+        existingConnection.close(1000, "Replaced by a new WebSocket connection");
+      }
+    }
+
+    // TODO: Implement
     // WebSocket message handling
     ws.on("message", (message: string) => {
-      console.log("Received message: " + message);
+      console.log(`Received message from user ${username} for project ID ${projectID}: ${message}`);
     });
 
     // WebSocket close handling
     ws.on("close", () => {
-      console.log("WebSocket connection closed");
+      console.log(`A WebSocket connection has been closed with user ${username} for project ID ${projectID}`);
+
+      const existingConnection: WebSocket | undefined = webSocketManager[projectID] && webSocketManager[projectID][username];
+      if (existingConnection === ws) {
+        if (Object.keys(webSocketManager[projectID]).length === 1) {
+          delete webSocketManager[projectID];
+        } else {
+          delete webSocketManager[projectID][username];
+        }
+      }
     });
   });
 };

@@ -1,7 +1,7 @@
 import mongoose, { Document, Schema, Types } from "mongoose";
 
 // define Project interface
-interface IProject extends Document {
+export interface Project extends Document {
   _id: Types.ObjectId;
   name: string;
   midiFile: Buffer;
@@ -17,7 +17,7 @@ interface IProject extends Document {
 }
 
 // database schema for Project
-const projectSchema = new Schema<IProject>({
+const projectSchema = new Schema<Project>({
   _id: {
     type: Schema.Types.ObjectId,
     required: [true, "_id is required"],
@@ -52,6 +52,6 @@ const projectSchema = new Schema<IProject>({
 });
 
 // create model for Project using schema
-const Project = mongoose.model("Project", projectSchema);
+const ProjectModel = mongoose.model("Project", projectSchema);
 
-export default Project;
+export default ProjectModel;
