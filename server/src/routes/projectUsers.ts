@@ -1,11 +1,10 @@
 import { Router } from "express";
 import { auth } from "../middleware/auth";
-import { validateAddProjectUsers, validateAddProjectUser, validateUpdateProjectUsers } from "../middleware/validator";
+import { validateAddProjectUsers, validateUpdateProjectUsers } from "../middleware/validator";
 import {
   getProjectUsers,
   getProjectUser,
   addProjectUsers,
-  addProjectUser,
   updateProjectUsers,
   deleteProjectUsers,
   deleteProjectUser,
@@ -18,7 +17,6 @@ const router = Router();
 router
   .route("/")
   .get(auth, getProjectUsers)
-  .post(auth, validateAddProjectUser, addProjectUser)
   .patch(auth, validateUpdateProjectUsers, updateProjectUsers)
   .delete(auth, deleteProjectUsers);
 router.route("/batch").post(auth, validateAddProjectUsers, addProjectUsers);

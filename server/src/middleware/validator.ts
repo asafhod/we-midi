@@ -5,7 +5,6 @@ import {
   addProjectSchema,
   updateProjectSchema,
   addProjectUsersSchema,
-  addProjectUserSchema,
   updateProjectUsersSchema,
 } from "../validation/schemas";
 import { BadRequestError } from "../errors";
@@ -26,5 +25,4 @@ export const validateUpdateUser = validator(updateUserSchema);
 export const validateAddProject = validator(addProjectSchema);
 export const validateUpdateProject = validator(updateProjectSchema);
 export const validateAddProjectUsers = validator(addProjectUsersSchema);
-export const validateAddProjectUser = validator(addProjectUserSchema);
 export const validateUpdateProjectUsers = validator(updateProjectUsersSchema);

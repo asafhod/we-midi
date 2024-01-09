@@ -8,6 +8,10 @@ import { formatQueryArray } from "./helpers";
 // TODO: Make sure aligns with TypeScript. What type to give the query results variables? Do I type the responses? Ask ChatGPT.
 // getProjects, getProject, addProject, updateProject, deleteProject
 
+// import MIDI
+// change tempo
+// update track, delete track, [add track]
+
 // get countries based on url query arguments
 export const getCountries = async (req: Request, res: Response, next: NextFunction) => {
   try {

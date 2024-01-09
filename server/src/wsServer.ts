@@ -3,6 +3,7 @@ import http, { IncomingMessage } from "http";
 import cognitoTokenVerifier from "./utilities/cognitoTokenVerifier";
 import ProjectUserModel, { ProjectUser } from "./models/projectUserModel";
 import webSocketManager from "./webSocketManager";
+import wsMessageRouter from "./routes/wsMessages";
 
 // TODO: Middleware pattern? Like for validator or error handler?
 // TODO: Anything special with socket for HTTPS? Saw something that made it seem that way when hovering over one of the ws values.
@@ -39,6 +40,7 @@ const verifyClient: WebSocket.VerifyClientCallbackAsync = async (info: { req: We
     const url = new URL(info.req.url || "");
     const projectID: string | null = url.searchParams.get("projectID");
     if (!projectID) return cb(false, 400, "Project ID is required");
+    // check if projectID is a 24 character hex?
 
     try {
       // check if ProjectUser matching the projectID and username exists
@@ -71,6 +73,7 @@ export const configureWsServer = (server: http.Server) => {
 
     console.log(`A WebSocket connection has been established with user ${username} for project ID ${projectID}`);
 
+    // add client WebSocket connection to the WebSocket manager
     if (!webSocketManager[projectID]) {
       // client dictionary does not currently exist for the project, create it and add the username & WebSocket connection pair
       webSocketManager[projectID] = { [username]: ws };
@@ -87,11 +90,10 @@ export const configureWsServer = (server: http.Server) => {
       }
     }
 
-    // TODO: Implement
+    // TODO: get project and its active client usernames (using Object.keys(webSocketManager[projectID])), send to client
+
     // WebSocket message handling
-    ws.on("message", (message: string) => {
-      console.log(`Received message from user ${username} for project ID ${projectID}: ${message}`);
-    });
+    ws.on("message", (message: string) => wsMessageRouter(message, username, projectID));
 
     // WebSocket close handling
     ws.on("close", () => {

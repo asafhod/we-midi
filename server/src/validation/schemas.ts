@@ -1,14 +1,11 @@
 import Joi, { ObjectSchema, ArraySchema } from "joi";
 
-// TODO: Some of the bracket ones need a schema because they are on WS and don't have URL query params
-//       Some need to be on both HTTP and WS and may need a schema for the WS version (or a line of custom validation in message callback or controller)
-//       After you've figured out the two above, narrow down the schemas perfectly based on actual function. Then controllers.
 // update user, [get user(s), delete user]
-// add projectUser(s), update projectUsers, [get projectUser(s), delete projectUser(s)]
+// add projectUsers, update projectUsers, delete projectUsers, [get projectUser(s), delete projectUser]
 // add project, update project, [get project(s), delete project]
 // import MIDI
 // change tempo
-// update track, [add track, delete track]
+// update track, delete track, [add track]
 // add note, add notes
 // update note, update notes,
 // delete notes, delete note, deleteAllNotesOnTrack
@@ -20,33 +17,11 @@ export const updateUserSchema: ObjectSchema<any> = Joi.object({
   isAdmin: Joi.boolean(),
 });
 
+// TODO: AddProjectUser schema was unnecessary. Just do that in the Add Project request controller.
+//       projectID would be given by the db, username would be on the Cognito token, isProjectAdmin would be True
 // validation schema for the Add Project request
 export const addProjectSchema: ObjectSchema<any> = Joi.object({
   name: Joi.string().min(1).max(100).required(),
-  tempo: Joi.number().min(1).max(300),
-  ppq: Joi.number().min(24).max(960),
-  lastTrackID: Joi.number().min(0),
-  tracks: Joi.array()
-    .max(100)
-    .items({
-      trackID: Joi.number().min(1).required(),
-      trackName: Joi.string().min(1).max(15).required(),
-      instrument: Joi.string().length(1).required(),
-      volume: Joi.number().min(-40).max(8).required(),
-      pan: Joi.number().min(-8).max(8).required(),
-      solo: Joi.boolean().required(),
-      mute: Joi.boolean().required(),
-      lastNoteID: Joi.number().min(0),
-      notes: Joi.array()
-        .max(1500)
-        .items({
-          noteID: Joi.number().min(1).required(),
-          midiNum: Joi.number().min(21).max(108).required(),
-          duration: Joi.number().min(0.00625).max(60000).required(),
-          noteTime: Joi.number().min(0).max(59998.125).required(),
-          velocity: Joi.number().min(0).max(127).required(),
-        }),
-    }),
 });
 
 // validation schema for the Update Project request
@@ -64,6 +39,11 @@ export const updateTrackSchema: ObjectSchema<any> = Joi.object({
   pan: Joi.number().min(-8).max(8),
   solo: Joi.boolean(),
   mute: Joi.boolean(),
+});
+
+// validation for the Delete Track request
+export const deleteTrackSchema: ObjectSchema<any> = Joi.object({
+  trackID: Joi.number().min(1).required(),
 });
 
 // validation for the Add Note request
@@ -168,6 +148,7 @@ export const importMidiSchema: ObjectSchema<any> = Joi.object({
     }),
 });
 
+// TODO: Make sure you filter for only the tracks that have notes in the client. If none do, only send the tempo property.
 // validation schema for the Change Tempo request
 export const changeTempoSchema: ObjectSchema<any> = Joi.object({
   tempo: Joi.number().min(1).max(300).required(),
@@ -187,19 +168,11 @@ export const changeTempoSchema: ObjectSchema<any> = Joi.object({
     }),
 });
 
-// validation schema for the Add Project User request
-export const addProjectUserSchema: ObjectSchema<any> = Joi.object({
-  projectID: Joi.string().hex().length(24).required(),
-  username: Joi.string().min(1).max(128).required(),
-  isProjectAdmin: Joi.boolean(),
-});
-
 // validation schema for the Add Project Users request
 export const addProjectUsersSchema: ArraySchema<any[]> = Joi.array()
   .min(1)
   .max(10)
   .items({
-    projectID: Joi.string().hex().length(24).required(),
     username: Joi.string().min(1).max(128).required(),
     isProjectAdmin: Joi.boolean(),
   });
@@ -209,7 +182,14 @@ export const updateProjectUsersSchema: ArraySchema<any[]> = Joi.array()
   .min(1)
   .max(10)
   .items({
-    projectID: Joi.string().hex().length(24).required(),
     username: Joi.string().min(1).max(128).required(),
     isProjectAdmin: Joi.boolean(),
+  });
+
+// validation schema for the Delete Project Users request
+export const deleteProjectUsersSchema: ArraySchema<any[]> = Joi.array()
+  .min(1)
+  .max(9)
+  .items({
+    username: Joi.string().min(1).max(128).required(),
   });
