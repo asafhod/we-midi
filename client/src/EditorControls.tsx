@@ -28,6 +28,7 @@ const EditorControls = ({
 
   //   useCallback?
   const removeTrack = (trackID: number) => {
+    // TODO: If last remaining track is removed and ppq is not default (480), reset it to 480.
     const track: TrackType | undefined = tracks.find((track) => track.id === trackID);
 
     if (track) {

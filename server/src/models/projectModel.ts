@@ -4,15 +4,25 @@ import mongoose, { Document, Schema, Types } from "mongoose";
 export interface Project extends Document {
   _id: Types.ObjectId;
   name: string;
-  midiFile: Buffer;
-  trackIDs: number[];
+  tempo: number;
+  ppq: number;
   lastTrackID: number;
-  trackControls: {
+  tracks: {
     trackID: number;
+    trackName: string;
+    instrument: string;
     volume: number;
     pan: number;
     solo: boolean;
     mute: boolean;
+    lastNoteID: number;
+    notes: {
+      noteID: number;
+      midiNum: number;
+      duration: number;
+      noteTime: number;
+      velocity: number;
+    }[];
   }[];
 }
 
@@ -27,24 +37,32 @@ const projectSchema = new Schema<Project>({
     type: String,
     required: [true, "Name is required"],
   },
-  midiFile: {
-    type: Buffer,
-    default: null,
-  },
-  trackIDs: { type: [Number], default: [] },
+  tempo: { type: Number, default: 120 },
+  ppq: { type: Number, default: 480 },
   lastTrackID: { type: Number, default: 0 },
-  trackControls: {
+  tracks: {
     type: [
       {
-        trackID: {
-          type: Number,
-          required: [true, "TrackControl TrackID is required"],
-          unique: true,
+        trackID: { type: Number, required: [true, "TrackID is required"], unique: true }, // Any performance gain by removing unique constraint?
+        trackName: { type: String, required: [true, "TrackName is required"] },
+        instrument: { type: String, required: [true, "Instrument is required"] },
+        volume: { type: Number, required: [true, "Volume is required"] },
+        pan: { type: Number, required: [true, "Pan is required"] },
+        solo: { type: Boolean, required: [true, "Solo value is required"] },
+        mute: { type: Boolean, required: [true, "Mute value is required"] },
+        lastNoteID: { type: Number, default: 0 },
+        notes: {
+          type: [
+            {
+              noteID: { type: Number, required: [true, "NoteID is required"], unique: true }, // Any performance gain by removing unique constraint?
+              midiNum: { type: Number, required: [true, "MidiNum is required"] },
+              duration: { type: Number, required: [true, "Duration is required"] },
+              noteTime: { type: Number, required: [true, "NoteTime is required"] },
+              velocity: { type: Number, required: [true, "Velocity is required"] },
+            },
+          ],
+          default: [],
         },
-        volume: { type: Number, required: [true, "Project TrackControl Volume is required"] },
-        pan: { type: Number, required: [true, "Project TrackControl Pan is required"] },
-        solo: { type: Boolean, required: [true, "Project TrackControl Solo is required"] },
-        mute: { type: Boolean, required: [true, "Project TrackControl Mute is required"] },
       },
     ],
     default: [],

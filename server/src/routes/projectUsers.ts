@@ -1,18 +1,12 @@
 import { Router } from "express";
 import { auth } from "../middleware/auth";
-import {
-  validateAddProjectUsers,
-  validateAddProjectUser,
-  validateUpdateProjectUsers,
-  validateUpdateProjectUser,
-} from "../middleware/validator";
+import { validateAddProjectUsers, validateAddProjectUser, validateUpdateProjectUsers } from "../middleware/validator";
 import {
   getProjectUsers,
   getProjectUser,
   addProjectUsers,
   addProjectUser,
   updateProjectUsers,
-  updateProjectUser,
   deleteProjectUsers,
   deleteProjectUser,
 } from "../controllers/projectUsers";
@@ -28,10 +22,6 @@ router
   .patch(auth, validateUpdateProjectUsers, updateProjectUsers)
   .delete(auth, deleteProjectUsers);
 router.route("/batch").post(auth, validateAddProjectUsers, addProjectUsers);
-router
-  .route("/:projectID/:username")
-  .get(auth, getProjectUser)
-  .patch(auth, validateUpdateProjectUser, updateProjectUser)
-  .delete(auth, deleteProjectUser);
+router.route("/:projectID/:username").get(auth, getProjectUser).delete(auth, deleteProjectUser);
 
 export default router;

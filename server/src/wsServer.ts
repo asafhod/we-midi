@@ -5,7 +5,8 @@ import ProjectUserModel, { ProjectUser } from "./models/projectUserModel";
 import webSocketManager from "./webSocketManager";
 
 // TODO: Middleware pattern? Like for validator or error handler?
-// TODO: Anything special with socket for HTTPS?
+// TODO: Anything special with socket for HTTPS? Saw something that made it seem that way when hovering over one of the ws values.
+//       Though ChatGPT didn't point out anything at the general level. Double check.
 
 interface WebSocketConnectionRequest extends IncomingMessage {
   username?: string;
