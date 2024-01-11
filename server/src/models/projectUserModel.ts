@@ -5,6 +5,7 @@ export interface ProjectUser extends Document {
   projectID: Types.ObjectId;
   username: string;
   isProjectAdmin: boolean;
+  accepted: boolean;
   //  TODO: Implement these in localStorage
   // trackControls: {
   //   trackID: number;
@@ -27,6 +28,7 @@ const projectUserSchema = new Schema<ProjectUser>(
       required: [true, "Username is required"],
     },
     isProjectAdmin: { type: Boolean, default: false },
+    accepted: { type: Boolean, default: false },
   },
   { _id: false }
 );

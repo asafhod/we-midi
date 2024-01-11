@@ -3,7 +3,7 @@ import http from "http";
 import usersRouter from "./routes/users";
 import projectsRouter from "./routes/projects";
 import projectUsersRouter from "./routes/projectUsers";
-import errorHandler from "./middleware/errorHandler";
+import httpErrorHandler from "./middleware/httpErrorHandler";
 import routeNotFound from "./middleware/routeNotFound";
 
 export const configureHttpServer = (app: express.Application) => {
@@ -18,7 +18,7 @@ export const configureHttpServer = (app: express.Application) => {
   app.use(routeNotFound);
 
   // error handler
-  app.use(errorHandler);
+  app.use(httpErrorHandler);
 
   // TODO: Change to https with cert and key
   const server: http.Server = http.createServer(app);

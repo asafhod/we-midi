@@ -4,8 +4,8 @@ import cognitoTokenVerifier from "./utilities/cognitoTokenVerifier";
 import ProjectUserModel, { ProjectUser } from "./models/projectUserModel";
 import webSocketManager from "./webSocketManager";
 import wsMessageRouter from "./routes/wsMessages";
+import { BAD_REQUEST, UNAUTHORIZED, FORBIDDEN, SERVER_ERROR } from "./errors";
 
-// TODO: Middleware pattern? Like for validator or error handler?
 // TODO: Anything special with socket for HTTPS? Saw something that made it seem that way when hovering over one of the ws values.
 //       Though ChatGPT didn't point out anything at the general level. Double check.
 
@@ -22,7 +22,8 @@ const verifyClient: WebSocket.VerifyClientCallbackAsync = async (info: { req: We
   // validate authorization header
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     // reject WebSocket connection if authorization header is invalid
-    return cb(false, 401, "Authorization header is missing or invalid");
+    console.error("WebSocket client verification failed: Authorization header is missing or invalid");
+    return cb(false, 401, UNAUTHORIZED);
   }
 
   // get Cognito token from authorization header
@@ -34,20 +35,30 @@ const verifyClient: WebSocket.VerifyClientCallbackAsync = async (info: { req: We
 
     // get username from Cognito token
     const { username } = payload;
-    if (!username) return cb(false, 400, "Username is required");
+    if (!username) {
+      console.error("WebSocket client verification failed: Username is required");
+      return cb(false, 400, BAD_REQUEST);
+    }
 
     // get projectID from web request
     const url = new URL(info.req.url || "");
     const projectID: string | null = url.searchParams.get("projectID");
-    if (!projectID) return cb(false, 400, "Project ID is required");
+    if (!projectID) {
+      console.error("WebSocket client verification failed: Project ID is required");
+      return cb(false, 400, BAD_REQUEST);
+    }
     // check if projectID is a 24 character hex?
 
     try {
       // check if ProjectUser matching the projectID and username exists
       const projectUser: ProjectUser | null = await ProjectUserModel.findOne({ projectID, username }, { __v: 0 });
-      if (!projectUser) return cb(false, 403, "User is not a member of this project");
+      if (!projectUser) {
+        console.error("WebSocket client verification failed: User is not a member of this project");
+        return cb(false, 403, FORBIDDEN);
+      }
     } catch (error) {
-      return cb(false, 500, "Server error - Please try again later");
+      console.error(`WebSocket client verification failed - MongoDB Error: ${error}`);
+      return cb(false, 500, SERVER_ERROR);
     }
 
     // set username and projectID on request body
@@ -58,10 +69,12 @@ const verifyClient: WebSocket.VerifyClientCallbackAsync = async (info: { req: We
     cb(true);
   } catch (error) {
     // reject WebSocket connection if Cognito token fails verification
-    cb(false, 401, "Authentication token is invalid or expired");
+    console.error("WebSocket client verification failed: Authentication token is invalid or expired");
+    cb(false, 401, UNAUTHORIZED);
   }
 };
 
+// TODO: Do I need to make any of the callbacks async? Like the connection one, close one, and the message router? The controllers inside the message router will definitely be async.
 export const configureWsServer = (server: http.Server) => {
   const wss: WebSocket.Server = new WebSocket.Server({ server, verifyClient });
 
@@ -69,7 +82,12 @@ export const configureWsServer = (server: http.Server) => {
   wss.on("connection", (ws: WebSocket, req: WebSocketConnectionRequest) => {
     // get username and projectID from request body
     const { username, projectID } = req;
-    if (!username || !projectID) return ws.close(1008, "WebSocket connection request is missing required values");
+    if (!username || !projectID) {
+      console.error(
+        `WebSocket connection aborted - Username and/or projectID were not passed from Client Verification function to Connection Event callback`
+      );
+      return ws.close(1008, SERVER_ERROR);
+    }
 
     console.log(`A WebSocket connection has been established with user ${username} for project ID ${projectID}`);
 
@@ -87,17 +105,18 @@ export const configureWsServer = (server: http.Server) => {
       if (existingConnection) {
         // close the out-of-date WebSocket connection
         existingConnection.close(1000, "Replaced by a new WebSocket connection");
+        console.log(`Out-of-date WebSocket connection replaced by new connection for user ${username} on projectID ${projectID}`);
       }
     }
 
     // TODO: get project and its active client usernames (using Object.keys(webSocketManager[projectID])), send to client
 
     // WebSocket message handling
-    ws.on("message", (message: string) => wsMessageRouter(message, username, projectID));
+    ws.on("message", (message: string) => wsMessageRouter(ws, message, username, projectID));
 
     // WebSocket close handling
     ws.on("close", () => {
-      console.log(`A WebSocket connection has been closed with user ${username} for project ID ${projectID}`);
+      console.log(`A WebSocket connection has been closed for user ${username} on project ID ${projectID}`);
 
       const existingConnection: WebSocket | undefined = webSocketManager[projectID] && webSocketManager[projectID][username];
       if (existingConnection === ws) {

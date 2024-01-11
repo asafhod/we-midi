@@ -8,7 +8,10 @@ import NotFoundError from "./NotFoundError";
 // import error type guards
 import { isMongoWriteError, isMongooseCastError, isExpressBodyParserError } from "./types";
 
-// named export all custom errors and type guards from this index.ts file so they can be imported from the "/errors" path as needed
+// import error messages
+import { BAD_REQUEST, UNAUTHORIZED, FORBIDDEN, NOT_FOUND, SERVER_ERROR, BAD_MESSAGE } from "./errorMessages";
+
+// named export all custom errors, type guards, and error messages from this index.ts file so they can be imported from the "/errors" path as needed
 export {
   CustomError,
   BadRequestError,
@@ -18,4 +21,10 @@ export {
   isMongoWriteError,
   isMongooseCastError,
   isExpressBodyParserError,
+  BAD_REQUEST,
+  UNAUTHORIZED,
+  FORBIDDEN,
+  NOT_FOUND,
+  SERVER_ERROR,
+  BAD_MESSAGE,
 };

@@ -6,6 +6,7 @@ import {
   getProjectUser,
   addProjectUsers,
   updateProjectUsers,
+  acceptProjectUser,
   deleteProjectUsers,
   deleteProjectUser,
 } from "../controllers/projectUsers";
@@ -20,6 +21,6 @@ router
   .patch(auth, validateUpdateProjectUsers, updateProjectUsers)
   .delete(auth, deleteProjectUsers);
 router.route("/batch").post(auth, validateAddProjectUsers, addProjectUsers);
-router.route("/:projectID/:username").get(auth, getProjectUser).delete(auth, deleteProjectUser);
+router.route("/:projectID/:username").get(auth, getProjectUser).patch(auth, acceptProjectUser).delete(auth, deleteProjectUser);
 
 export default router;
