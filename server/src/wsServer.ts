@@ -4,10 +4,13 @@ import cognitoTokenVerifier from "./utilities/cognitoTokenVerifier";
 import ProjectUserModel, { ProjectUser } from "./models/projectUserModel";
 import webSocketManager from "./webSocketManager";
 import wsMessageRouter from "./routes/wsMessages";
-import { BAD_REQUEST, UNAUTHORIZED, FORBIDDEN, SERVER_ERROR } from "./errors";
+import { getProject } from "./controllers/projects";
+import { BAD_REQUEST, UNAUTHORIZED, FORBIDDEN, SERVER_ERROR } from "./errors/errorMessages";
 
 // TODO: Anything special with socket for HTTPS? Saw something that made it seem that way when hovering over one of the ws values.
 //       Though ChatGPT didn't point out anything at the general level. Double check.
+
+// ***TODO: Do I need to make any of the callbacks async? Like the connection one, close one, and the message router? The controllers inside the message router will definitely be async.
 
 interface WebSocketConnectionRequest extends IncomingMessage {
   username?: string;
@@ -74,7 +77,6 @@ const verifyClient: WebSocket.VerifyClientCallbackAsync = async (info: { req: We
   }
 };
 
-// TODO: Do I need to make any of the callbacks async? Like the connection one, close one, and the message router? The controllers inside the message router will definitely be async.
 export const configureWsServer = (server: http.Server) => {
   const wss: WebSocket.Server = new WebSocket.Server({ server, verifyClient });
 
@@ -106,10 +108,10 @@ export const configureWsServer = (server: http.Server) => {
         // close the out-of-date WebSocket connection
         existingConnection.close(1000, "Replaced by a new WebSocket connection");
         console.log(`Out-of-date WebSocket connection replaced by new connection for user ${username} on projectID ${projectID}`);
+      } else {
+        // TODO: The connection is new. Broadcast that the user has connected.
       }
     }
-
-    // TODO: get project and its active client usernames (using Object.keys(webSocketManager[projectID])), send to client
 
     // WebSocket message handling
     ws.on("message", (message: string) => wsMessageRouter(ws, message, username, projectID));
@@ -124,8 +126,13 @@ export const configureWsServer = (server: http.Server) => {
           delete webSocketManager[projectID];
         } else {
           delete webSocketManager[projectID][username];
+
+          // TODO: broadcast that the user has disconnected
         }
       }
     });
+
+    // on intial connection, send project data to the client
+    getProject(ws, projectID);
   });
 };

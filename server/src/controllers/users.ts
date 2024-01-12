@@ -1,6 +1,8 @@
 import { Request, Response, NextFunction } from "express";
+import WebSocket from "ws";
 import UserModel from "../models/userModel";
-import { BadRequestError, NotFoundError } from "../errors";
+import { updateUserSchema } from "../validation/schemas";
+import { BadRequestError, BadMessageError, NotFoundError } from "../errors";
 // Do I need formatQueryArray? Or can I somehow extract the right kind of array directly from the query params? Or at least extract as array instead of string to save formatQueryArray a step?
 import { formatQueryArray } from "./helpers";
 
@@ -46,9 +48,24 @@ export const getUser = async (req: Request, res: Response, next: NextFunction) =
   }
 };
 
+// search users (ws)
+export const searchUsers = async (ws: WebSocket, data: any) => {
+  // TODO: Validate search string is not "". If it is (or anything else invalid you can think of), throw BadMessageError.
+
+  // query database for all users
+  const users = await UserModel.find({}, { __v: 0 });
+
+  // respond successfully with user data
+  ws.send(JSON.stringify({ action: "searchUsers", success: true, data: users }));
+};
+
 // update user (admin only)
 export const updateUser = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    // validate request body with Joi schema
+    const { error } = updateUserSchema.validate(req.body, { abortEarly: false });
+    if (error) throw new BadRequestError(String(error));
+
     // TODO: Implement. Also needs to update Cognito.
   } catch (error) {
     next(error);

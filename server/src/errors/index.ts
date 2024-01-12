@@ -4,27 +4,22 @@ import BadRequestError from "./BadRequestError";
 import UnauthorizedError from "./UnauthorizedError";
 import ForbiddenError from "./ForbiddenError";
 import NotFoundError from "./NotFoundError";
+import BadMessageError from "./BadMessageError";
+import ForbiddenActionError from "./ForbiddenActionError";
 
 // import error type guards
 import { isMongoWriteError, isMongooseCastError, isExpressBodyParserError } from "./types";
 
-// import error messages
-import { BAD_REQUEST, UNAUTHORIZED, FORBIDDEN, NOT_FOUND, SERVER_ERROR, BAD_MESSAGE } from "./errorMessages";
-
-// named export all custom errors, type guards, and error messages from this index.ts file so they can be imported from the "/errors" path as needed
+// named export all custom errors and type guards from this index.ts file so they can be imported from the "/errors" path as needed
 export {
   CustomError,
   BadRequestError,
   UnauthorizedError,
   ForbiddenError,
   NotFoundError,
+  BadMessageError,
+  ForbiddenActionError,
   isMongoWriteError,
   isMongooseCastError,
   isExpressBodyParserError,
-  BAD_REQUEST,
-  UNAUTHORIZED,
-  FORBIDDEN,
-  NOT_FOUND,
-  SERVER_ERROR,
-  BAD_MESSAGE,
 };

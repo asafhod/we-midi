@@ -1,13 +1,15 @@
 import { Request, Response, NextFunction } from "express";
 // import error classes and type guards
-import { CustomError, isMongoWriteError, isMongooseCastError, isExpressBodyParserError, BAD_REQUEST, SERVER_ERROR } from "../errors";
+import { CustomError, isMongoWriteError, isMongooseCastError, isExpressBodyParserError } from "../errors";
 import { MongoBulkWriteError } from "mongodb";
+// import error messages
+import { BAD_REQUEST, SERVER_ERROR } from "../errors/errorMessages";
 
-// middleware which catches any error related to http requests and sends a response with the appropriate error status code, message, and related data (if any)
+// middleware which catches any error related to http requests, logs it and any related data, and sends a response with the appropriate error status code and client message
 const httpErrorHandler = (error: unknown, _req: Request, res: Response, _next: NextFunction) => {
   if (error instanceof CustomError) {
     // if error is one of this API's custom errors, send response with its corresponding status code and client message
-    console.error(`Code: ${error.statusCode}\nError: ${error.message}`);
+    console.error(`Code: ${error.statusCode}\n${error.constructor.name}: ${error.message}`);
 
     res.status(error.statusCode).json({ success: false, msg: error.clientMessage });
   } else if (
@@ -24,8 +26,7 @@ const httpErrorHandler = (error: unknown, _req: Request, res: Response, _next: N
     );
     res.status(400).json({
       success: false,
-      msg: "Batch operation aborted: Cannot insert duplicate value",
-      data: BAD_REQUEST,
+      msg: BAD_REQUEST,
     });
   } else if (isMongoWriteError(error) && error.code === 11000) {
     // if error is a MongoDB Duplicate Value error for a non-batch operation (such as attempting to insert a document which has a duplicate id)
