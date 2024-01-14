@@ -12,15 +12,9 @@ import {
 } from "../validation/schemas";
 import { BadRequestError, BadMessageError, NotFoundError } from "../errors";
 import { SERVER_ERROR } from "../errors/errorMessages";
-// Do I need formatQueryArray? Or can I somehow extract the right kind of array directly from the query params? Or at least extract as array instead of string to save formatQueryArray a step?
 import { formatQueryArray } from "./helpers";
 
-// TODO: Make sure aligns with TypeScript. What type to give the query results variables? Do I type the responses? Ask ChatGPT.
-//       Do you need to use toObject() or not?
-// getProjects, getProject, addProject, updateProject, deleteProject
-// import MIDI
-// change tempo
-// update track, delete track, [add track]
+// TODO: See notes in validation/schemas.ts
 
 // get projects based on url query arguments
 export const getProjects = async (req: Request, res: Response, next: NextFunction) => {
@@ -103,7 +97,7 @@ export const getProject = async (ws: WebSocket, projectID: string) => {
     //       Also include the currently online usernames for the project (using Object.keys(webSocketManager[projectID]))
 
     // respond successfully with project data
-    ws.send(JSON.stringify({ action: "getProject", success: true, data: project.toObject() }));
+    ws.send(JSON.stringify({ action: "getProject", success: true, data: project }));
   } catch (error) {
     console.error(error);
     // project could not be retrieved for the client, close its WebSocket connection with a Server Error message
@@ -156,7 +150,7 @@ export const updateProject = async (ws: WebSocket, projectID: string, username: 
   console.log(`User ${username} updated project: ${projectID}`);
 
   // respond successfully with project data
-  ws.send(JSON.stringify({ action: "updateProject", success: true, data: project.toObject() }));
+  ws.send(JSON.stringify({ action: "updateProject", success: true, data: project }));
 };
 
 // import MIDI (ws)
@@ -167,7 +161,7 @@ export const importMidi = async (ws: WebSocket, projectID: string, username: str
 
   // TODO: Which data gets sent back (same question for similar project-editing controllers)?
   // respond successfully with project data
-  ws.send(JSON.stringify({ action: "importMidi", success: true, data: project.toObject() }));
+  ws.send(JSON.stringify({ action: "importMidi", success: true, data: project }));
 };
 
 // change tempo (ws)
@@ -177,13 +171,13 @@ export const changeTempo = async (ws: WebSocket, projectID: string, username: st
   if (error) throw new BadMessageError(String(error));
 
   // respond successfully with project data
-  ws.send(JSON.stringify({ action: "changeTempo", success: true, data: project.toObject() }));
+  ws.send(JSON.stringify({ action: "changeTempo", success: true, data: project }));
 };
 
 // add track (ws)
 export const addTrack = async (ws: WebSocket, projectID: string, username: string) => {
   // respond successfully with project data
-  ws.send(JSON.stringify({ action: "addTrack", success: true, data: project.toObject() }));
+  ws.send(JSON.stringify({ action: "addTrack", success: true, data: project }));
 };
 
 // update track (ws)
@@ -193,7 +187,7 @@ export const updateTrack = async (ws: WebSocket, projectID: string, username: st
   if (error) throw new BadMessageError(String(error));
 
   // respond successfully with project data
-  ws.send(JSON.stringify({ action: "updateTrack", success: true, data: project.toObject() }));
+  ws.send(JSON.stringify({ action: "updateTrack", success: true, data: project }));
 };
 
 // delete track (ws)
@@ -203,13 +197,13 @@ export const deleteTrack = async (ws: WebSocket, projectID: string, username: st
   if (error) throw new BadMessageError(String(error));
 
   // respond successfully with project data
-  ws.send(JSON.stringify({ action: "deleteTrack", success: true, data: project.toObject() }));
+  ws.send(JSON.stringify({ action: "deleteTrack", success: true, data: project }));
 };
 
 // delete project (ws)
 export const deleteProject = async (ws: WebSocket, projectID: string, username: string) => {
   // TODO: Implement
-  // TODO: Disconnect all WS clients currently working on the project
+  // TODO: Close all WS clients currently working on the project
 };
 
 // delete project
@@ -227,7 +221,7 @@ export const deleteProjectHttp = async (req: Request, res: Response, next: NextF
     // respond successfully
     res.sendStatus(204);
 
-    // TODO: Disconnect all WS clients currently working on the project
+    // TODO: Close all WS clients currently working on the project
   } catch (error) {
     next(error);
   }

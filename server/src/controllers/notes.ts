@@ -10,10 +10,6 @@ import {
 } from "../validation/schemas";
 import { BadMessageError } from "../errors";
 
-// add note, add notes
-// update note, update notes,
-// delete notes, delete note, deleteAllNotesOnTrack
-
 // add note (ws)
 export const addNote = async (ws: WebSocket, projectID: string, username: string, data: any) => {
   // validate data with Joi schema

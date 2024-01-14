@@ -15,22 +15,6 @@ import { addNote, addNotes, updateNote, updateNotes, deleteNote, deleteNotes, de
 import wsErrorHandler from "../errors/wsErrorHandler";
 import { BadMessageError } from "../errors/";
 
-// WS:
-// update project, [get project, delete project]
-// add projectUsers, update projectUsers, delete projectUsers, [delete projectUser]
-// [search users]
-// import MIDI
-// change tempo
-// update track, delete track, [add track]
-// add note, add notes
-// update note, update notes,
-// delete notes, delete note, deleteAllNotesOnTrack
-
-// HTTP:
-// update user, [get user(s), delete user]
-// [get projectUser(s), accept ProjectUser, delete projectUser]
-// add project, [get projects, delete project]
-
 const router = (ws: WebSocket, message: string, username: string, projectID: string) => {
   console.log(`Received message from user ${username} for project ID ${projectID}: ${message}`);
 
@@ -54,21 +38,6 @@ const router = (ws: WebSocket, message: string, username: string, projectID: str
         break;
       case "deleteProject":
         deleteProject(ws, projectID, username);
-        break;
-      case "searchUsers":
-        searchUsers(ws, data);
-        break;
-      case "addProjectUsers":
-        addProjectUsers(ws, projectID, username, data);
-        break;
-      case "updateProjectUsers":
-        updateProjectUsers(ws, projectID, username, data);
-        break;
-      case "deleteProjectUsers":
-        deleteProjectUsers(ws, projectID, username, data);
-        break;
-      case "deleteProjectUser":
-        deleteProjectUser(ws, projectID, username);
         break;
       case "importMIDI":
         importMidi(ws, projectID, username, data);
@@ -105,6 +74,21 @@ const router = (ws: WebSocket, message: string, username: string, projectID: str
         break;
       case "deleteAllNotesOnTrack":
         deleteAllNotesOnTrack(ws, projectID, username, data);
+        break;
+      case "searchUsers":
+        searchUsers(ws, data);
+        break;
+      case "addProjectUsers":
+        addProjectUsers(ws, projectID, username, data);
+        break;
+      case "updateProjectUsers":
+        updateProjectUsers(ws, projectID, username, data);
+        break;
+      case "deleteProjectUsers":
+        deleteProjectUsers(ws, projectID, username, data);
+        break;
+      case "deleteProjectUser":
+        deleteProjectUser(ws, projectID, username);
         break;
       default:
         throw new BadMessageError(`Unknown message action: ${action}`);

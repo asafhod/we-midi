@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { auth } from "../middleware/auth";
+import auth from "../middleware/auth";
 import { getProjects, addProject, deleteProjectHttp } from "../controllers/projects";
 
 // initialize router

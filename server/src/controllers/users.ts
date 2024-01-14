@@ -1,26 +1,43 @@
 import { Request, Response, NextFunction } from "express";
 import WebSocket from "ws";
-import UserModel from "../models/userModel";
-import { updateUserSchema } from "../validation/schemas";
+import AWS from "aws-sdk";
+import UserModel, { User } from "../models/userModel";
+import { updateUserSchema, searchUsersSchema } from "../validation/schemas";
 import { BadRequestError, BadMessageError, NotFoundError } from "../errors";
-// Do I need formatQueryArray? Or can I somehow extract the right kind of array directly from the query params? Or at least extract as array instead of string to save formatQueryArray a step?
 import { formatQueryArray } from "./helpers";
 
-// TODO: Make sure aligns with TypeScript. What type to give the query results variables? Do I type the responses? Ask ChatGPT.
-// Also, make plural/singular order consistent across routes, schema validation, and controllers
-// Start with getUser
-// getUsers, getUser, updateUser, deleteUser
+// TODO: searchUsers, updateUser, deleteUser
 
-// get all users (admin only)
+// get users based on url query arguments (admin only)
 export const getUsers = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    // query database for all users
-    const users = await UserModel.find({}, { __v: 0 });
+    // destructure url query arguments from request
+    const { usernames, isAdmin } = req.query;
 
-    // respond successfully with result count and user data
-    res.status(200).json({ success: true, resultCount: users.length, data: users });
+    // initialize query to empty object
+    const query: Record<string, any> = {};
+
+    // set up query object for usernames array
+    if (usernames) {
+      // format argument into array
+      const usernamesArray: RegExp[] = formatQueryArray(usernames as string);
+      // set query field for username with the "$in" property to allow querying based on all of the usernames array entries
+      query.username = { $in: usernamesArray };
+    }
+
+    // set up query object for isAdmin field
+    if (isAdmin) {
+      // cast string argument to boolean
+      query.isAdmin = isAdmin === "true";
+    }
+
+    // query the database using the query object (an empty object returns all users)
+    const users: User[] = await UserModel.find(query, { __v: 0 }); // use projection to avoid retrieving unnecessary field __v
+
+    // respond successfully with user data
+    res.status(200).json({ success: true, data: users });
   } catch (error) {
-    next(error);
+    next(error); // pass any thrown error to error handler middleware
   }
 };
 
@@ -35,14 +52,11 @@ export const getUser = async (req: Request, res: Response, next: NextFunction) =
 
     // query database for user matching username
     // TODO: Confirm leaving out __v using the projection is necessary. Probably is.
-    const user = await UserModel.findOne({ username }, { __v: 0 });
+    const user: User | null = await UserModel.findOne({ username }, { __v: 0 });
     if (!user) throw new NotFoundError(`No user found matching username: ${username}`);
 
     // respond successfully with user data
-    res.status(200).json({
-      success: true,
-      data: user,
-    });
+    res.status(200).json({ success: true, data: user });
   } catch (error) {
     next(error);
   }
@@ -50,7 +64,9 @@ export const getUser = async (req: Request, res: Response, next: NextFunction) =
 
 // search users (ws)
 export const searchUsers = async (ws: WebSocket, data: any) => {
-  // TODO: Validate search string is not "". If it is (or anything else invalid you can think of), throw BadMessageError.
+  // validate data with Joi schema
+  const { error } = searchUsersSchema.validate(data, { abortEarly: false });
+  if (error) throw new BadMessageError(String(error));
 
   // query database for all users
   const users = await UserModel.find({}, { __v: 0 });

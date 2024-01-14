@@ -3,7 +3,7 @@ import { UnauthorizedError } from "../errors";
 import cognitoTokenVerifier from "../utilities/cognitoTokenVerifier";
 
 // user authentication middleware
-export const auth = async (req: Request, _res: Response, next: NextFunction) => {
+const auth = async (req: Request, _res: Response, next: NextFunction) => {
   // get authorization header
   const authHeader: string | undefined = req.headers.authorization;
 
@@ -28,3 +28,5 @@ export const auth = async (req: Request, _res: Response, next: NextFunction) => 
     throw new UnauthorizedError("Authentication token is invalid or expired");
   }
 };
+
+export default auth;

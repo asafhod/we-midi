@@ -1,7 +1,7 @@
 import WebSocket from "ws";
 import http, { IncomingMessage } from "http";
 import cognitoTokenVerifier from "./utilities/cognitoTokenVerifier";
-import ProjectUserModel, { ProjectUser } from "./models/projectUserModel";
+import ProjectUserModel from "./models/projectUserModel";
 import webSocketManager from "./webSocketManager";
 import wsMessageRouter from "./routes/wsMessages";
 import { getProject } from "./controllers/projects";
@@ -9,8 +9,6 @@ import { BAD_REQUEST, UNAUTHORIZED, FORBIDDEN, SERVER_ERROR } from "./errors/err
 
 // TODO: Anything special with socket for HTTPS? Saw something that made it seem that way when hovering over one of the ws values.
 //       Though ChatGPT didn't point out anything at the general level. Double check.
-
-// ***TODO: Do I need to make any of the callbacks async? Like the connection one, close one, and the message router? The controllers inside the message router will definitely be async.
 
 interface WebSocketConnectionRequest extends IncomingMessage {
   username?: string;
@@ -53,9 +51,9 @@ const verifyClient: WebSocket.VerifyClientCallbackAsync = async (info: { req: We
     // check if projectID is a 24 character hex?
 
     try {
-      // check if ProjectUser matching the projectID and username exists
-      const projectUser: ProjectUser | null = await ProjectUserModel.findOne({ projectID, username }, { __v: 0 });
-      if (!projectUser) {
+      // check if an accepted ProjectUser matching the projectID and username exists
+      const projectUserExists = await ProjectUserModel.exists({ projectID, username, accepted: true });
+      if (!projectUserExists) {
         console.error("WebSocket client verification failed: User is not a member of this project");
         return cb(false, 403, FORBIDDEN);
       }

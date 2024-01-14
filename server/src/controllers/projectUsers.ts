@@ -15,7 +15,7 @@ export const getProjectUsers = async (req: Request, res: Response, next: NextFun
     // TODO: validate projectID
 
     // query database for projectUsers matching projectID and/or username
-    // TODO: How to make it ignore empty string? Does find method have a built in feature for this, or do you need to use an if-tree?
+    // TODO: Use a query object to make it ignore empty string like you did for getUsers
     const projectUsers = await ProjectUserModel.find({ projectID, username }, { __v: 0 });
 
     // respond successfully with projectUser data
@@ -52,6 +52,11 @@ export const getProjectUser = async (req: Request, res: Response, next: NextFunc
   }
 };
 
+// update projectUser and set its accepted property to True when a user accepts a project invite
+export const acceptProjectUser = async (req: Request, res: Response, next: NextFunction) => {
+  // placeholder for body
+};
+
 // add projectUsers (ws)
 export const addProjectUsers = async (ws: WebSocket, projectID: string, username: string, data: any) => {
   // validate data with Joi schema
@@ -61,9 +66,6 @@ export const addProjectUsers = async (ws: WebSocket, projectID: string, username
   // respond successfully with data for the projectUsers
   ws.send(JSON.stringify({ action: "addProjectUsers", success: true, data: projectUsers }));
 };
-
-// update projectUser and set its accepted property to True when a user accepts a project invite
-export const acceptProjectUser = async (req: Request, res: Response, next: NextFunction) => {};
 
 // update projectUsers (ws)
 export const updateProjectUsers = async (ws: WebSocket, projectID: string, username: string, data: any) => {

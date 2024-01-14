@@ -1,15 +1,5 @@
 import Joi, { ObjectSchema, ArraySchema } from "joi";
 
-// update user, [get user(s), delete user]
-// add projectUsers, update projectUsers, delete projectUsers, [get projectUser(s), delete projectUser]
-// add project, update project, [get project(s), delete project]
-// import MIDI
-// change tempo
-// update track, delete track, [add track]
-// add note, add notes
-// update note, update notes,
-// delete notes, delete note, deleteAllNotesOnTrack
-
 // TODO: Change constants and tempo logic when you change note timing to measure-based
 
 // validation schema for the Update User request
@@ -27,7 +17,55 @@ export const addProjectSchema: ObjectSchema<any> = Joi.object({
 // validation schema for the Update Project request
 export const updateProjectSchema: ObjectSchema<any> = Joi.object({
   name: Joi.string().min(1).max(100),
-  // tempo: Joi.number().min(1).max(300), TODO: Can likely just uncomment this and delete the Change Tempo schema once you change note timing to measure-based
+  // tempo: Joi.number().min(1).max(300), TODO: Once you change note timing to measure-based, can likely just uncomment this and delete the Change Tempo schema
+});
+
+// validation schema for the Import MIDI request
+export const importMidiSchema: ObjectSchema<any> = Joi.object({
+  tempo: Joi.number().min(1).max(300),
+  ppq: Joi.number().min(24).max(960),
+  lastTrackID: Joi.number().min(0),
+  tracks: Joi.array()
+    .max(100)
+    .items({
+      trackID: Joi.number().min(1).required(),
+      trackName: Joi.string().min(1).max(15).required(),
+      instrument: Joi.string().length(1).required(),
+      volume: Joi.number().min(-40).max(8).required(),
+      pan: Joi.number().min(-8).max(8).required(),
+      solo: Joi.boolean().required(),
+      mute: Joi.boolean().required(),
+      lastNoteID: Joi.number().min(0),
+      notes: Joi.array()
+        .max(1500)
+        .items({
+          noteID: Joi.number().min(1).required(),
+          midiNum: Joi.number().min(21).max(108).required(),
+          duration: Joi.number().min(0.00625).max(60000).required(),
+          noteTime: Joi.number().min(0).max(59998.125).required(),
+          velocity: Joi.number().min(0).max(127).required(),
+        }),
+    }),
+});
+
+// TODO: Make sure you filter for only the tracks that have notes in the client. If none do, only send the tempo property.
+// validation schema for the Change Tempo request
+export const changeTempoSchema: ObjectSchema<any> = Joi.object({
+  tempo: Joi.number().min(1).max(300).required(),
+  tracks: Joi.array()
+    .max(100)
+    .items({
+      trackID: Joi.number().min(1).required(),
+      notes: Joi.array()
+        .min(1)
+        .max(1500)
+        .items({
+          noteID: Joi.number().min(1).required(),
+          duration: Joi.number().min(0.00625).max(60000).required(),
+          noteTime: Joi.number().min(0).max(59998.125).required(),
+        })
+        .required(),
+    }),
 });
 
 // validation for the Update Track request
@@ -120,52 +158,9 @@ export const deleteAllNotesOnTrackSchema: ObjectSchema<any> = Joi.object({
   trackID: Joi.number().min(1).required(),
 });
 
-// validation schema for the Import MIDI request
-export const importMidiSchema: ObjectSchema<any> = Joi.object({
-  tempo: Joi.number().min(1).max(300),
-  ppq: Joi.number().min(24).max(960),
-  lastTrackID: Joi.number().min(0),
-  tracks: Joi.array()
-    .max(100)
-    .items({
-      trackID: Joi.number().min(1).required(),
-      trackName: Joi.string().min(1).max(15).required(),
-      instrument: Joi.string().length(1).required(),
-      volume: Joi.number().min(-40).max(8).required(),
-      pan: Joi.number().min(-8).max(8).required(),
-      solo: Joi.boolean().required(),
-      mute: Joi.boolean().required(),
-      lastNoteID: Joi.number().min(0),
-      notes: Joi.array()
-        .max(1500)
-        .items({
-          noteID: Joi.number().min(1).required(),
-          midiNum: Joi.number().min(21).max(108).required(),
-          duration: Joi.number().min(0.00625).max(60000).required(),
-          noteTime: Joi.number().min(0).max(59998.125).required(),
-          velocity: Joi.number().min(0).max(127).required(),
-        }),
-    }),
-});
-
-// TODO: Make sure you filter for only the tracks that have notes in the client. If none do, only send the tempo property.
-// validation schema for the Change Tempo request
-export const changeTempoSchema: ObjectSchema<any> = Joi.object({
-  tempo: Joi.number().min(1).max(300).required(),
-  tracks: Joi.array()
-    .max(100)
-    .items({
-      trackID: Joi.number().min(1).required(),
-      notes: Joi.array()
-        .min(1)
-        .max(1500)
-        .items({
-          noteID: Joi.number().min(1).required(),
-          duration: Joi.number().min(0.00625).max(60000).required(),
-          noteTime: Joi.number().min(0).max(59998.125).required(),
-        })
-        .required(),
-    }),
+// validation schema for the Search Users request
+export const searchUsersSchema: ObjectSchema<any> = Joi.object({
+  search: Joi.string().min(1).max(128).required(),
 });
 
 // validation schema for the Add Project Users request
