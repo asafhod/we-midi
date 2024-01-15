@@ -29,6 +29,7 @@ const router = (ws: WebSocket, message: string, username: string, projectID: str
       throw new BadMessageError("Message contains invalid JSON");
     }
 
+    // route to corresponding controller based on action
     switch (action) {
       case "getProject":
         getProject(ws, projectID);

@@ -25,13 +25,7 @@ const wsErrorHandler = (error: unknown, ws: WebSocket, action: unknown) => {
     console.error(
       `Action: ${action}\nMongoDB Duplicate Value Error: Batch operation aborted - Cannot insert duplicate value\nFor Object: ${error.writeErrors[0].err.op}`
     );
-    ws.send(
-      JSON.stringify({
-        action,
-        success: false,
-        msg: BAD_MESSAGE,
-      })
-    );
+    ws.send(JSON.stringify({ action, success: false, msg: BAD_MESSAGE }));
   } else if (isMongoWriteError(error) && error.code === 11000) {
     // if error is a MongoDB Duplicate Value error for a non-batch operation (such as attempting to insert a document which has a duplicate id)
     console.error(
@@ -39,13 +33,7 @@ const wsErrorHandler = (error: unknown, ws: WebSocket, action: unknown) => {
         Object.keys(error.keyValue)[0]
       }, Value: ${Object.values(error.keyValue)[0]}`
     );
-    ws.send(
-      JSON.stringify({
-        action,
-        success: false,
-        msg: BAD_MESSAGE,
-      })
-    );
+    ws.send(JSON.stringify({ action, success: false, msg: BAD_MESSAGE }));
   } else if (error instanceof Error && error.name === "ValidationError") {
     // if error is a MongoDB Validation Error (such as missing a required field)
     console.error(`Action: ${action}\nMongoDB Validation Error: ${error.message}`);
@@ -55,13 +43,7 @@ const wsErrorHandler = (error: unknown, ws: WebSocket, action: unknown) => {
     console.error(
       `Action: ${action}\nMongoDB Cast Error: Cannot cast ${error.valueType} value to ${error.kind} for field: ${error.path}\nFor Value: ${error.value}`
     );
-    ws.send(
-      JSON.stringify({
-        action,
-        success: false,
-        msg: BAD_MESSAGE,
-      })
-    );
+    ws.send(JSON.stringify({ action, success: false, msg: BAD_MESSAGE }));
   } else if (error instanceof Error) {
     // any other Error
     console.error(`Action: ${action}\nError: ${error.message}`);

@@ -86,7 +86,7 @@ export const configureWsServer = (server: http.Server) => {
       console.error(
         `WebSocket connection aborted - Username and/or projectID were not passed from Client Verification function to Connection Event callback`
       );
-      return ws.close(1008, SERVER_ERROR);
+      return ws.close(1011, SERVER_ERROR);
     }
 
     console.log(`A WebSocket connection has been established with user ${username} for project ID ${projectID}`);

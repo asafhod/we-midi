@@ -24,10 +24,7 @@ const httpErrorHandler = (error: unknown, _req: Request, res: Response, _next: N
         error.writeErrors[0].err.op
       }`
     );
-    res.status(400).json({
-      success: false,
-      msg: BAD_REQUEST,
-    });
+    res.status(400).json({ success: false, msg: BAD_REQUEST });
   } else if (isMongoWriteError(error) && error.code === 11000) {
     // if error is a MongoDB Duplicate Value error for a non-batch operation (such as attempting to insert a document which has a duplicate id)
     console.error(
@@ -35,24 +32,15 @@ const httpErrorHandler = (error: unknown, _req: Request, res: Response, _next: N
         Object.values(error.keyValue)[0]
       }`
     );
-    res.status(400).json({
-      success: false,
-      msg: BAD_REQUEST,
-    });
+    res.status(400).json({ success: false, msg: BAD_REQUEST });
   } else if (isExpressBodyParserError(error) && error.type === "entity.parse.failed") {
     // if error happened when middleware attempted to parse the request JSON
     console.error(`Code: ${400}\nExpress Body Parser Error: Request body contains invalid JSON`);
-    res.status(400).json({
-      success: false,
-      msg: BAD_REQUEST,
-    });
+    res.status(400).json({ success: false, msg: BAD_REQUEST });
   } else if (error instanceof Error && error.name === "ValidationError") {
     // if error is a MongoDB Validation Error (such as missing a required field)
     console.error(`Code: ${400}\nMongoDB Validation Error: ${error.message}`);
-    res.status(400).json({
-      success: false,
-      msg: BAD_REQUEST,
-    });
+    res.status(400).json({ success: false, msg: BAD_REQUEST });
   } else if (isMongooseCastError(error)) {
     // if error is a MongoDB Cast Error (such as attempting to set an array as a value for a non-array field)
     console.error(
@@ -60,10 +48,7 @@ const httpErrorHandler = (error: unknown, _req: Request, res: Response, _next: N
         error.value
       }`
     );
-    res.status(400).json({
-      success: false,
-      msg: BAD_REQUEST,
-    });
+    res.status(400).json({ success: false, msg: BAD_REQUEST });
   } else if (error instanceof Error) {
     // any other Error will trigger an Internal Server Error response
     console.error(`Code: ${500}\nError: ${error.message}`);

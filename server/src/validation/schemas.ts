@@ -4,6 +4,7 @@ import Joi, { ObjectSchema, ArraySchema } from "joi";
 
 // validation schema for the Update User request
 export const updateUserSchema: ObjectSchema<any> = Joi.object({
+  // Note: Cognito custom attribute update logic for the Update User request only supports string, number, and boolean values
   isAdmin: Joi.boolean(),
 });
 

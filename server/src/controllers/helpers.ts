@@ -4,7 +4,7 @@ export const formatQueryArray = (data: string): RegExp[] => {
   const queryArray: string[] = data.split(",");
 
   // map each entry to a RegExp with the "i" flag to allow for case-insensitive querying
-  const queryRegExpArray: RegExp[] = queryArray.map((entry: string) => RegExp(`^${entry}$`, "i"));
+  const queryRegExpArray: RegExp[] = queryArray.map((entry: string) => new RegExp(`^${entry}$`, "i"));
 
   return queryRegExpArray;
 };

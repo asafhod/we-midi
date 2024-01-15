@@ -16,7 +16,7 @@ const { MONGODB_URI, AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY } = pr
 
 // validate environment variables
 if (!MONGODB_URI || !AWS_REGION || !AWS_ACCESS_KEY_ID || !AWS_SECRET_ACCESS_KEY) {
-  console.error("Environment variables MONGODB_URI, AWS_REGION, AWS_ACCESS_KEY_ID, and AWS_SECRET_ACCESS_KEY are required.");
+  console.error("Environment variables MONGODB_URI, AWS_REGION, AWS_ACCESS_KEY_ID, and AWS_SECRET_ACCESS_KEY are required");
   process.exit(1);
 }
 
