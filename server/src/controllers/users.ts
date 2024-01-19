@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import mongoose from "mongoose";
 import WebSocket from "ws";
+import webSocketManager from "../webSocketManager";
 import { CognitoIdentityServiceProvider } from "aws-sdk";
 import UserModel, { User } from "../models/userModel";
 import { updateUserSchema, searchUsersSchema } from "../validation/schemas";
@@ -19,17 +20,15 @@ export const getUsers = async (req: Request, res: Response, next: NextFunction) 
     // initialize query to empty object
     const query: Record<string, any> = {};
 
-    // set up query object for usernames array
     if (usernames) {
-      // format argument into array
+      // format usernames string into array
       const usernamesArray: RegExp[] = formatQueryArray(usernames as string);
-      // set query field for username with the "$in" property to allow querying based on all of the usernames array entries
+      // set query field for username with the "$in" property to allow querying based on all of the entries in the usernames array
       query.username = { $in: usernamesArray };
     }
 
-    // set up query object for isAdmin field
     if (isAdmin) {
-      // cast string argument to boolean
+      // cast isAdmin string argument to boolean
       query.isAdmin = isAdmin === "true";
     }
 
@@ -63,7 +62,7 @@ export const getUser = async (req: Request, res: Response, next: NextFunction) =
   }
 };
 
-// search users (ws)
+// search users (WebSocket)
 export const searchUsers = async (ws: WebSocket, data: any) => {
   // validate data with Joi schema
   const { error } = searchUsersSchema.validate(data, { abortEarly: false });
@@ -97,10 +96,7 @@ export const updateUser = async (req: Request, res: Response, next: NextFunction
     const user: User | null = await UserModel.findOneAndUpdate(
       { username },
       { $set: req.body },
-      {
-        new: true,
-        projection: { __v: 0 },
-      }
+      { new: true, projection: { __v: 0 } }
     );
     if (!user) throw new NotFoundError(`No user found for username: ${username}`);
 
@@ -129,6 +125,8 @@ export const updateUser = async (req: Request, res: Response, next: NextFunction
     // log successful user update to the console
     console.log(`User ${req.username} updated user: ${username}`);
 
+    // TODO: If user lost Admin status, close any open ws connection of theirs for any project they are not a member of
+
     // respond successfully with user data
     res.status(200).json({ success: true, data: user });
   } catch (error) {
@@ -154,6 +152,8 @@ export const deleteUser = async (req: Request, res: Response, next: NextFunction
     // prevent user from deleting themselves
     if (req.username === username) throw new ForbiddenError("User cannot delete themselves");
 
+    // TODO: Don't allow user deletion if they're the only accepted Project Admin on any project
+
     // delete the user from the database
     const user: User | null = await UserModel.findOneAndDelete({ username }, { projection: { __v: 0 } });
     if (!user) throw new NotFoundError(`No user found for username: ${username}`);
@@ -174,6 +174,9 @@ export const deleteUser = async (req: Request, res: Response, next: NextFunction
 
     // log successful user deletion to the console
     console.log(`User ${req.username} deleted user: ${username}`);
+
+    // TODO: Close any open ws connection of theirs
+    // TODO: Broadcast the deletion to any projects on which they were a ProjectUser
 
     // respond successfully
     res.sendStatus(204);

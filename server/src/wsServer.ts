@@ -48,11 +48,17 @@ const verifyClient: WebSocket.VerifyClientCallbackAsync = async (info: { req: We
       console.error("WebSocket client verification failed: Project ID is required");
       return cb(false, 400, BAD_REQUEST);
     }
-    // check if projectID is a 24 character hex?
+
+    // validate projectID is a 24-character hexadecimal string (a valid MongoDB ObjectId)
+    const objectIdRegex: RegExp = /^[0-9a-fA-F]{24}$/;
+    if (!objectIdRegex.test(projectID)) {
+      console.error("WebSocket client verification failed: Project ID is not a valid MongoDB ObjectId");
+      return cb(false, 400, BAD_REQUEST);
+    }
 
     try {
       // check if an accepted ProjectUser matching the projectID and username exists
-      const projectUserExists = await ProjectUserModel.exists({ projectID, username, accepted: true });
+      const projectUserExists = await ProjectUserModel.exists({ projectID, username, isAccepted: true });
       if (!projectUserExists) {
         console.error("WebSocket client verification failed: User is not a member of this project");
         return cb(false, 403, FORBIDDEN);

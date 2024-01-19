@@ -86,7 +86,7 @@ export const getProjects = async (req: Request, res: Response, next: NextFunctio
   }
 };
 
-// get project by id (ws)
+// get project by id (WebSocket)
 export const getProject = async (ws: WebSocket, projectID: string) => {
   try {
     // query database for project using id
@@ -136,7 +136,7 @@ export const addProject = async (req: Request, res: Response, next: NextFunction
   }
 };
 
-// update project (ws)
+// update project (WebSocket)
 export const updateProject = async (ws: WebSocket, projectID: string, username: string, data: any) => {
   // validate data with Joi schema
   const { error } = updateProjectSchema.validate(data, { abortEarly: false });
@@ -153,7 +153,7 @@ export const updateProject = async (ws: WebSocket, projectID: string, username: 
   ws.send(JSON.stringify({ action: "updateProject", success: true, data: project }));
 };
 
-// import MIDI (ws)
+// import MIDI (WebSocket)
 export const importMidi = async (ws: WebSocket, projectID: string, username: string, data: any) => {
   // validate data with Joi schema
   const { error } = importMidiSchema.validate(data, { abortEarly: false });
@@ -164,7 +164,7 @@ export const importMidi = async (ws: WebSocket, projectID: string, username: str
   ws.send(JSON.stringify({ action: "importMidi", success: true, data: project }));
 };
 
-// change tempo (ws)
+// change tempo (WebSocket)
 export const changeTempo = async (ws: WebSocket, projectID: string, username: string, data: any) => {
   // validate data with Joi schema
   const { error } = changeTempoSchema.validate(data, { abortEarly: false });
@@ -174,13 +174,13 @@ export const changeTempo = async (ws: WebSocket, projectID: string, username: st
   ws.send(JSON.stringify({ action: "changeTempo", success: true, data: project }));
 };
 
-// add track (ws)
+// add track (WebSocket)
 export const addTrack = async (ws: WebSocket, projectID: string, username: string) => {
   // respond successfully with project data
   ws.send(JSON.stringify({ action: "addTrack", success: true, data: project }));
 };
 
-// update track (ws)
+// update track (WebSocket)
 export const updateTrack = async (ws: WebSocket, projectID: string, username: string, data: any) => {
   // validate data with Joi schema
   const { error } = updateTrackSchema.validate(data, { abortEarly: false });
@@ -190,7 +190,7 @@ export const updateTrack = async (ws: WebSocket, projectID: string, username: st
   ws.send(JSON.stringify({ action: "updateTrack", success: true, data: project }));
 };
 
-// delete track (ws)
+// delete track (WebSocket)
 export const deleteTrack = async (ws: WebSocket, projectID: string, username: string, data: any) => {
   // validate data with Joi schema
   const { error } = deleteTrackSchema.validate(data, { abortEarly: false });
@@ -200,13 +200,13 @@ export const deleteTrack = async (ws: WebSocket, projectID: string, username: st
   ws.send(JSON.stringify({ action: "deleteTrack", success: true, data: project }));
 };
 
-// delete project (ws)
+// delete project - used when deleting a project from the project's workspace (WebSocket)
 export const deleteProject = async (ws: WebSocket, projectID: string, username: string) => {
   // TODO: Implement
   // TODO: Close all WS clients currently working on the project
 };
 
-// delete project
+// delete project - used when deleting a project from the user dashboard
 export const deleteProjectHttp = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;

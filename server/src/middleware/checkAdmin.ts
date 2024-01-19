@@ -30,7 +30,7 @@ export const isAdmin = async (username: string) => {
 // function that returns whether a user is a project admin
 export const isProjectAdmin = async (username: string, projectID: string) => {
   // check if an accepted admin ProjectUser exists for the specified username and projectID
-  const projectAdminExists = await ProjectUserModel.exists({ username, projectID, isProjectAdmin: true, accepted: true });
+  const projectAdminExists = await ProjectUserModel.exists({ username, projectID, isProjectAdmin: true, isAccepted: true });
 
   if (projectAdminExists) return true;
 

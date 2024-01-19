@@ -10,7 +10,7 @@ import {
 } from "../validation/schemas";
 import { BadMessageError } from "../errors";
 
-// add note (ws)
+// add note (WebSocket)
 export const addNote = async (ws: WebSocket, projectID: string, username: string, data: any) => {
   // validate data with Joi schema
   const { error } = addNoteSchema.validate(data, { abortEarly: false });
@@ -20,7 +20,7 @@ export const addNote = async (ws: WebSocket, projectID: string, username: string
   ws.send(JSON.stringify({ action: "addNote", success: true, data: note }));
 };
 
-// add notes (ws)
+// add notes (WebSocket)
 export const addNotes = async (ws: WebSocket, projectID: string, username: string, data: any) => {
   // validate data with Joi schema
   const { error } = addNotesSchema.validate(data, { abortEarly: false });
@@ -30,7 +30,7 @@ export const addNotes = async (ws: WebSocket, projectID: string, username: strin
   ws.send(JSON.stringify({ action: "addNotes", success: true, data: notes }));
 };
 
-// update note (ws)
+// update note (WebSocket)
 export const updateNote = async (ws: WebSocket, projectID: string, username: string, data: any) => {
   // validate data with Joi schema
   const { error } = updateNoteSchema.validate(data, { abortEarly: false });
@@ -40,7 +40,7 @@ export const updateNote = async (ws: WebSocket, projectID: string, username: str
   ws.send(JSON.stringify({ action: "updateNote", success: true, data: note }));
 };
 
-// update notes (ws)
+// update notes (WebSocket)
 export const updateNotes = async (ws: WebSocket, projectID: string, username: string, data: any) => {
   // validate data with Joi schema
   const { error } = updateNotesSchema.validate(data, { abortEarly: false });
@@ -50,7 +50,7 @@ export const updateNotes = async (ws: WebSocket, projectID: string, username: st
   ws.send(JSON.stringify({ action: "updateNotes", success: true, data: notes }));
 };
 
-// delete note (ws)
+// delete note (WebSocket)
 export const deleteNote = async (ws: WebSocket, projectID: string, username: string, data: any) => {
   // validate data with Joi schema
   const { error } = deleteNoteSchema.validate(data, { abortEarly: false });
@@ -60,7 +60,7 @@ export const deleteNote = async (ws: WebSocket, projectID: string, username: str
   ws.send(JSON.stringify({ action: "deleteNote", success: true, data: note }));
 };
 
-// delete notes (ws)
+// delete notes (WebSocket)
 export const deleteNotes = async (ws: WebSocket, projectID: string, username: string, data: any) => {
   // validate data with Joi schema
   const { error } = deleteNotesSchema.validate(data, { abortEarly: false });
@@ -70,7 +70,7 @@ export const deleteNotes = async (ws: WebSocket, projectID: string, username: st
   ws.send(JSON.stringify({ action: "deleteNotes", success: true, data: notes }));
 };
 
-// delete all notes on track (ws)
+// delete all notes on track (WebSocket)
 export const deleteAllNotesOnTrack = async (ws: WebSocket, projectID: string, username: string, data: any) => {
   // validate data with Joi schema
   const { error } = deleteAllNotesOnTrackSchema.validate(data, { abortEarly: false });

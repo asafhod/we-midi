@@ -1,63 +1,115 @@
 import { Request, Response, NextFunction } from "express";
+import mongoose from "mongoose";
 import WebSocket from "ws";
-import ProjectUserModel from "../models/projectUserModel";
+import webSocketManager from "../webSocketManager";
+import ProjectUserModel, { ProjectUser } from "../models/projectUserModel";
 import { addProjectUsersSchema, updateProjectUsersSchema, deleteProjectUsersSchema } from "../validation/schemas";
-import { BadRequestError, BadMessageError, NotFoundError } from "../errors";
+import { BadRequestError, BadMessageError, ForbiddenError, NotFoundError } from "../errors";
+import { formatQueryArray } from "./helpers";
 
-// get projectUsers based on url query arguments
+// get ProjectUsers based on url query arguments (admin only)
 export const getProjectUsers = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    // destructure projectID and username from url query arguments
-    const { projectID, username } = req.query;
+    // destructure url query arguments from request
+    const { projectIDs, usernames, isProjectAdmin, isAccepted } = req.query;
 
-    // validate username
-    if (username.length > 128) throw new BadRequestError("Username cannot exceed 128 characters");
-    // TODO: validate projectID
+    // initialize query to empty object
+    const query: Record<string, any> = {};
 
-    // query database for projectUsers matching projectID and/or username
-    // TODO: Use a query object to make it ignore empty string like you did for getUsers
-    const projectUsers = await ProjectUserModel.find({ projectID, username }, { __v: 0 });
+    // set up query object for arguments that correspond to array fields on the ProjectUser model
+    if (projectIDs) {
+      // format string argument into array
+      const projectIDsArray: RegExp[] = formatQueryArray(projectIDs as string);
+      // set a query field for the argument with the "$in" property to allow querying based on all of the array entries
+      query.projectID = { $in: projectIDsArray };
+    }
 
-    // respond successfully with projectUser data
-    res.status(200).json({
-      success: true,
-      data: projectUsers,
-    });
+    if (usernames) {
+      const usernamesArray: RegExp[] = formatQueryArray(usernames as string);
+      query.username = { $in: usernamesArray };
+    }
+
+    // set up query object for arguments that correspond to non-array fields on ProjectUser model
+    if (isProjectAdmin) {
+      // cast string argument to boolean and set it as a query field
+      query.isProjectAdmin = isProjectAdmin === "true";
+    }
+
+    if (isAccepted) {
+      query.isAccepted = isAccepted === "true";
+    }
+
+    // query the database using the query object (an empty object returns all ProjectUsers)
+    const projectUsers: ProjectUser[] = await ProjectUserModel.find(query, { __v: 0 }); // use projection to avoid retrieving unnecessary field __v
+
+    // respond successfully with ProjectUser data
+    res.status(200).json({ success: true, data: projectUsers });
   } catch (error) {
-    next(error);
+    next(error); // pass any thrown error to error handler middleware
   }
 };
 
-// get projectUser by projectID and username
+// get ProjectUser by projectID and username (admin only)
 export const getProjectUser = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    // destructure projectID and username from url parameter
-    const { projectID, username } = req.params;
+    // get the projectID and target username from the url parameters
+    const { projectID } = req.params;
+    const username: string = req.params.username.toLowerCase(); // to lower case for case-insensitivity
+
+    // validate projectID is a 24-character hexadecimal string (a valid MongoDB ObjectId)
+    const objectIdRegex: RegExp = /^[0-9a-fA-F]{24}$/;
+    if (!objectIdRegex.test(projectID)) throw new BadRequestError("ProjectID is not a valid MongoDB ObjectId");
 
     // validate username
     if (username.length > 128) throw new BadRequestError("Username cannot exceed 128 characters");
-    // TODO: validate projectID
 
-    // query database for projectUser matching projectID and username
-    const projectUser = await ProjectUserModel.findOne({ projectID, username }, { __v: 0 });
-    if (!projectUser) throw new NotFoundError(`No ProjectUser found matching projectID ${projectID} and username ${username}`);
+    // query database for ProjectUser matching the projectID and username
+    const projectUser: ProjectUser | null = await ProjectUserModel.findOne({ projectID, username }, { __v: 0 });
+    if (!projectUser) throw new NotFoundError(`No ProjectUser found for projectID ${projectID} and username ${username}`);
 
-    // respond successfully with projectUser data
-    res.status(200).json({
-      success: true,
-      data: projectUser,
-    });
+    // respond successfully with ProjectUser data
+    res.status(200).json({ success: true, data: projectUser });
   } catch (error) {
     next(error);
   }
 };
 
-// update projectUser and set its accepted property to True when a user accepts a project invite
+// update ProjectUser and set its isAccepted property to True when a user accepts a project invitation
 export const acceptProjectUser = async (req: Request, res: Response, next: NextFunction) => {
-  // placeholder for body
+  try {
+    // get the projectID and target username from the url parameters
+    const { projectID } = req.params;
+    const username: string = req.params.username.toLowerCase(); // to lower case for case-insensitivity
+
+    // validate username
+    if (username.length > 128) throw new BadRequestError("Username cannot exceed 128 characters");
+
+    // ensure users can only accept project invitations meant for them
+    if (req.username !== username) throw new ForbiddenError("User cannot accept a project invitation for another user");
+
+    // validate projectID is a 24-character hexadecimal string (a valid MongoDB ObjectId)
+    const objectIdRegex: RegExp = /^[0-9a-fA-F]{24}$/;
+    if (!objectIdRegex.test(projectID)) throw new BadRequestError("ProjectID is not a valid MongoDB ObjectId");
+
+    // update the isAccepted property to True for the ProjectUser in the database, using the "new" flag to retrieve the updated entry
+    const projectUser: ProjectUser | null = await ProjectUserModel.findOneAndUpdate(
+      { projectID, username, isAccepted: false },
+      { $set: { isAccepted: true } },
+      { new: true, projection: { __v: 0 } }
+    );
+    if (!projectUser) throw new NotFoundError(`No unaccepted ProjectUser found for projectID ${projectID} and username ${username}`);
+
+    // log successful ProjectUser update to the console
+    console.log(`User ${req.username} has accepted their invitation to Project ${projectID}`);
+
+    // respond successfully with ProjectUser data
+    res.status(200).json({ success: true, data: projectUser });
+  } catch (error) {
+    next(error);
+  }
 };
 
-// add projectUsers (ws)
+// add projectUsers (WebSocket)
 export const addProjectUsers = async (ws: WebSocket, projectID: string, username: string, data: any) => {
   // validate data with Joi schema
   const { error } = addProjectUsersSchema.validate(data, { abortEarly: false });
@@ -67,17 +119,19 @@ export const addProjectUsers = async (ws: WebSocket, projectID: string, username
   ws.send(JSON.stringify({ action: "addProjectUsers", success: true, data: projectUsers }));
 };
 
-// update projectUsers (ws)
+// update projectUsers (WebSocket)
 export const updateProjectUsers = async (ws: WebSocket, projectID: string, username: string, data: any) => {
   // validate data with Joi schema
   const { error } = updateProjectUsersSchema.validate(data, { abortEarly: false });
   if (error) throw new BadMessageError(String(error));
 
+  // TODO: Don't allow user to un-Project Admin themselves if they're currently the only Project Admin
+
   // respond successfully with data for the projectUsers
   ws.send(JSON.stringify({ action: "updateProjectUsers", success: true, data: projectUsers }));
 };
 
-// delete projectUsers (ws)
+// delete projectUsers (WebSocket)
 export const deleteProjectUsers = async (ws: WebSocket, projectID: string, username: string, data: any) => {
   // validate data with Joi schema
   const { error } = deleteProjectUsersSchema.validate(data, { abortEarly: false });
@@ -87,13 +141,46 @@ export const deleteProjectUsers = async (ws: WebSocket, projectID: string, usern
   ws.send(JSON.stringify({ action: "deleteProjectUsers", success: true, data: projectUsers }));
 };
 
-// delete projectUser (ws)
+// delete projectUser - used when a user chooses to leave a project from the project's workspace (WebSocket)
 export const deleteProjectUser = async (ws: WebSocket, projectID: string, username: string) => {
   // respond successfully with projectUser data
   ws.send(JSON.stringify({ action: "deleteProjectUser", success: true, data: projectUser }));
 };
 
-// delete projectUser
+// delete projectUser - used when a user chooses to leave a project or decline a project invitation from the user dashboard
 export const deleteProjectUserHttp = async (req: Request, res: Response, next: NextFunction) => {
-  // placeholder for body
+  try {
+    // get the projectID and target username from the url parameters
+    const { projectID } = req.params;
+    const username: string = req.params.username.toLowerCase(); // to lower case for case-insensitivity
+
+    // validate username
+    if (username.length > 128) throw new BadRequestError("Username cannot exceed 128 characters");
+
+    // ensure users can only delete their own ProjectUser entry
+    if (req.username !== username) throw new ForbiddenError("User cannot delete the ProjectUser entry of another user");
+
+    // validate projectID is a 24-character hexadecimal string (a valid MongoDB ObjectId)
+    const objectIdRegex: RegExp = /^[0-9a-fA-F]{24}$/;
+    if (!objectIdRegex.test(projectID)) throw new BadRequestError("ProjectID is not a valid MongoDB ObjectId");
+
+    // TODO: Don't allow user to leave the project if they're the only accepted Project Admin
+    // TODO: Close user's WS client if currently working on the project in another tab/browser
+    // TODO: Broadcast
+
+    // delete the ProjectUser from the database
+    const projectUser: ProjectUser | null = await ProjectUserModel.findOneAndDelete(
+      { projectID, username },
+      { projection: { __v: 0 } }
+    );
+    if (!projectUser) throw new NotFoundError(`No ProjectUser found for projectID ${projectID} and username ${username}`);
+
+    // log successful ProjectUser deletion to the console
+    console.log(`User ${req.username} has left Project ${projectID}`);
+
+    // respond successfully
+    res.sendStatus(204);
+  } catch (error) {
+    next(error);
+  }
 };
