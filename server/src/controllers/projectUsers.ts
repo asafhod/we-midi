@@ -4,7 +4,7 @@ import WebSocket from "ws";
 import webSocketManager from "../webSocketManager";
 import ProjectUserModel, { ProjectUser } from "../models/projectUserModel";
 import { addProjectUsersSchema, updateProjectUsersSchema, deleteProjectUsersSchema } from "../validation/schemas";
-import { BadRequestError, BadMessageError, ForbiddenError, NotFoundError } from "../errors";
+import { BadRequestError, BadMessageError, ForbiddenError, ForbiddenActionError, NotFoundError } from "../errors";
 import { formatQueryArray } from "./helpers";
 
 // get ProjectUsers based on url query arguments (admin only)
@@ -18,14 +18,19 @@ export const getProjectUsers = async (req: Request, res: Response, next: NextFun
 
     // set up query object for arguments that correspond to array fields on the ProjectUser model
     if (projectIDs) {
-      // format string argument into array
-      const projectIDsArray: RegExp[] = formatQueryArray(projectIDs as string);
-      // set a query field for the argument with the "$in" property to allow querying based on all of the array entries
+      // split projectIDs string argument string into array and map each entry to a MongoDB ObjectId
+      const projectIDsArray: mongoose.Types.ObjectId[] = (projectIDs as string)
+        .split(",")
+        .map((projectID) => new mongoose.Types.ObjectId(projectID));
+
+      // set a query field for the projectID argument with the "$in" property to allow querying based on all of the projectIDs array entries
       query.projectID = { $in: projectIDsArray };
     }
 
     if (usernames) {
+      // format usernames string argument into array
       const usernamesArray: RegExp[] = formatQueryArray(usernames as string);
+      // set a query field for the username argument with the "$in" property to allow querying based on all of the usernames array entries
       query.username = { $in: usernamesArray };
     }
 
@@ -64,7 +69,10 @@ export const getProjectUser = async (req: Request, res: Response, next: NextFunc
     if (username.length > 128) throw new BadRequestError("Username cannot exceed 128 characters");
 
     // query database for ProjectUser matching the projectID and username
-    const projectUser: ProjectUser | null = await ProjectUserModel.findOne({ projectID, username }, { __v: 0 });
+    const projectUser: ProjectUser | null = await ProjectUserModel.findOne(
+      { projectID: new mongoose.Types.ObjectId(projectID), username },
+      { __v: 0 }
+    );
     if (!projectUser) throw new NotFoundError(`No ProjectUser found for projectID ${projectID} and username ${username}`);
 
     // respond successfully with ProjectUser data
@@ -93,7 +101,7 @@ export const acceptProjectUser = async (req: Request, res: Response, next: NextF
 
     // update the isAccepted property to True for the ProjectUser in the database, using the "new" flag to retrieve the updated entry
     const projectUser: ProjectUser | null = await ProjectUserModel.findOneAndUpdate(
-      { projectID, username, isAccepted: false },
+      { projectID: new mongoose.Types.ObjectId(projectID), username, isAccepted: false },
       { $set: { isAccepted: true } },
       { new: true, projection: { __v: 0 } }
     );
@@ -143,8 +151,39 @@ export const deleteProjectUsers = async (ws: WebSocket, projectID: string, usern
 
 // delete projectUser - used when a user chooses to leave a project from the project's workspace (WebSocket)
 export const deleteProjectUser = async (ws: WebSocket, projectID: string, username: string) => {
-  // respond successfully with projectUser data
-  ws.send(JSON.stringify({ action: "deleteProjectUser", success: true, data: projectUser }));
+  // get all accepted project admins for the projectID
+  const projectAdmins: ProjectUser[] = await ProjectUserModel.find(
+    { projectID: new mongoose.Types.ObjectId(projectID), isProjectAdmin: true, isAccepted: true },
+    { __v: 0 }
+  );
+
+  // check if user is a project admin
+  const isProjectAdmin: boolean = projectAdmins.some((projectAdmin) => projectAdmin.username === username);
+
+  // prevent user from leaving the project if they are currently the only accepted Project Admin
+  if (isProjectAdmin && projectAdmins.length === 1) {
+    throw new ForbiddenActionError(
+      `ProjectUser ${username} could not be deleted because they are currently the only accepted project admin on Project ${projectID}`
+    );
+  }
+
+  // delete the ProjectUser from the database
+  const projectUser: ProjectUser | null = await ProjectUserModel.findOneAndDelete(
+    { projectID: new mongoose.Types.ObjectId(projectID), username },
+    { projection: { __v: 0 } }
+  );
+  if (!projectUser) throw new NotFoundError(`No ProjectUser found for projectID ${projectID} and username ${username}`);
+
+  // log successful ProjectUser deletion to the console
+  console.log(`User ${username} has left Project ${projectID}`);
+
+  // close the WebSocket connection to the project for the user
+  if (ws.readyState === WebSocket.OPEN) ws.close(1000, `User ${username} has left Project ${projectID}`);
+
+  // TODO: Broadcast a deleteProjectUser message with the username to each of the WebSocket connections for the projectID
+  //       ws.send(JSON.stringify({ action: "deleteProjectUser", success: true, data: {username} })); // something like this, but on the webSocketManager
+  //       Use a custom close code and logic for it in the ws close event handler to broadcast that the ProjectUser was
+  //       deleted, rather than having separate broadcasts for the connection being closed and the ProjectUser deletion
 };
 
 // delete projectUser - used when a user chooses to leave a project or decline a project invitation from the user dashboard
@@ -164,19 +203,39 @@ export const deleteProjectUserHttp = async (req: Request, res: Response, next: N
     const objectIdRegex: RegExp = /^[0-9a-fA-F]{24}$/;
     if (!objectIdRegex.test(projectID)) throw new BadRequestError("ProjectID is not a valid MongoDB ObjectId");
 
-    // TODO: Don't allow user to leave the project if they're the only accepted Project Admin
-    // TODO: Close user's WS client if currently working on the project in another tab/browser
-    // TODO: Broadcast
+    // get all accepted project admins for the projectID
+    const projectAdmins: ProjectUser[] = await ProjectUserModel.find(
+      { projectID: new mongoose.Types.ObjectId(projectID), isProjectAdmin: true, isAccepted: true },
+      { __v: 0 }
+    );
+
+    // check if user is a project admin
+    const isProjectAdmin: boolean = projectAdmins.some((projectAdmin) => projectAdmin.username === username);
+
+    // prevent user from leaving the project if they are currently the only accepted Project Admin
+    if (isProjectAdmin && projectAdmins.length === 1) {
+      throw new ForbiddenError(
+        `ProjectUser ${username} could not be deleted because they are currently the only accepted project admin on Project ${projectID}`
+      );
+    }
 
     // delete the ProjectUser from the database
     const projectUser: ProjectUser | null = await ProjectUserModel.findOneAndDelete(
-      { projectID, username },
+      { projectID: new mongoose.Types.ObjectId(projectID), username },
       { projection: { __v: 0 } }
     );
     if (!projectUser) throw new NotFoundError(`No ProjectUser found for projectID ${projectID} and username ${username}`);
 
     // log successful ProjectUser deletion to the console
     console.log(`User ${req.username} has left Project ${projectID}`);
+
+    // close any open WebSocket connection to the project for the user
+    const existingConnection: WebSocket | undefined = webSocketManager[projectID] && webSocketManager[projectID][username];
+    if (existingConnection && existingConnection.readyState === WebSocket.OPEN) {
+      existingConnection.close(1000, `User ${req.username} has left Project ${projectID}`);
+    }
+
+    // TODO: Broadcast deletion if it wasn't handled by the existing connection closure (update it above to use the custom code)
 
     // respond successfully
     res.sendStatus(204);

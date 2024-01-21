@@ -1,5 +1,6 @@
 import WebSocket from "ws";
 import http, { IncomingMessage } from "http";
+import mongoose from "mongoose";
 import cognitoTokenVerifier from "./utilities/cognitoTokenVerifier";
 import ProjectUserModel from "./models/projectUserModel";
 import webSocketManager from "./webSocketManager";
@@ -58,7 +59,11 @@ const verifyClient: WebSocket.VerifyClientCallbackAsync = async (info: { req: We
 
     try {
       // check if an accepted ProjectUser matching the projectID and username exists
-      const projectUserExists = await ProjectUserModel.exists({ projectID, username, isAccepted: true });
+      const projectUserExists = await ProjectUserModel.exists({
+        projectID: new mongoose.Types.ObjectId(projectID),
+        username,
+        isAccepted: true,
+      });
       if (!projectUserExists) {
         console.error("WebSocket client verification failed: User is not a member of this project");
         return cb(false, 403, FORBIDDEN);
@@ -108,7 +113,7 @@ export const configureWsServer = (server: http.Server) => {
       // set username entry in the project's client dictionary to the new WebSocket connection
       webSocketManager[projectID][username] = ws;
 
-      if (existingConnection) {
+      if (existingConnection && existingConnection.readyState === WebSocket.OPEN) {
         // close the out-of-date WebSocket connection
         existingConnection.close(1000, "Replaced by a new WebSocket connection");
         console.log(`Out-of-date WebSocket connection replaced by new connection for user ${username} on projectID ${projectID}`);
@@ -121,8 +126,10 @@ export const configureWsServer = (server: http.Server) => {
     ws.on("message", (message: string) => wsMessageRouter(ws, message, username, projectID));
 
     // WebSocket close handling
-    ws.on("close", () => {
-      console.log(`A WebSocket connection has been closed for user ${username} on project ID ${projectID}`);
+    ws.on("close", (code: number, reason: Buffer) => {
+      console.log(
+        `A WebSocket connection has been closed for user ${username} on project ID ${projectID}\nCode: ${code} Reason: ${reason.toString()}`
+      );
 
       const existingConnection: WebSocket | undefined = webSocketManager[projectID] && webSocketManager[projectID][username];
       if (existingConnection === ws) {
@@ -132,6 +139,7 @@ export const configureWsServer = (server: http.Server) => {
           delete webSocketManager[projectID][username];
 
           // TODO: broadcast that the user has disconnected
+          //       if it's the deletion code, broadcast that the user has left the project
         }
       }
     });

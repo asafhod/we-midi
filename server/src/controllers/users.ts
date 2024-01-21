@@ -4,6 +4,7 @@ import WebSocket from "ws";
 import webSocketManager from "../webSocketManager";
 import { CognitoIdentityServiceProvider } from "aws-sdk";
 import UserModel, { User } from "../models/userModel";
+import ProjectUserModel, { ProjectUser } from "../models/projectUserModel";
 import { updateUserSchema, searchUsersSchema } from "../validation/schemas";
 import { BadRequestError, BadMessageError, ForbiddenError, NotFoundError } from "../errors";
 import { formatQueryArray } from "./helpers";
@@ -125,7 +126,25 @@ export const updateUser = async (req: Request, res: Response, next: NextFunction
     // log successful user update to the console
     console.log(`User ${req.username} updated user: ${username}`);
 
-    // TODO: If user lost Admin status, close any open ws connection of theirs for any project they are not a member of
+    // if user lost Admin status, close any open WebSocket connections of theirs for the projects they are not members of
+    if (req.body.isAdmin !== undefined && req.body.isAdmin !== null && !req.body.isAdmin) {
+      const memberProjects: ProjectUser[] = await ProjectUserModel.find({ username, isAccepted: true }, { __v: 0 });
+      // map to string array
+      const memberProjectIDs: string[] = memberProjects.map((memberProject) => memberProject.projectID.toString());
+
+      for (const [projectID, projectConnections] of Object.entries(webSocketManager)) {
+        if (!memberProjectIDs.includes(projectID)) {
+          // user is not a member of this project, close any existing connection
+          const existingConnection: WebSocket | undefined = projectConnections[username];
+          if (existingConnection && existingConnection.readyState === WebSocket.OPEN) {
+            existingConnection.close(
+              1000,
+              `User ${req.username} has lost admin permissions and can no longer access Project ${projectID}`
+            );
+          }
+        }
+      }
+    }
 
     // respond successfully with user data
     res.status(200).json({ success: true, data: user });
@@ -152,9 +171,35 @@ export const deleteUser = async (req: Request, res: Response, next: NextFunction
     // prevent user from deleting themselves
     if (req.username === username) throw new ForbiddenError("User cannot delete themselves");
 
-    // TODO: Don't allow user deletion if they're the only accepted Project Admin on any project
+    // get all projects where user is a member
+    const memberProjects: ProjectUser[] = await ProjectUserModel.find({ username }, { __v: 0 });
 
-    // delete the user from the database
+    // get projectIDs for all projects where user is a Project Admin and accepted
+    const adminProjectIDs: mongoose.Types.ObjectId[] = memberProjects
+      .filter((project) => project.isProjectAdmin && project.isAccepted)
+      .map((adminProject) => adminProject.projectID);
+
+    // get any projects for which user is currently the only accepted Project Admin
+    const onlyAdminProjects = await ProjectUserModel.aggregate([
+      { $match: { projectID: { $in: adminProjectIDs }, isProjectAdmin: true, isAccepted: true } },
+      { $group: { _id: "$projectID", count: { $sum: 1 } } },
+      { $match: { count: 1 } },
+    ]);
+
+    if (onlyAdminProjects.length) {
+      // user is currently the only accepted Project Admin on at least one project, prevent deletion
+      const onlyAdminProjectIDs: string[] = onlyAdminProjects.map((onlyAdminProject) => onlyAdminProject._id.toString()); // map projectIDs to string array
+      throw new ForbiddenError(
+        `User ${username} could not be deleted because they are currently the only accepted project admin for Projects: ${onlyAdminProjectIDs.join(
+          ", "
+        )}`
+      );
+    }
+
+    // delete the user's entries from the ProjectUser database
+    const projectUserDeleteResult = await ProjectUserModel.deleteMany({ username }, { session });
+
+    // delete the user from the User database
     const user: User | null = await UserModel.findOneAndDelete({ username }, { projection: { __v: 0 } });
     if (!user) throw new NotFoundError(`No user found for username: ${username}`);
 
@@ -168,15 +213,28 @@ export const deleteUser = async (req: Request, res: Response, next: NextFunction
     // delete the user from Cognito
     await cognito.adminDeleteUser({ UserPoolId: AWS_USER_POOL_ID, Username: username }).promise();
 
-    // both delete operations were successful, commit and end the transaction
+    // all delete operations were successful, commit and end the transaction
     await session.commitTransaction();
     session.endSession();
 
     // log successful user deletion to the console
-    console.log(`User ${req.username} deleted user: ${username}`);
+    console.log(
+      `User ${req.username} deleted user: ${username}\nThe user was removed from ${projectUserDeleteResult.deletedCount} projects`
+    );
 
-    // TODO: Close any open ws connection of theirs
-    // TODO: Broadcast the deletion to any projects on which they were a ProjectUser
+    // close any open WebSocket connection for the user
+    for (const projectConnections of Object.values(webSocketManager)) {
+      const existingConnection: WebSocket | undefined = projectConnections[username];
+      if (existingConnection && existingConnection.readyState === WebSocket.OPEN) {
+        existingConnection.close(1000, `User ${req.username} has been deleted`);
+      }
+    }
+
+    // TODO: broadcast the deletion to any projects on which they were a ProjectUser
+    // for (const memberProject of memberProjects) {
+    //   const projectID: string = memberProject.projectID.toString();
+    //   send a deleteProjectUser message with the username to each of the WebSocket connections for the projectID
+    // }
 
     // respond successfully
     res.sendStatus(204);

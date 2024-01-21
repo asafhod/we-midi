@@ -1,7 +1,8 @@
 import { Request, Response, NextFunction } from "express";
+import mongoose from "mongoose";
 import WebSocket from "ws";
 import webSocketManager from "../webSocketManager";
-import ProjectModel from "../models/projectModel";
+import ProjectModel, { Project } from "../models/projectModel";
 import {
   addProjectSchema,
   updateProjectSchema,
@@ -90,7 +91,7 @@ export const getProjects = async (req: Request, res: Response, next: NextFunctio
 export const getProject = async (ws: WebSocket, projectID: string) => {
   try {
     // query database for project using id
-    const project = await ProjectModel.findOne({ _id: projectID.toLowerCase() }, { __v: 0 });
+    const project: Project | null = await ProjectModel.findOne({ _id: new mongoose.Types.ObjectId(projectID) }, { __v: 0 });
     if (!project) throw new NotFoundError(`No project found for ID: ${projectID}`);
 
     // TODO: Retrieve any additional needed data, such anything needed from ProjectUsers or Users
