@@ -77,7 +77,7 @@ const router = (ws: WebSocket, message: string, username: string, projectID: str
         deleteAllNotesOnTrack(ws, projectID, username, data);
         break;
       case "searchUsers":
-        searchUsers(ws, data);
+        searchUsers(ws, username, data);
         break;
       case "addProjectUsers":
         addProjectUsers(ws, projectID, username, data);

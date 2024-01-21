@@ -8,8 +8,6 @@ export const updateUserSchema: ObjectSchema<any> = Joi.object({
   isAdmin: Joi.boolean(),
 });
 
-// TODO: AddProjectUser schema was unnecessary. Just do that in the Add Project request controller.
-//       projectID would be given by the db, username would be on the Cognito token, isProjectAdmin would be True
 // validation schema for the Add Project request
 export const addProjectSchema: ObjectSchema<any> = Joi.object({
   name: Joi.string().min(1).max(100).required(),
@@ -94,7 +92,6 @@ export const addNoteSchema: ObjectSchema<any> = Joi.object({
   velocity: Joi.number().min(0).max(127).required(),
 });
 
-// TODO: In controller, if there are no notes for the track already, can just overwrite the old notes array with the new one
 // validation for the Add Notes request
 export const addNotesSchema: ObjectSchema<any> = Joi.object({
   trackID: Joi.number().min(1).required(),
@@ -167,7 +164,7 @@ export const searchUsersSchema: ObjectSchema<any> = Joi.object({
 // validation schema for the Add Project Users request
 export const addProjectUsersSchema: ArraySchema<any[]> = Joi.array()
   .min(1)
-  .max(10)
+  .max(9)
   .items({
     username: Joi.string().min(1).max(128).required(),
     isProjectAdmin: Joi.boolean(),

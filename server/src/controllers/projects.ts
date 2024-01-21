@@ -94,19 +94,21 @@ export const getProject = async (ws: WebSocket, projectID: string) => {
     const project: Project | null = await ProjectModel.findOne({ _id: new mongoose.Types.ObjectId(projectID) }, { __v: 0 });
     if (!project) throw new NotFoundError(`No project found for ID: ${projectID}`);
 
-    // TODO: Retrieve any additional needed data, such anything needed from ProjectUsers or Users
+    // TODO: Retrieve any additional needed data, such as anything needed from ProjectUsers or Users
     //       Also include the currently online usernames for the project (using Object.keys(webSocketManager[projectID]))
 
     // respond successfully with project data
-    ws.send(JSON.stringify({ action: "getProject", success: true, data: project }));
+    if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ action: "getProject", success: true, data: project }));
   } catch (error) {
     console.error(error);
     // project could not be retrieved for the client, close its WebSocket connection with a Server Error message
-    ws.close(1013, SERVER_ERROR);
+    if (ws.readyState === WebSocket.OPEN) ws.close(1013, SERVER_ERROR);
   }
 };
 
 // add project
+// TODO: AddProjectUser schema was unnecessary. Include that as part of this Add Project controller.
+//       projectID would be given by the db, username would be on the request from the Cognito token auth, isProjectAdmin would be True
 export const addProject = async (req: Request, res: Response, next: NextFunction) => {
   try {
     // validate request body with Joi schema
@@ -151,7 +153,7 @@ export const updateProject = async (ws: WebSocket, projectID: string, username: 
   console.log(`User ${username} updated project: ${projectID}`);
 
   // respond successfully with project data
-  ws.send(JSON.stringify({ action: "updateProject", success: true, data: project }));
+  if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ action: "updateProject", success: true, data: project }));
 };
 
 // import MIDI (WebSocket)
@@ -162,7 +164,7 @@ export const importMidi = async (ws: WebSocket, projectID: string, username: str
 
   // TODO: Which data gets sent back (same question for similar project-editing controllers)?
   // respond successfully with project data
-  ws.send(JSON.stringify({ action: "importMidi", success: true, data: project }));
+  if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ action: "importMidi", success: true, data: project }));
 };
 
 // change tempo (WebSocket)
@@ -172,13 +174,13 @@ export const changeTempo = async (ws: WebSocket, projectID: string, username: st
   if (error) throw new BadMessageError(String(error));
 
   // respond successfully with project data
-  ws.send(JSON.stringify({ action: "changeTempo", success: true, data: project }));
+  if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ action: "changeTempo", success: true, data: project }));
 };
 
 // add track (WebSocket)
 export const addTrack = async (ws: WebSocket, projectID: string, username: string) => {
   // respond successfully with project data
-  ws.send(JSON.stringify({ action: "addTrack", success: true, data: project }));
+  if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ action: "addTrack", success: true, data: project }));
 };
 
 // update track (WebSocket)
@@ -188,7 +190,7 @@ export const updateTrack = async (ws: WebSocket, projectID: string, username: st
   if (error) throw new BadMessageError(String(error));
 
   // respond successfully with project data
-  ws.send(JSON.stringify({ action: "updateTrack", success: true, data: project }));
+  if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ action: "updateTrack", success: true, data: project }));
 };
 
 // delete track (WebSocket)
@@ -198,7 +200,7 @@ export const deleteTrack = async (ws: WebSocket, projectID: string, username: st
   if (error) throw new BadMessageError(String(error));
 
   // respond successfully with project data
-  ws.send(JSON.stringify({ action: "deleteTrack", success: true, data: project }));
+  if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ action: "deleteTrack", success: true, data: project }));
 };
 
 // delete project - used when deleting a project from the project's workspace (WebSocket)

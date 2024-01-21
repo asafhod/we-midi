@@ -5,7 +5,7 @@ import ProjectUserModel from "../models/projectUserModel";
 import { ForbiddenError } from "../errors";
 
 // middleware that checks if the user making the request is an admin
-export const checkAdmin = async (req: Request, _res: Response, next: NextFunction) => {
+export const checkAdminMiddleware = async (req: Request, _res: Response, next: NextFunction) => {
   // check if an admin user exists for the username specified on the request
   const adminExists = await UserModel.exists({ username: req.username, isAdmin: true });
 
@@ -19,7 +19,7 @@ export const checkAdmin = async (req: Request, _res: Response, next: NextFunctio
 };
 
 // function that returns whether a user is an admin
-export const isAdmin = async (username: string) => {
+export const checkAdmin = async (username: string) => {
   // check if an admin user exists for the specified username
   const adminExists = await UserModel.exists({ username, isAdmin: true });
 
@@ -29,7 +29,7 @@ export const isAdmin = async (username: string) => {
 };
 
 // function that returns whether a user is a project admin
-export const isProjectAdmin = async (username: string, projectID: string) => {
+export const checkProjectAdmin = async (username: string, projectID: string) => {
   // check if an accepted admin ProjectUser exists for the specified username and projectID
   const projectAdminExists = await ProjectUserModel.exists({
     username,

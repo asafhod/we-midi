@@ -1,16 +1,16 @@
 import { Router } from "express";
 import auth from "../middleware/auth";
-import { checkAdmin } from "../middleware/checkAdmin";
+import { checkAdminMiddleware } from "../middleware/checkAdmin";
 import { getProjectUsers, getProjectUser, acceptProjectUser, deleteProjectUserHttp } from "../controllers/projectUsers";
 
 // initialize router
 const router = Router();
 
 // routes
-router.route("/").get(auth, checkAdmin, getProjectUsers);
+router.route("/").get(auth, checkAdminMiddleware, getProjectUsers);
 router
   .route("/:projectID/:username")
-  .get(auth, checkAdmin, getProjectUser)
+  .get(auth, checkAdminMiddleware, getProjectUser)
   .patch(auth, acceptProjectUser)
   .delete(auth, deleteProjectUserHttp);
 

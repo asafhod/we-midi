@@ -7,7 +7,7 @@ import UserModel, { User } from "../models/userModel";
 import ProjectUserModel, { ProjectUser } from "../models/projectUserModel";
 import { updateUserSchema, searchUsersSchema } from "../validation/schemas";
 import { BadRequestError, BadMessageError, ForbiddenError, NotFoundError } from "../errors";
-import { formatQueryArray } from "./helpers";
+import { broadcast, formatQueryArray } from "./helpers";
 
 // TODO: Make sure deleteUser has Cognito permissions to delete a user and that it's secure (as in people can't do it from the browser client)
 //       Confirm leaving out __v using the projection is necessary. Probably is.
@@ -64,16 +64,20 @@ export const getUser = async (req: Request, res: Response, next: NextFunction) =
 };
 
 // search users (WebSocket)
-export const searchUsers = async (ws: WebSocket, data: any) => {
+// TODO: On client, hide any users that are already ProjectUsers on the project from the result set (user making the request already won't be in it, though logic would be the same)
+export const searchUsers = async (ws: WebSocket, username: string, data: any) => {
   // validate data with Joi schema
   const { error } = searchUsersSchema.validate(data, { abortEarly: false });
   if (error) throw new BadMessageError(String(error));
 
-  // query database for all users whose username begins with the search string
-  const users: User[] = await UserModel.find({ username: new RegExp(`^${data.search}`, "i") }, { __v: 0 });
+  // query database for first 25 users whose username begins with the search string, excluding the user making the request
+  const users: User[] = await UserModel.find(
+    { username: { $regex: new RegExp(`^${data.search}`, "i"), $ne: username } },
+    { __v: 0 }
+  ).limit(25);
 
   // respond successfully with user data
-  ws.send(JSON.stringify({ action: "searchUsers", success: true, data: users }));
+  if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ action: "searchUsers", success: true, data: users }));
 };
 
 // update user (admin only)
@@ -230,11 +234,10 @@ export const deleteUser = async (req: Request, res: Response, next: NextFunction
       }
     }
 
-    // TODO: broadcast the deletion to any projects on which they were a ProjectUser
-    // for (const memberProject of memberProjects) {
-    //   const projectID: string = memberProject.projectID.toString();
-    //   send a deleteProjectUser message with the username to each of the WebSocket connections for the projectID
-    // }
+    // broadcast the ProjectUser deletion to any projects on which the user was a member
+    for (const memberProject of memberProjects) {
+      broadcast(memberProject.projectID.toString(), { action: "deleteProjectUser", success: true, data: { username } });
+    }
 
     // respond successfully
     res.sendStatus(204);

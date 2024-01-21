@@ -5,8 +5,9 @@ import cognitoTokenVerifier from "./utilities/cognitoTokenVerifier";
 import ProjectUserModel from "./models/projectUserModel";
 import webSocketManager from "./webSocketManager";
 import wsMessageRouter from "./routes/wsMessages";
-import { getProject } from "./controllers/projects";
 import { BAD_REQUEST, UNAUTHORIZED, FORBIDDEN, SERVER_ERROR } from "./errors/errorMessages";
+import { broadcast } from "./controllers/helpers";
+import { getProject } from "./controllers/projects";
 
 // TODO: Anything special with socket for HTTPS? Saw something that made it seem that way when hovering over one of the ws values.
 //       Though ChatGPT didn't point out anything at the general level. Double check.
@@ -97,7 +98,9 @@ export const configureWsServer = (server: http.Server) => {
       console.error(
         `WebSocket connection aborted - Username and/or projectID were not passed from Client Verification function to Connection Event callback`
       );
-      return ws.close(1011, SERVER_ERROR);
+      if (ws.readyState === WebSocket.OPEN) ws.close(1011, SERVER_ERROR);
+
+      return;
     }
 
     console.log(`A WebSocket connection has been established with user ${username} for project ID ${projectID}`);
@@ -118,7 +121,8 @@ export const configureWsServer = (server: http.Server) => {
         existingConnection.close(1000, "Replaced by a new WebSocket connection");
         console.log(`Out-of-date WebSocket connection replaced by new connection for user ${username} on projectID ${projectID}`);
       } else {
-        // TODO: The connection is new. Broadcast that the user has connected.
+        // broadcast that the user has connected
+        broadcast(projectID, { action: "userConnected", success: true, data: { username } }, ws);
       }
     }
 
@@ -138,8 +142,13 @@ export const configureWsServer = (server: http.Server) => {
         } else {
           delete webSocketManager[projectID][username];
 
-          // TODO: broadcast that the user has disconnected
-          //       if it's the deletion code, broadcast that the user has left the project
+          if (code === 4204) {
+            // user is no longer a member of the project, broadcast deleteProjectUser message
+            broadcast(projectID, { action: "deleteProjectUser", success: true, data: { username } }, ws);
+          } else {
+            // broadcast that the user has disconnected
+            broadcast(projectID, { action: "userDisconnected", success: true, data: { username } }, ws);
+          }
         }
       }
     });
