@@ -15,8 +15,6 @@ import { BadRequestError, BadMessageError, NotFoundError } from "../errors";
 import { SERVER_ERROR } from "../errors/errorMessages";
 import { formatQueryArray } from "./helpers";
 
-// TODO: See notes in validation/schemas.ts
-
 // get projects based on url query arguments
 export const getProjects = async (req: Request, res: Response, next: NextFunction) => {
   try {

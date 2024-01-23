@@ -142,10 +142,8 @@ export const configureWsServer = (server: http.Server) => {
         } else {
           delete webSocketManager[projectID][username];
 
-          if (code === 4204) {
-            // user is no longer a member of the project, broadcast deleteProjectUser message
-            broadcast(projectID, { action: "deleteProjectUser", success: true, data: { username } }, ws);
-          } else {
+          if (code !== 4204) {
+            // user is still a member of the project, but their current connection has been closed
             // broadcast that the user has disconnected
             broadcast(projectID, { action: "userDisconnected", success: true, data: { username } }, ws);
           }

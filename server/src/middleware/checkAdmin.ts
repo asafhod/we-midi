@@ -29,14 +29,9 @@ export const checkAdmin = async (username: string) => {
 };
 
 // function that returns whether a user is a project admin
-export const checkProjectAdmin = async (username: string, projectID: string) => {
+export const checkProjectAdmin = async (username: string, projectID: mongoose.Types.ObjectId) => {
   // check if an accepted admin ProjectUser exists for the specified username and projectID
-  const projectAdminExists = await ProjectUserModel.exists({
-    username,
-    projectID: new mongoose.Types.ObjectId(projectID),
-    isProjectAdmin: true,
-    isAccepted: true,
-  });
+  const projectAdminExists = await ProjectUserModel.exists({ username, projectID, isProjectAdmin: true, isAccepted: true });
 
   if (projectAdminExists) return true;
 

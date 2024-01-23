@@ -8,7 +8,11 @@ import { BadRequestError, BadMessageError, ForbiddenError, ForbiddenActionError,
 import { checkProjectAdmin, checkAdmin } from "../middleware/checkAdmin";
 import { broadcast, formatQueryArray } from "./helpers";
 
-// TODO: Update the delete controllers to not kick global admins when their ProjectUser is deleted (low priority)
+// TODO: Move often-used code to helper functions
+//       Update the delete controllers to not kick global admins when their ProjectUser is deleted (low priority)
+
+// constants
+const MAX_PROJECT_USERS: number = 10;
 
 // get ProjectUsers based on url query arguments (admin only)
 export const getProjectUsers = async (req: Request, res: Response, next: NextFunction) => {
@@ -96,7 +100,9 @@ export const acceptProjectUser = async (req: Request, res: Response, next: NextF
     if (username.length > 128) throw new BadRequestError("Username cannot exceed 128 characters");
 
     // ensure users can only accept project invitations meant for them
-    if (req.username !== username) throw new ForbiddenError("User cannot accept a project invitation for another user");
+    if (req.username !== username) {
+      throw new ForbiddenError(`User ${req.username} cannot accept a project invitation for another user (${username})`);
+    }
 
     // validate projectID is a 24-character hexadecimal string (a valid MongoDB ObjectId)
     const objectIdRegex: RegExp = /^[0-9a-fA-F]{24}$/;
@@ -129,29 +135,37 @@ export const addProjectUsers = async (_ws: WebSocket, projectID: string, usernam
   const { error } = addProjectUsersSchema.validate(data, { abortEarly: false });
   if (error) throw new BadMessageError(String(error));
 
-  // check that user making the request is an admin
-  const isAdmin: boolean = (await checkProjectAdmin(username, projectID)) || (await checkAdmin(username));
-  if (!isAdmin) {
-    throw new ForbiddenActionError(
-      `Cannot add ProjectUsers - User ${username} does not have admin privileges for Project ${projectID}`
-    );
-  }
-
-  // TODO: Probably better to not use checkProjectAdmin here so you can avoid querying the db twice
-  //       Just change the countDocuments to retrieve them instead, check if accepted projectAdmin,
-  //       then do the checkAdmin and count checks
-
   // convert projectID string to a MongoDB ObjectId
   const projectObjectId = new mongoose.Types.ObjectId(projectID);
 
+  // get the existing ProjectUsers for the project
+  const existingProjectUsers: ProjectUser[] = await ProjectUserModel.find({ projectID: projectObjectId }, { __v: 0 });
+
+  // check if user is an accepted Project Admin for this project
+  const isProjectAdmin: boolean = existingProjectUsers.some((projectUser: ProjectUser) => {
+    return projectUser.username === username && projectUser.isProjectAdmin && projectUser.isAccepted;
+  });
+
+  if (!isProjectAdmin) {
+    // check if user is a global admin
+    const isAdmin: boolean = await checkAdmin(username);
+    if (!isAdmin) {
+      // user is not an admin, block the request
+      throw new ForbiddenActionError(
+        `Cannot add ProjectUsers - User ${username} does not have admin privileges for Project ${projectID}`
+      );
+    }
+  }
+
   // block the request if adding the new ProjectUsers will increase the total ProjectUser count for the project past the cap
-  const existingProjectUserCount: number = await ProjectUserModel.countDocuments({ projectID: projectObjectId });
   const newProjectUserCount: number = data.length;
-  if (existingProjectUserCount + newProjectUserCount > 10) throw new ForbiddenActionError("Cannot exceed max user amount for project");
+  if (existingProjectUsers.length + newProjectUserCount > MAX_PROJECT_USERS) {
+    throw new ForbiddenActionError(`Cannot exceed maximum user amount of ${MAX_PROJECT_USERS} for Project ${projectID}`);
+  }
 
   // map message data to query object array with all the needed ProjectUser fields
   const addProjectUsersQuery = data.map((projectUser: { username: string; isProjectAdmin?: boolean }) => {
-    const isProjectAdmin: boolean = projectUser.isProjectAdmin === true; // convert to boolean in case it's undefined
+    const isProjectAdmin: boolean = !!projectUser.isProjectAdmin; // using double negation to convert to boolean in case it's undefined
 
     return { projectID: projectObjectId, username: projectUser.username, isProjectAdmin, isAccepted: false };
   });
@@ -168,7 +182,7 @@ export const addProjectUsers = async (_ws: WebSocket, projectID: string, usernam
     await session.commitTransaction();
     session.endSession();
 
-    // log successful batch ProjectUser addition to the console
+    // log successful batch ProjectUser(s) addition to the console
     console.log(`User ${username} added ${result.length} ProjectUser(s) to Project ${projectID}`);
 
     // broadcast ProjectUser(s) addition
@@ -186,10 +200,69 @@ export const updateProjectUsers = async (ws: WebSocket, projectID: string, usern
   const { error } = updateProjectUsersSchema.validate(data, { abortEarly: false });
   if (error) throw new BadMessageError(String(error));
 
-  // TODO: Don't allow user to un-Project Admin themselves if they're currently the only Project Admin, including as part of batch
+  // convert projectID string to a MongoDB ObjectId
+  const projectObjectId = new mongoose.Types.ObjectId(projectID);
 
-  // respond successfully with data for the projectUsers
-  if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ action: "updateProjectUsers", success: true, data: projectUsers }));
+  // block request if user is not an admin
+  const isAdmin: boolean = (await checkProjectAdmin(username, projectObjectId)) || (await checkAdmin(username));
+  if (!isAdmin) {
+    throw new ForbiddenActionError(
+      `Cannot update ProjectUsers - User ${username} does not have admin privileges for Project ${projectID}`
+    );
+  }
+
+  // set up the update query object
+  const updateProjectUsersQuery: { $set: Record<string, any>; arrayFilters: { "elem.username": string }[] } = {
+    $set: {},
+    arrayFilters: [],
+  };
+
+  // TODO: This doesn't look right. Figure out exactly how $set and arrayFilters should work for an updateMany of this kind.
+  //       Is elem.username right? Is projectUsers.${i}.${key} right? The latter especially seems wrong, because projectUsers is coming from nowhere.
+  // iterate over the update data
+  for (let i = 0; i < data.length; i++) {
+    // iterate over the properties of each ProjectUser update data item
+    for (const [key, value] of Object.entries(data[i])) {
+      if (key === "username") {
+        // If the property is the username, it's only being used to identify the ProjectUser to update. Push it to the query's array filters.
+        updateProjectUsersQuery.arrayFilters.push({ "elem.username": value as string });
+      } else {
+        // This is one of the properties the request is attempting to update for the ProjectUser. Set it on the query's $set object.
+        updateProjectUsersQuery.$set[`projectUsers.${i}.${key}`] = value;
+      }
+    }
+  }
+
+  // set up transaction for batch ProjectUser update operation
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    // update ProjectUsers in database based on query object array
+    const result = await ProjectUserModel.updateMany({ projectID: projectObjectId }, updateProjectUsersQuery, { session });
+
+    // abort the transaction if the update would cause the project to have no accepted project admins
+    const projectAdminCount: number = await ProjectUserModel.countDocuments({
+      projectID: projectObjectId,
+      isProjectAdmin: true,
+      isAccepted: true,
+    });
+    if (!projectAdminCount) throw new ForbiddenActionError(`Project ${projectID} must have at least one accepted project admin`);
+
+    // if successful, commit and end the transaction
+    await session.commitTransaction();
+    session.endSession();
+
+    // log successful batch ProjectUser(s) update to the console
+    console.log(`User ${username} updated ${result.modifiedCount} ProjectUser(s) on Project ${projectID}`);
+
+    // broadcast ProjectUser(s) update
+    broadcast(projectID, { action: "updateProjectUsers", success: true, data });
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    throw error;
+  }
 };
 
 // delete projectUsers (WebSocket)
@@ -198,10 +271,65 @@ export const deleteProjectUsers = async (ws: WebSocket, projectID: string, usern
   const { error } = deleteProjectUsersSchema.validate(data, { abortEarly: false });
   if (error) throw new BadMessageError(String(error));
 
-  // TODO: Don't allow user to delete their own ProjectUser with this request
+  // block the user from deleting themselves from the project
+  const selfDeleteAttempt: boolean = data.some((userDeletion: { username: string }) => userDeletion.username === username);
+  if (selfDeleteAttempt) {
+    throw new ForbiddenActionError(
+      `Cannot delete ProjectUsers - User ${username} cannot delete themselves from Project ${projectID} with this request`
+    );
+  }
 
-  // respond successfully with data for the projectUsers
-  if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ action: "deleteProjectUsers", success: true, data: projectUsers }));
+  // convert projectID string to a MongoDB ObjectId
+  const projectObjectId = new mongoose.Types.ObjectId(projectID);
+
+  // block request if user is not an admin
+  const isAdmin: boolean = (await checkProjectAdmin(username, projectObjectId)) || (await checkAdmin(username));
+  if (!isAdmin) {
+    throw new ForbiddenActionError(
+      `Cannot delete ProjectUsers - User ${username} does not have admin privileges for Project ${projectID}`
+    );
+  }
+
+  // set up transaction for batch ProjectUser deletion operation
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    // delete ProjectUsers from database based on query object array
+    const result = await ProjectUserModel.deleteMany({ projectID: projectObjectId, $or: data }, { session });
+
+    // abort and rollback the deletion if the amount of ProjectUsers deleted did not match the amount requested
+    if (result.deletedCount !== data.length) {
+      throw new Error(`Delete ProjectUsers operation aborted for Project ${projectID} - Count mismatch`);
+    }
+
+    // if successful, commit and end the transaction
+    await session.commitTransaction();
+    session.endSession();
+
+    // log successful batch ProjectUser(s) deletion to the console
+    console.log(`User ${username} deleted ${result.deletedCount} ProjectUser(s) from Project ${projectID}`);
+
+    // close any open WebSocket connections to the project for the deleted ProjectUsers
+    // then broadcast the successful deletion to any remaining connected ProjectUsers for the project
+    if (webSocketManager[projectID]) {
+      for (const { username } of data) {
+        // check if WebSocket connection exists on the project for the user
+        const existingConnection: WebSocket | undefined = webSocketManager[projectID][username];
+        if (existingConnection && existingConnection.readyState === WebSocket.OPEN) {
+          // connection exists, close it with code 4204 for ProjectUser deletion
+          existingConnection.close(4204, `User ${username} has left Project ${projectID}`);
+        }
+      }
+
+      // broadcast ProjectUser(s) deletion
+      broadcast(projectID, { action: "deleteProjectUsers", success: true, data });
+    }
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    throw error;
+  }
 };
 
 // delete projectUser - used when a user chooses to leave a project from the project's workspace (WebSocket)
@@ -234,12 +362,11 @@ export const deleteProjectUser = async (ws: WebSocket, projectID: string, userna
 
   if (ws.readyState === WebSocket.OPEN) {
     // close the WebSocket connection to the project for the user with code 4204 for ProjectUser deletion
-    // deletion broadcast is handled by the WebSocket connection close event logic
     ws.close(4204, `User ${username} has left Project ${projectID}`);
-  } else {
-    // user is no longer connected, broadcast the deletion
-    broadcast(projectID, { action: "deleteProjectUser", success: true, data: { username } });
   }
+
+  // broadcast the deletion
+  broadcast(projectID, { action: "deleteProjectUser", success: true, data: { username } });
 };
 
 // delete projectUser - used when a user chooses to leave a project or decline a project invitation from the user dashboard
@@ -288,12 +415,12 @@ export const deleteProjectUserHttp = async (req: Request, res: Response, next: N
     // check if WebSocket connection exists on the project for the user
     const existingConnection: WebSocket | undefined = webSocketManager[projectID] && webSocketManager[projectID][username];
     if (existingConnection && existingConnection.readyState === WebSocket.OPEN) {
-      // Connection exists, close it with code 4204 for ProjectUser deletion. Deletion broadcast is handled by the WebSocket connection close event logic.
+      // connection exists, close it with code 4204 for ProjectUser deletion
       existingConnection.close(4204, `User ${req.username} has left Project ${projectID}`);
-    } else {
-      // user is not currently connected, broadcast the deletion
-      broadcast(projectID, { action: "deleteProjectUser", success: true, data: { username } });
     }
+
+    // broadcast the deletion
+    broadcast(projectID, { action: "deleteProjectUser", success: true, data: { username } });
 
     // respond successfully
     res.sendStatus(204);

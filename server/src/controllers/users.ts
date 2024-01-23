@@ -173,7 +173,7 @@ export const deleteUser = async (req: Request, res: Response, next: NextFunction
     if (username.length > 128) throw new BadRequestError("Username cannot exceed 128 characters");
 
     // prevent user from deleting themselves
-    if (req.username === username) throw new ForbiddenError("User cannot delete themselves");
+    if (req.username === username) throw new ForbiddenError(`User ${username} cannot delete themselves`);
 
     // get all projects where user is a member
     const memberProjects: ProjectUser[] = await ProjectUserModel.find({ username }, { __v: 0 });
