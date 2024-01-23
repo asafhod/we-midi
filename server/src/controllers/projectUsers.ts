@@ -164,10 +164,10 @@ export const addProjectUsers = async (_ws: WebSocket, projectID: string, usernam
   }
 
   // map message data to query object array with all the needed ProjectUser fields
-  const addProjectUsersQuery = data.map((projectUser: { username: string; isProjectAdmin?: boolean }) => {
-    const isProjectAdmin: boolean = !!projectUser.isProjectAdmin; // using double negation to convert to boolean in case it's undefined
+  const addProjectUsersQuery = data.map((projectUserAddition: { username: string; isProjectAdmin?: boolean }) => {
+    const isProjectAdmin: boolean = !!projectUserAddition.isProjectAdmin; // using double negation to convert to boolean in case it's undefined
 
-    return { projectID: projectObjectId, username: projectUser.username, isProjectAdmin, isAccepted: false };
+    return { projectID: projectObjectId, username: projectUserAddition.username, isProjectAdmin, isAccepted: false };
   });
 
   // set up transaction for batch ProjectUser insert operation
@@ -195,7 +195,7 @@ export const addProjectUsers = async (_ws: WebSocket, projectID: string, usernam
 };
 
 // update projectUsers (WebSocket)
-export const updateProjectUsers = async (ws: WebSocket, projectID: string, username: string, data: any) => {
+export const updateProjectUsers = async (_ws: WebSocket, projectID: string, username: string, data: any) => {
   // validate data with Joi schema
   const { error } = updateProjectUsersSchema.validate(data, { abortEarly: false });
   if (error) throw new BadMessageError(String(error));
@@ -211,27 +211,20 @@ export const updateProjectUsers = async (ws: WebSocket, projectID: string, usern
     );
   }
 
-  // set up the update query object
-  const updateProjectUsersQuery: { $set: Record<string, any>; arrayFilters: { "elem.username": string }[] } = {
-    $set: {},
-    arrayFilters: [],
-  };
+  // set up the update operations array
+  const updateProjectUserOperations = data.map((projectUserUpdate: Record<string, any>) => {
+    // for each ProjectUser update object in the message data, extract their username from the fields to update
+    const { username: projectUserUsername, ...fieldsToUpdate } = projectUserUpdate;
 
-  // TODO: This doesn't look right. Figure out exactly how $set and arrayFilters should work for an updateMany of this kind.
-  //       Is elem.username right? Is projectUsers.${i}.${key} right? The latter especially seems wrong, because projectUsers is coming from nowhere.
-  // iterate over the update data
-  for (let i = 0; i < data.length; i++) {
-    // iterate over the properties of each ProjectUser update data item
-    for (const [key, value] of Object.entries(data[i])) {
-      if (key === "username") {
-        // If the property is the username, it's only being used to identify the ProjectUser to update. Push it to the query's array filters.
-        updateProjectUsersQuery.arrayFilters.push({ "elem.username": value as string });
-      } else {
-        // This is one of the properties the request is attempting to update for the ProjectUser. Set it on the query's $set object.
-        updateProjectUsersQuery.$set[`projectUsers.${i}.${key}`] = value;
-      }
-    }
-  }
+    // return an updateOne operation with filter criteria for the projectID and the ProjectUser's username
+    // and update criteria to set any matching fields present in the update object to their specified values
+    return {
+      updateOne: {
+        filter: { projectID: projectObjectId, username: projectUserUsername },
+        update: { $set: fieldsToUpdate },
+      },
+    };
+  });
 
   // set up transaction for batch ProjectUser update operation
   const session = await mongoose.startSession();
@@ -239,7 +232,7 @@ export const updateProjectUsers = async (ws: WebSocket, projectID: string, usern
 
   try {
     // update ProjectUsers in database based on query object array
-    const result = await ProjectUserModel.updateMany({ projectID: projectObjectId }, updateProjectUsersQuery, { session });
+    const result = await ProjectUserModel.bulkWrite(updateProjectUserOperations, { session });
 
     // abort the transaction if the update would cause the project to have no accepted project admins
     const projectAdminCount: number = await ProjectUserModel.countDocuments({
@@ -266,14 +259,18 @@ export const updateProjectUsers = async (ws: WebSocket, projectID: string, usern
 };
 
 // delete projectUsers (WebSocket)
-export const deleteProjectUsers = async (ws: WebSocket, projectID: string, username: string, data: any) => {
+export const deleteProjectUsers = async (_ws: WebSocket, projectID: string, username: string, data: any) => {
   // validate data with Joi schema
   const { error } = deleteProjectUsersSchema.validate(data, { abortEarly: false });
   if (error) throw new BadMessageError(String(error));
 
-  // block the user from deleting themselves from the project
-  const selfDeleteAttempt: boolean = data.some((userDeletion: { username: string }) => userDeletion.username === username);
+  // check if user is attempting to delete themselves from the project as part of the batch deletion
+  const selfDeleteAttempt: boolean = data.some(
+    (projectUserDeletion: { username: string }) => projectUserDeletion.username === username
+  );
+
   if (selfDeleteAttempt) {
+    // block the user from deleting themselves from the project
     throw new ForbiddenActionError(
       `Cannot delete ProjectUsers - User ${username} cannot delete themselves from Project ${projectID} with this request`
     );
