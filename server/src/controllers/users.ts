@@ -7,7 +7,7 @@ import UserModel, { User } from "../models/userModel";
 import ProjectUserModel, { ProjectUser } from "../models/projectUserModel";
 import { updateUserSchema, searchUsersSchema } from "../validation/schemas";
 import { BadRequestError, BadMessageError, ForbiddenError, NotFoundError } from "../errors";
-import { broadcast, formatQueryArray } from "./helpers";
+import { broadcast, sendMessage, formatQueryArray } from "./helpers";
 
 // TODO: Make sure deleteUser has Cognito permissions to delete a user and that it's secure (as in people can't do it from the browser client)
 //       Confirm leaving out __v using the projection is necessary. Probably is.
@@ -77,7 +77,7 @@ export const searchUsers = async (ws: WebSocket, username: string, data: any) =>
   ).limit(25);
 
   // respond successfully with user data
-  if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ action: "searchUsers", success: true, data: users }));
+  sendMessage(ws, { action: "searchUsers", success: true, data: users });
 };
 
 // update user (admin only)
@@ -141,10 +141,7 @@ export const updateUser = async (req: Request, res: Response, next: NextFunction
           // user is not a member of this project, close any existing connection
           const existingConnection: WebSocket | undefined = projectConnections[username];
           if (existingConnection && existingConnection.readyState === WebSocket.OPEN) {
-            existingConnection.close(
-              1000,
-              `User ${req.username} has lost admin permissions and can no longer access Project ${projectID}`
-            );
+            existingConnection.close(1000, "User has lost admin permissions and can no longer access the project");
           }
         }
       }
@@ -230,7 +227,7 @@ export const deleteUser = async (req: Request, res: Response, next: NextFunction
     for (const projectConnections of Object.values(webSocketManager)) {
       const existingConnection: WebSocket | undefined = projectConnections[username];
       if (existingConnection && existingConnection.readyState === WebSocket.OPEN) {
-        existingConnection.close(1000, `User ${req.username} has been deleted`);
+        existingConnection.close(1000, "User has been deleted");
       }
     }
 

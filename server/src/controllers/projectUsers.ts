@@ -315,7 +315,7 @@ export const deleteProjectUsers = async (_ws: WebSocket, projectID: string, user
         const existingConnection: WebSocket | undefined = webSocketManager[projectID][username];
         if (existingConnection && existingConnection.readyState === WebSocket.OPEN) {
           // connection exists, close it with code 4204 for ProjectUser deletion
-          existingConnection.close(4204, `User ${username} has left Project ${projectID}`);
+          existingConnection.close(4204, "User has been removed from the project");
         }
       }
 
@@ -359,7 +359,7 @@ export const deleteProjectUser = async (ws: WebSocket, projectID: string, userna
 
   if (ws.readyState === WebSocket.OPEN) {
     // close the WebSocket connection to the project for the user with code 4204 for ProjectUser deletion
-    ws.close(4204, `User ${username} has left Project ${projectID}`);
+    ws.close(4204, "User has left the project");
   }
 
   // broadcast the deletion
@@ -413,7 +413,7 @@ export const deleteProjectUserHttp = async (req: Request, res: Response, next: N
     const existingConnection: WebSocket | undefined = webSocketManager[projectID] && webSocketManager[projectID][username];
     if (existingConnection && existingConnection.readyState === WebSocket.OPEN) {
       // connection exists, close it with code 4204 for ProjectUser deletion
-      existingConnection.close(4204, `User ${req.username} has left Project ${projectID}`);
+      existingConnection.close(4204, "User has left the project");
     }
 
     // broadcast the deletion

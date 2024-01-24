@@ -130,9 +130,11 @@ export const configureWsServer = (server: http.Server) => {
     ws.on("message", (message: string) => wsMessageRouter(ws, message, username, projectID));
 
     // WebSocket close handling
-    ws.on("close", (code: number, reason: Buffer) => {
+    ws.on("close", (code: number, data: string | Buffer | undefined) => {
+      const closeReason: string = typeof data === "string" ? ` Reason: ${data}` : "";
+
       console.log(
-        `A WebSocket connection has been closed for user ${username} on project ID ${projectID}\nCode: ${code} Reason: ${reason.toString()}`
+        `A WebSocket connection has been closed for user ${username} on project ID ${projectID}\nCode: ${code}${closeReason}`
       );
 
       const existingConnection: WebSocket | undefined = webSocketManager[projectID] && webSocketManager[projectID][username];

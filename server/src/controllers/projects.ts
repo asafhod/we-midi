@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import WebSocket from "ws";
 import webSocketManager from "../webSocketManager";
 import ProjectModel, { Project } from "../models/projectModel";
+import ProjectUserModel, { ProjectUser } from "../models/projectUserModel";
 import {
   addProjectSchema,
   updateProjectSchema,
@@ -13,73 +14,43 @@ import {
 } from "../validation/schemas";
 import { BadRequestError, BadMessageError, NotFoundError } from "../errors";
 import { SERVER_ERROR } from "../errors/errorMessages";
-import { formatQueryArray } from "./helpers";
+import { broadcast, sendMessage, formatQueryArray } from "./helpers";
 
-// get projects based on url query arguments
+// TODO: Admin only queries (low priority)?
+
+// get projects by username
 export const getProjects = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    // destructure url query arguments from request
-    const { ids, names, languages, regions, orgs, pop_min, pop_max, gdp_min, gdp_max } = req.query;
+    // get aggregated data array of all projects on which the user is a member
+    const projectData: {
+      _id: mongoose.Types.ObjectId;
+      name: string;
+      isProjectAdmin: boolean;
+      isAccepted: boolean;
+    }[] = await ProjectUserModel.aggregate([
+      {
+        $match: { username: req.username },
+      },
+      {
+        $lookup: {
+          from: "projects",
+          localField: "projectID",
+          foreignField: "_id",
+          as: "project",
+        },
+      },
+      { $unwind: "$project" },
+      { $project: { _id: "$projectID", name: "$project.name", isProjectAdmin: "$isProjectAdmin", isAccepted: "$isAccepted" } },
+    ]);
 
-    // initialize query to empty object
-    const query = {};
-
-    // set up query object for arguments that correspond to array fields on the Project model
-    if (ids) {
-      // format argument into array
-      const idsArray = formatQueryArray(ids);
-      // set query field for argument with the "$in" property to allow querying based on all of the array entries
-      query.id = { $in: idsArray };
+    // throw an error if a match could not be found in the Projects collection for every result in the ProjectUsers collection
+    const projectDataMismatch: boolean = projectData.some((projectDataItem) => projectDataItem.name === undefined);
+    if (projectDataMismatch) {
+      throw new Error(`Could not get projects for user ${req.username} - Data mismatch between Project and ProjectUser collections`);
     }
 
-    if (names) {
-      const namesArray = formatQueryArray(names);
-      query.names = { $in: namesArray };
-    }
-
-    if (languages) {
-      const langsArray = formatQueryArray(languages);
-      query.languages = { $in: langsArray };
-    }
-
-    if (regions) {
-      const regionsArray = formatQueryArray(regions);
-      query.regions = { $in: regionsArray };
-    }
-
-    if (orgs) {
-      const orgsArray = formatQueryArray(orgs);
-      query.orgs = { $in: orgsArray };
-    }
-
-    // set up query object for arguments that correspond to non-array fields on Project model
-    if (pop_min) {
-      // cast string argument to number and set up query field with the greater-than-or-equal-to flag ($gte)
-      query.population = { $gte: Number(pop_min) };
-    }
-
-    if (pop_max) {
-      // set up query field for argument with the less-than-or-equal-to flag ($lte)
-      query.population = { ...query.population, $lte: Number(pop_max) };
-    }
-
-    if (gdp_min) {
-      query.gdp = { $gte: Number(gdp_min) };
-    }
-
-    if (gdp_max) {
-      query.gdp = { ...query.gdp, $lte: Number(gdp_max) };
-    }
-
-    // query the database using the query object (an empty object returns all projects)
-    const projects = await ProjectModel.find(query, { __v: 0 }); // use projection to avoid retrieving unnecessary field __v
-
-    // respond successfully with result count and project data
-    res.status(200).json({
-      success: true,
-      resultCount: projects.length,
-      data: projects,
-    });
+    // respond successfully with project data
+    res.status(200).json({ success: true, data: projectData });
   } catch (error) {
     next(error); // pass any thrown error to error handler middleware
   }
@@ -87,20 +58,37 @@ export const getProjects = async (req: Request, res: Response, next: NextFunctio
 
 // get project by id (WebSocket)
 export const getProject = async (ws: WebSocket, projectID: string) => {
+  // TODO: Maybe add logic to include whether a ProjectUser/connected user is also a global Admin (low priority)
   try {
-    // query database for project using id
-    const project: Project | null = await ProjectModel.findOne({ _id: new mongoose.Types.ObjectId(projectID) }, { __v: 0 });
+    // convert projectID string to a MongoDB ObjectId
+    const projectObjectId = new mongoose.Types.ObjectId(projectID);
+
+    // get project from database using projectID
+    const project = await ProjectModel.findOne(
+      { _id: projectObjectId },
+      { _id: 0, lastTrackID: 0, "tracks.lastNoteID": 0, __v: 0 } // use projection to avoid retrieving unnecessary fields
+    );
     if (!project) throw new NotFoundError(`No project found for ID: ${projectID}`);
 
-    // TODO: Retrieve any additional needed data, such as anything needed from ProjectUsers or Users
-    //       Also include the currently online usernames for the project (using Object.keys(webSocketManager[projectID]))
+    // get ProjectUsers from database using projectID
+    const projectUsers = await ProjectUserModel.find({ projectID: projectObjectId }, { projectID: 0, __v: 0 });
+    if (!projectUsers.length) throw new Error(`No ProjectUsers found for Project ID: ${projectID}`);
+
+    // verify project's connections object exists
+    if (!webSocketManager[projectID]) throw new Error(`No project connections object found for Project ID: ${projectID}`);
+
+    // get usernames of the clients currently connected to the project
+    const connectedUsers: string[] = Object.keys(webSocketManager[projectID]);
+
+    // verify that connected users exists for the project (at least one should, because a connected user is making this request)
+    if (!connectedUsers.length) throw new Error(`No connections found for Project ID: ${projectID}`);
 
     // respond successfully with project data
-    if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ action: "getProject", success: true, data: project }));
+    sendMessage(ws, { action: "getProject", success: true, data: { project, projectUsers, connectedUsers } });
   } catch (error) {
-    console.error(error);
-    // project could not be retrieved for the client, close its WebSocket connection with a Server Error message
-    if (ws.readyState === WebSocket.OPEN) ws.close(1013, SERVER_ERROR);
+    // project could not be retrieved for the client, close the WebSocket connection with a Server Error message if it's open
+    if (ws.readyState === WebSocket.OPEN) ws.close(1011, SERVER_ERROR);
+    console.error(`Action: getProject\nError: Could not get project - ${error}`);
   }
 };
 

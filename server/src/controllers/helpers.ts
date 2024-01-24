@@ -1,20 +1,30 @@
 import WebSocket from "ws";
 import webSocketManager from "../webSocketManager";
+import { SERVER_ERROR } from "../errors/errorMessages";
+
+interface Message {
+  action: string;
+  success: boolean;
+  data: any;
+}
 
 // helper function which sends a message to a WebSocket connection, or closes the connection if there is an error
-const sendMessage = (ws: WebSocket, message: any) => {
+export const sendMessage = (ws: WebSocket, message: Message) => {
   if (ws.readyState === WebSocket.OPEN) {
     try {
       ws.send(JSON.stringify(message));
     } catch (error) {
       // Message failed to send due to WebSocket connection error. Close the connection.
-      ws.close(1011, "WebSocket connection closed due to error");
+      ws.close(1011, SERVER_ERROR);
+      console.error(
+        `Action: ${message.action || "invalid"}\nMessage failed to send to the WebSocket connection, so it has been closed.`
+      );
     }
   }
 };
 
 // function to broadcast WebSocket messages to multiple connected clients
-export const broadcast = (projectID: string, message: any, excludedSocket?: WebSocket) => {
+export const broadcast = (projectID: string, message: Message, excludedSocket?: WebSocket) => {
   // check that connections exist for the project
   if (webSocketManager[projectID]) {
     if (excludedSocket) {
