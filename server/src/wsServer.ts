@@ -11,6 +11,7 @@ import { getProject } from "./controllers/projects";
 
 // TODO: Anything special with socket for HTTPS? Saw something that made it seem that way when hovering over one of the ws values.
 //       Though ChatGPT didn't point out anything at the general level. Double check.
+//       Update close event handler logic so that existing connection checks don't needlessly happen again when a controller already checked (medium-low priority)
 
 interface WebSocketConnectionRequest extends IncomingMessage {
   username?: string;

@@ -229,7 +229,8 @@ export const deleteProject = async (_ws: WebSocket, projectID: string, username:
   session.startTransaction();
 
   try {
-    // TODO: Delete all ProjectUsers for the project. Don't forget to include the session flag.
+    // delete all ProjectUsers for the project from the database
+    await ProjectUserModel.deleteMany({ projectID: projectObjectId }, { session });
 
     // delete project from the database
     const project: Project | null = await ProjectModel.findOneAndDelete({ _id: projectObjectId }, { projection: { __v: 0 }, session });
@@ -242,7 +243,14 @@ export const deleteProject = async (_ws: WebSocket, projectID: string, username:
     // log successful project deletion to the console
     console.log(`User ${username} deleted project: ${projectID}`);
 
-    // TODO: Close all WS clients currently working on the project with code 1000 and reason "Project was deleted"
+    // check if project currently has user connections, if so close them
+    if (webSocketManager[projectID]) {
+      for (const connection of Object.values(webSocketManager[projectID])) {
+        // close any open connections with code 4204
+        // this code indicates ProjectUser deletion and prevents the connection closures from being needlessly broadcast to each other, since they are all being closed
+        if (connection.readyState === WebSocket.OPEN) connection.close(4204, "Project was deleted");
+      }
+    }
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
@@ -276,7 +284,8 @@ export const deleteProjectHttp = async (req: Request, res: Response, next: NextF
   session.startTransaction();
 
   try {
-    // TODO: Delete all ProjectUsers for the project. Don't forget to include the session flag.
+    // delete all ProjectUsers for the project from the database
+    await ProjectUserModel.deleteMany({ projectID: projectObjectId }, { session });
 
     // delete project from the database
     const project: Project | null = await ProjectModel.findOneAndDelete({ _id: projectObjectId }, { projection: { __v: 0 }, session });
@@ -289,7 +298,14 @@ export const deleteProjectHttp = async (req: Request, res: Response, next: NextF
     // log successful project deletion to the console
     console.log(`User ${req.username} deleted project: ${id}`);
 
-    // TODO: Close all WS clients currently working on the project with code 1000 and reason "Project was deleted"
+    // check if project currently has user connections, if so close them
+    if (webSocketManager[id]) {
+      for (const connection of Object.values(webSocketManager[id])) {
+        // close any open connections with code 4204
+        // this code indicates ProjectUser deletion and prevents the connection closures from being needlessly broadcast to each other, since they are all being closed
+        if (connection.readyState === WebSocket.OPEN) connection.close(4204, "Project was deleted");
+      }
+    }
 
     // respond successfully
     res.sendStatus(204);
