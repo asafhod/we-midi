@@ -21,30 +21,31 @@ export const updateProjectSchema: ObjectSchema<any> = Joi.object({
 
 // validation schema for the Import MIDI request
 export const importMidiSchema: ObjectSchema<any> = Joi.object({
-  tempo: Joi.number().min(1).max(300),
-  ppq: Joi.number().min(24).max(960),
-  lastTrackID: Joi.number().min(0),
+  tempo: Joi.number().min(1).max(300).required(),
+  ppq: Joi.number().min(24).max(960).required(),
+  // lastTrackID: Joi.number().min(0), TODO: Handle this in the controller code by adding the number of tracks in the MIDI data to the previous lastTrackID. Then delete this line.
   tracks: Joi.array()
     .max(100)
     .items({
-      trackID: Joi.number().min(1).required(),
+      // trackID: Joi.number().min(1).required(), TODO: Handle this in the controller code by adding the 1-indexed number of the track to the db's previous lastTrackID. Then delete this line.
       trackName: Joi.string().min(1).max(15).required(),
       instrument: Joi.string().length(1).required(),
       volume: Joi.number().min(-40).max(8).required(),
       pan: Joi.number().min(-8).max(8).required(),
       solo: Joi.boolean().required(),
       mute: Joi.boolean().required(),
-      lastNoteID: Joi.number().min(0),
+      lastNoteID: Joi.number().min(0), // TODO: This should be notes.length (handle on client)
       notes: Joi.array()
         .max(1500)
         .items({
-          noteID: Joi.number().min(1).required(),
+          noteID: Joi.number().min(1).required(), // TODO: Handle on client. Just increment, starting at 1.
           midiNum: Joi.number().min(21).max(108).required(),
           duration: Joi.number().min(0.00625).max(60000).required(),
           noteTime: Joi.number().min(0).max(59998.125).required(),
           velocity: Joi.number().min(0).max(127).required(),
         }),
-    }),
+    })
+    .required(),
 });
 
 // TODO: Make sure you filter for only the tracks that have notes in the client. If none do, only send the tempo property.

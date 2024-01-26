@@ -82,26 +82,26 @@ export const searchUsers = async (ws: WebSocket, username: string, data: any) =>
 
 // update user (admin only)
 export const updateUser = async (req: Request, res: Response, next: NextFunction) => {
+  // validate request body with Joi schema
+  const { error } = updateUserSchema.validate(req.body, { abortEarly: false });
+  if (error) throw new BadRequestError(String(error));
+
+  // get target username from url parameter
+  const username: string = req.params.username.toLowerCase(); // to lower case for case-insensitivity
+
+  // validate username
+  if (username.length > 128) throw new BadRequestError("Username cannot exceed 128 characters");
+
   // set up transaction for update operation
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
-    // validate request body with Joi schema
-    const { error } = updateUserSchema.validate(req.body, { abortEarly: false });
-    if (error) throw new BadRequestError(String(error));
-
-    // get target username from url parameter
-    const username: string = req.params.username.toLowerCase(); // to lower case for case-insensitivity
-
-    // validate username
-    if (username.length > 128) throw new BadRequestError("Username cannot exceed 128 characters");
-
-    // update the user in the database based on request body, using "new" flag to retrieve the updated entry
+    // update the user in the database based on request body, using "new" flag to retrieve the updated document
     const user: User | null = await UserModel.findOneAndUpdate(
       { username },
       { $set: req.body },
-      { new: true, projection: { __v: 0 } }
+      { new: true, projection: { __v: 0 }, session }
     );
     if (!user) throw new NotFoundError(`No user found for username: ${username}`);
 
@@ -158,50 +158,50 @@ export const updateUser = async (req: Request, res: Response, next: NextFunction
 
 // delete user (admin only)
 export const deleteUser = async (req: Request, res: Response, next: NextFunction) => {
+  // get target username from url parameter
+  const username: string = req.params.username.toLowerCase(); // to lower case for case-insensitivity
+
+  // validate username
+  if (username.length > 128) throw new BadRequestError("Username cannot exceed 128 characters");
+
+  // prevent user from deleting themselves
+  if (req.username === username) throw new ForbiddenError(`User ${username} cannot delete themselves`);
+
+  // get all projects where user is a member
+  const memberProjects: ProjectUser[] = await ProjectUserModel.find({ username }, { __v: 0 });
+
+  // get projectIDs for all projects where user is a Project Admin and accepted
+  const adminProjectIDs: mongoose.Types.ObjectId[] = memberProjects
+    .filter((project) => project.isProjectAdmin && project.isAccepted)
+    .map((adminProject) => adminProject.projectID);
+
+  // get any projects for which user is currently the only accepted Project Admin
+  const onlyAdminProjects = await ProjectUserModel.aggregate([
+    { $match: { projectID: { $in: adminProjectIDs }, isProjectAdmin: true, isAccepted: true } },
+    { $group: { _id: "$projectID", count: { $sum: 1 } } },
+    { $match: { count: 1 } },
+  ]);
+
+  if (onlyAdminProjects.length) {
+    // user is currently the only accepted Project Admin on at least one project, prevent deletion
+    const onlyAdminProjectIDs: string[] = onlyAdminProjects.map((onlyAdminProject) => onlyAdminProject._id.toString()); // map projectIDs to string array
+    throw new ForbiddenError(
+      `User ${username} could not be deleted because they are currently the only accepted project admin for Projects: ${onlyAdminProjectIDs.join(
+        ", "
+      )}`
+    );
+  }
+
   // set up transaction for delete operation
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
-    // get target username from url parameter
-    const username: string = req.params.username.toLowerCase(); // to lower case for case-insensitivity
-
-    // validate username
-    if (username.length > 128) throw new BadRequestError("Username cannot exceed 128 characters");
-
-    // prevent user from deleting themselves
-    if (req.username === username) throw new ForbiddenError(`User ${username} cannot delete themselves`);
-
-    // get all projects where user is a member
-    const memberProjects: ProjectUser[] = await ProjectUserModel.find({ username }, { __v: 0 });
-
-    // get projectIDs for all projects where user is a Project Admin and accepted
-    const adminProjectIDs: mongoose.Types.ObjectId[] = memberProjects
-      .filter((project) => project.isProjectAdmin && project.isAccepted)
-      .map((adminProject) => adminProject.projectID);
-
-    // get any projects for which user is currently the only accepted Project Admin
-    const onlyAdminProjects = await ProjectUserModel.aggregate([
-      { $match: { projectID: { $in: adminProjectIDs }, isProjectAdmin: true, isAccepted: true } },
-      { $group: { _id: "$projectID", count: { $sum: 1 } } },
-      { $match: { count: 1 } },
-    ]);
-
-    if (onlyAdminProjects.length) {
-      // user is currently the only accepted Project Admin on at least one project, prevent deletion
-      const onlyAdminProjectIDs: string[] = onlyAdminProjects.map((onlyAdminProject) => onlyAdminProject._id.toString()); // map projectIDs to string array
-      throw new ForbiddenError(
-        `User ${username} could not be deleted because they are currently the only accepted project admin for Projects: ${onlyAdminProjectIDs.join(
-          ", "
-        )}`
-      );
-    }
-
     // delete the user's entries from the ProjectUser database
     const projectUserDeleteResult = await ProjectUserModel.deleteMany({ username }, { session });
 
     // delete the user from the User database
-    const user: User | null = await UserModel.findOneAndDelete({ username }, { projection: { __v: 0 } });
+    const user: User | null = await UserModel.findOneAndDelete({ username }, { projection: { __v: 0 }, session });
     if (!user) throw new NotFoundError(`No user found for username: ${username}`);
 
     // set up Cognito Identity Service Provider

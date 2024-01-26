@@ -108,7 +108,7 @@ export const acceptProjectUser = async (req: Request, res: Response, next: NextF
     const objectIdRegex: RegExp = /^[0-9a-fA-F]{24}$/;
     if (!objectIdRegex.test(projectID)) throw new BadRequestError("ProjectID is not a valid MongoDB ObjectId");
 
-    // update the isAccepted property to True for the ProjectUser in the database, using the "new" flag to retrieve the updated entry
+    // update the isAccepted property to True for the ProjectUser in the database, using the "new" flag to retrieve the updated document
     const projectUser: ProjectUser | null = await ProjectUserModel.findOneAndUpdate(
       { projectID: new mongoose.Types.ObjectId(projectID), username, isAccepted: false },
       { $set: { isAccepted: true } },

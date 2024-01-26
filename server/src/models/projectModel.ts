@@ -1,5 +1,9 @@
 import mongoose, { Document, Schema, Types } from "mongoose";
 
+// constants
+const DEFAULT_TEMPO: number = 120;
+const DEFAULT_PPQ: number = 480;
+
 // define Project interface
 export interface Project extends Document {
   _id: Types.ObjectId;
@@ -37,8 +41,8 @@ const projectSchema = new Schema<Project>({
     type: String,
     required: [true, "Name is required"],
   },
-  tempo: { type: Number, default: 120 },
-  ppq: { type: Number, default: 480 },
+  tempo: { type: Number, default: DEFAULT_TEMPO },
+  ppq: { type: Number, default: DEFAULT_PPQ },
   lastTrackID: { type: Number, default: 0 },
   tracks: {
     type: [

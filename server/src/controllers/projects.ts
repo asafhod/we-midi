@@ -12,11 +12,14 @@ import {
   updateTrackSchema,
   deleteTrackSchema,
 } from "../validation/schemas";
-import { BadRequestError, BadMessageError, NotFoundError } from "../errors";
+import { BadRequestError, BadMessageError, ForbiddenError, ForbiddenActionError, NotFoundError } from "../errors";
 import { SERVER_ERROR } from "../errors/errorMessages";
+import { checkProjectAdmin, checkAdmin } from "../middleware/checkAdmin";
 import { broadcast, sendMessage, formatQueryArray } from "./helpers";
 
-// TODO: Admin only queries (low priority)?
+// TODO: Move often-used code to helper functions
+//       Once you change note timing to measure-based, can likely delete the changeTempo controller and use the updateProject controller for that instead as is
+//       Admin only queries (low priority)?
 
 // get projects by username
 export const getProjects = async (req: Request, res: Response, next: NextFunction) => {
@@ -93,53 +96,74 @@ export const getProject = async (ws: WebSocket, projectID: string) => {
 };
 
 // add project
-// TODO: AddProjectUser schema was unnecessary. Include that as part of this Add Project controller.
-//       projectID would be given by the db, username would be on the request from the Cognito token auth, isProjectAdmin would be True
 export const addProject = async (req: Request, res: Response, next: NextFunction) => {
+  // validate request body with Joi schema
+  const { error } = addProjectSchema.validate(req.body, { abortEarly: false });
+  if (error) throw new BadRequestError(String(error));
+
+  // set up transaction for Project creation operation
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
-    // validate request body with Joi schema
-    const { error } = addProjectSchema.validate(req.body, { abortEarly: false });
-    if (error) throw new BadRequestError(String(error));
+    // create new project in the database based on json in request body and destructure its _id
+    const { _id }: Project = (await ProjectModel.create(req.body, { new: true, session }))[0];
 
-    // insert new project into database based on json in request body
-    const project = await ProjectModel.create(req.body);
-
-    // log successful project addition to the console
-    console.log(`User ${req.username} added project: ${req.body.id}`);
-
-    // respond successfully with project data
-    res.status(201).json({
-      success: true,
-      data: {
-        id: project.id,
-        names: project.names,
-        languages: project.languages,
-        regions: project.regions,
-        orgs: project.orgs,
-        population: project.population,
-        gdp: project.gdp,
+    // create new ProjectUser in the database for the user on the new project, setting them as an accepted Project Admin
+    await ProjectUserModel.create(
+      {
+        projectID: _id,
+        username: req.username,
+        isProjectAdmin: true,
+        isAccepted: true,
       },
-    });
+      { session }
+    );
+
+    // if successful, commit and end the transaction
+    await session.commitTransaction();
+    session.endSession();
+
+    // log successful project creation to the console
+    console.log(`User ${req.username} created project: ${_id.toString()}`);
+
+    // respond successfully with the project's _id
+    res.status(201).json({ success: true, data: { _id } });
   } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
     next(error);
   }
 };
 
 // update project (WebSocket)
-export const updateProject = async (ws: WebSocket, projectID: string, username: string, data: any) => {
+export const updateProject = async (_ws: WebSocket, projectID: string, username: string, data: any) => {
   // validate data with Joi schema
   const { error } = updateProjectSchema.validate(data, { abortEarly: false });
   if (error) throw new BadMessageError(String(error));
 
-  // update project matching projectID in the database based on data, using "new" flag to retrieve the updated entry
-  const project = await ProjectModel.findOneAndUpdate({ _id: projectID.toLowerCase() }, data, { new: true, projection: { __v: 0 } });
+  // convert projectID string to a MongoDB ObjectId
+  const projectObjectId = new mongoose.Types.ObjectId(projectID);
+
+  // block request if user is not an admin
+  const isAdmin: boolean = (await checkProjectAdmin(username, projectObjectId)) || (await checkAdmin(username));
+  if (!isAdmin) {
+    throw new ForbiddenActionError(`Cannot update project - User ${username} does not have admin privileges for Project ${projectID}`);
+  }
+
+  // update project in the database based on message data, using "new" flag to retrieve the updated document
+  const project: Project | null = await ProjectModel.findOneAndUpdate(
+    { _id: projectObjectId },
+    { $set: data },
+    { new: true, projection: { __v: 0 } }
+  );
   if (!project) throw new NotFoundError(`No project found for ID: ${projectID}`);
 
   // log successful project update to the console
   console.log(`User ${username} updated project: ${projectID}`);
 
-  // respond successfully with project data
-  if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ action: "updateProject", success: true, data: project }));
+  // broadcast project update
+  broadcast(projectID, { action: "updateProject", success: true, data });
 };
 
 // import MIDI (WebSocket)
@@ -190,28 +214,88 @@ export const deleteTrack = async (ws: WebSocket, projectID: string, username: st
 };
 
 // delete project - used when deleting a project from the project's workspace (WebSocket)
-export const deleteProject = async (ws: WebSocket, projectID: string, username: string) => {
-  // TODO: Implement
-  // TODO: Close all WS clients currently working on the project
+export const deleteProject = async (_ws: WebSocket, projectID: string, username: string) => {
+  // convert project ID string to a MongoDB ObjectId
+  const projectObjectId = new mongoose.Types.ObjectId(projectID);
+
+  // block request if user is not an admin
+  const isAdmin: boolean = (await checkProjectAdmin(username, projectObjectId)) || (await checkAdmin(username));
+  if (!isAdmin) {
+    throw new ForbiddenActionError(`Cannot delete project - User ${username} does not have admin privileges for Project ${projectID}`);
+  }
+
+  // set up transaction for Project deletion operation
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    // TODO: Delete all ProjectUsers for the project. Don't forget to include the session flag.
+
+    // delete project from the database
+    const project: Project | null = await ProjectModel.findOneAndDelete({ _id: projectObjectId }, { projection: { __v: 0 }, session });
+    if (!project) throw new NotFoundError(`No project found for ID: ${projectID}`);
+
+    // if successful, commit and end the transaction
+    await session.commitTransaction();
+    session.endSession();
+
+    // log successful project deletion to the console
+    console.log(`User ${username} deleted project: ${projectID}`);
+
+    // TODO: Close all WS clients currently working on the project with code 1000 and reason "Project was deleted"
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    throw error;
+  }
 };
 
 // delete project - used when deleting a project from the user dashboard
 export const deleteProjectHttp = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { id } = req.params;
+  // get project's ID from url parameter
+  const { id } = req.params;
 
-    // delete project matching id parameter in database
-    const project = await ProjectModel.findOneAndDelete({ _id: id.toLowerCase() }, { projection: { __v: 0 } });
+  // validate project ID is a 24-character hexadecimal string (a valid MongoDB ObjectId)
+  const objectIdRegex: RegExp = /^[0-9a-fA-F]{24}$/;
+  if (!objectIdRegex.test(id)) throw new BadRequestError("ProjectID is not a valid MongoDB ObjectId");
+
+  // convert project ID string to a MongoDB ObjectId
+  const projectObjectId = new mongoose.Types.ObjectId(id);
+
+  // verify username exists on request
+  if (!req.username) throw new Error("Cannot delete project - Username is missing from request");
+
+  // block request if user is not an admin
+  const isAdmin: boolean = (await checkProjectAdmin(req.username, projectObjectId)) || (await checkAdmin(req.username));
+  if (!isAdmin) {
+    throw new ForbiddenError(`Cannot delete project - User ${req.username} does not have admin privileges for Project ${id}`);
+  }
+
+  // set up transaction for Project deletion operation
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    // TODO: Delete all ProjectUsers for the project. Don't forget to include the session flag.
+
+    // delete project from the database
+    const project: Project | null = await ProjectModel.findOneAndDelete({ _id: projectObjectId }, { projection: { __v: 0 }, session });
     if (!project) throw new NotFoundError(`No project found for ID: ${id}`);
+
+    // if successful, commit and end the transaction
+    await session.commitTransaction();
+    session.endSession();
 
     // log successful project deletion to the console
     console.log(`User ${req.username} deleted project: ${id}`);
 
+    // TODO: Close all WS clients currently working on the project with code 1000 and reason "Project was deleted"
+
     // respond successfully
     res.sendStatus(204);
-
-    // TODO: Close all WS clients currently working on the project
   } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
     next(error);
   }
 };
