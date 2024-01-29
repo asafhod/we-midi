@@ -16,18 +16,16 @@ export const addProjectSchema: ObjectSchema<any> = Joi.object({
 // validation schema for the Update Project request
 export const updateProjectSchema: ObjectSchema<any> = Joi.object({
   name: Joi.string().min(1).max(100),
-  // tempo: Joi.number().min(1).max(300), TODO: Once you change note timing to measure-based, can likely just uncomment this and delete the Change Tempo schema
+  tempo: Joi.number().min(1).max(300),
 });
 
 // validation schema for the Import MIDI request
 export const importMidiSchema: ObjectSchema<any> = Joi.object({
   tempo: Joi.number().min(1).max(300).required(),
   ppq: Joi.number().min(24).max(960).required(),
-  // lastTrackID: Joi.number().min(0), TODO: Handle this in the controller code by adding the number of tracks in the MIDI data to the previous lastTrackID. Then delete this line.
   tracks: Joi.array()
     .max(100)
     .items({
-      // trackID: Joi.number().min(1).required(), TODO: Handle this in the controller code by adding the 1-indexed number of the track to the db's previous lastTrackID. Then delete this line.
       trackName: Joi.string().min(1).max(15).required(),
       instrument: Joi.string().length(1).required(),
       volume: Joi.number().min(-40).max(8).required(),
@@ -46,26 +44,6 @@ export const importMidiSchema: ObjectSchema<any> = Joi.object({
         }),
     })
     .required(),
-});
-
-// TODO: Make sure you filter for only the tracks that have notes in the client. If none do, only send the tempo property.
-// validation schema for the Change Tempo request
-export const changeTempoSchema: ObjectSchema<any> = Joi.object({
-  tempo: Joi.number().min(1).max(300).required(),
-  tracks: Joi.array()
-    .max(100)
-    .items({
-      trackID: Joi.number().min(1).required(),
-      notes: Joi.array()
-        .min(1)
-        .max(1500)
-        .items({
-          noteID: Joi.number().min(1).required(),
-          duration: Joi.number().min(0.00625).max(60000).required(),
-          noteTime: Joi.number().min(0).max(59998.125).required(),
-        })
-        .required(),
-    }),
 });
 
 // validation for the Update Track request

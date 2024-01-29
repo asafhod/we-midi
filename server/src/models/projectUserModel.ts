@@ -9,6 +9,7 @@ export interface ProjectUser extends Document {
   //  TODO: Implement these in localStorage
   // trackControls: {
   //   trackID: number;
+  //   instrument: string;
   //   volume: number;
   //   pan: number;
   //   solo: boolean;

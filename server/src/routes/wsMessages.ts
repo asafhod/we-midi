@@ -1,15 +1,6 @@
 import WebSocket from "ws";
 import { searchUsers } from "../controllers/users";
-import {
-  getProject,
-  updateProject,
-  deleteProject,
-  importMidi,
-  changeTempo,
-  addTrack,
-  updateTrack,
-  deleteTrack,
-} from "../controllers/projects";
+import { getProject, updateProject, deleteProject, importMidi, addTrack, updateTrack, deleteTrack } from "../controllers/projects";
 import { addProjectUsers, updateProjectUsers, deleteProjectUsers, deleteProjectUser } from "../controllers/projectUsers";
 import { addNote, addNotes, updateNote, updateNotes, deleteNote, deleteNotes, deleteAllNotesOnTrack } from "../controllers/notes";
 import wsErrorHandler from "../errors/wsErrorHandler";
@@ -42,9 +33,6 @@ const router = (ws: WebSocket, message: string, username: string, projectID: str
         break;
       case "importMIDI":
         importMidi(ws, projectID, username, data);
-        break;
-      case "changeTempo":
-        changeTempo(ws, projectID, username, data);
         break;
       case "addTrack":
         addTrack(ws, projectID, username);

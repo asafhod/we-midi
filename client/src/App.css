@@ -1,4 +1,5 @@
 .App {
+  position: relative;
   height: 100vh;
   width: 100vw;
   margin: 0;
@@ -20,11 +21,24 @@
   overflow: hidden;
 } */
 
+.user-panel {
+  position: absolute;
+  top: 7px;
+  right: 0px;
+  z-index: 1;
+  user-select: none;
+}
+
+.logout-btn {
+  margin-left: 7px;
+}
+
 .projects-list {
   list-style-type: none;
 }
 
 .workspace {
+  position: relative;
   height: 100vh;
   min-width: 500px;
   overflow-x: hidden;
@@ -32,7 +46,15 @@
   user-select: none;
 }
 
+.dashboard-link {
+  display: inline-block;
+  position: absolute;
+  left: 10px;
+  top: 10px;
+}
+
 .controls-bar {
+  display: inline-block;
   margin-top: 7px;
   margin-bottom: 8px;
 }

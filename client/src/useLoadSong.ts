@@ -21,7 +21,6 @@ type LoadedSong = {
 };
 
 const useLoadSong = (
-  userID: string | undefined,
   id: string | undefined,
   midiFile: File | null,
   setMidiFile: React.Dispatch<React.SetStateAction<File | null>>
@@ -63,10 +62,8 @@ const useLoadSong = (
       });
     };
 
-    // TODO: Set up conditions to prevent running when it should not. Address new scenarios in cleanup function.
+    // TODO: Set up conditions to prevent running when it should not. Address any new scenarios in cleanup function.
     const loadMidi = async () => {
-      console.log(userID);
-
       if (blockReloadRef.current) {
         // TODO: Jank?
         blockReloadRef.current = false;
@@ -237,7 +234,7 @@ const useLoadSong = (
         });
       }
     };
-  }, [userID, id, midiFile, setMidiFile, navigate]);
+  }, [id, midiFile, setMidiFile, navigate]);
 
   return { loading, setLoading, songData, setSongData, tracks, setTracks, trackControls, setTrackControls, tempo, setTempo };
 };

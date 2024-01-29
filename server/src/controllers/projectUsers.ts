@@ -8,7 +8,8 @@ import { BadRequestError, BadMessageError, ForbiddenError, ForbiddenActionError,
 import { checkProjectAdmin, checkAdmin } from "../middleware/checkAdmin";
 import { broadcast, formatQueryArray } from "./helpers";
 
-// TODO: Move often-used code to helper functions
+// TODO: Add controllers, routes, and schemas for userChangedView and userMouse
+//       Move often-used code to helper functions
 //       Update the delete controllers to not kick global admins when their ProjectUser is deleted (low priority)
 
 // constants

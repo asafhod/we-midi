@@ -1,11 +1,6 @@
-type ProjectsListProps = {
-  userID: string | undefined;
-};
-
-const ProjectsList = ({ userID }: ProjectsListProps): JSX.Element => {
+const ProjectsList = (): JSX.Element => {
   return (
     <>
-      <p>{userID}</p>
       <ul className="projects-list">
         <li>
           <a href="./project/">New Project</a>

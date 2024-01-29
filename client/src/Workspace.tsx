@@ -14,11 +14,9 @@ import EditorControls from "./EditorControls";
 import MidiEditor from "./MidiEditor";
 import MidiUploader from "./MidiUploader";
 
-type WorkspaceProps = {
-  userID: string | undefined;
-};
-
-const Workspace = ({ userID }: WorkspaceProps): JSX.Element => {
+// TODO: Make sure you're using map() where necessary throughout the app instead of pushing to an array
+//       Control+F for "= []" and if it should be map() instead, change it. Tempo change logic and list components need this, likely others.
+const Workspace = (): JSX.Element => {
   const { id } = useParams();
   const [isPlaying, setIsPlaying] = useState(false);
   const [startPosition, setStartPosition] = useState(0);
@@ -31,7 +29,7 @@ const Workspace = ({ userID }: WorkspaceProps): JSX.Element => {
   const [midiFile, setMidiFile] = useState<File | null>(null);
   // TODO: Get track reordering working with songData's trackIDs or whichever way is best. Index Map? Map instead of tracks Array? Re-order tracks directly?
   const { loading, setLoading, songData, setSongData, tracks, setTracks, trackControls, setTrackControls, tempo, setTempo } =
-    useLoadSong(userID, id, midiFile, setMidiFile);
+    useLoadSong(id, midiFile, setMidiFile);
 
   const zoomFactor: number = 1.21; // Fine-tune the Min, Max, and thresholds?
   const zoomMin: number = 0.104; // TODO: Limit so can't be smaller than screen size
@@ -197,8 +195,8 @@ const Workspace = ({ userID }: WorkspaceProps): JSX.Element => {
         for (const note of track.notes) {
           const { id: noteID, name, midiNum, duration, noteTime, velocity } = note;
 
-          const newNoteTime: number = noteTime * tempoConversionFactor;
           const newDuration: number = Number(duration) * tempoConversionFactor;
+          const newNoteTime: number = noteTime * tempoConversionFactor;
 
           Tone.Transport.clear(noteID);
 
@@ -227,7 +225,9 @@ const Workspace = ({ userID }: WorkspaceProps): JSX.Element => {
           <p>Loading...</p>
         ) : (
           <>
-            <a href="/dashboard">Projects</a>
+            <a className="dashboard-link" href="/dashboard">
+              Back to Dashboard
+            </a>
             <div className="controls-bar">
               <button type="button" className="beginning-button" onClick={toBeginning}>
                 {"<<"}

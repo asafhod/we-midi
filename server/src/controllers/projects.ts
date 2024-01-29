@@ -19,7 +19,7 @@ import { broadcast, sendMessage, formatQueryArray } from "./helpers";
 
 // TODO: Move often-used code to helper functions
 //       Once you change note timing to measure-based, can likely delete the changeTempo controller and use the updateProject controller for that instead as is
-//       Admin only queries (low priority)?
+//       Admin only get queries for data access/monitoring (low priority)
 
 // get projects by username
 export const getProjects = async (req: Request, res: Response, next: NextFunction) => {
@@ -137,6 +137,7 @@ export const addProject = async (req: Request, res: Response, next: NextFunction
 };
 
 // update project (WebSocket)
+// TODO: Likely need a loading screen for the client making the request if they're changing tempo
 export const updateProject = async (_ws: WebSocket, projectID: string, username: string, data: any) => {
   // validate data with Joi schema
   const { error } = updateProjectSchema.validate(data, { abortEarly: false });
@@ -151,50 +152,97 @@ export const updateProject = async (_ws: WebSocket, projectID: string, username:
     throw new ForbiddenActionError(`Cannot update project - User ${username} does not have admin privileges for Project ${projectID}`);
   }
 
-  // update project in the database based on message data, using "new" flag to retrieve the updated document
-  const project: Project | null = await ProjectModel.findOneAndUpdate(
+  if (data.tempo) {
+    // get current project tempo and tracks from the database using projectID
+    const projectData = await ProjectModel.findOne({ _id: projectObjectId }, { tempo: 1, tracks: 1 });
+    if (!projectData) throw new NotFoundError(`No project found for ID: ${projectID}`);
+
+    if (data.tempo !== projectData.tempo && projectData.tracks.length) {
+      // Update is attempting to change the song's tempo. Adjust the notes accordingly.
+      const tempoConversionFactor: number = projectData.tempo / data.tempo;
+
+      data.tracks = projectData.tracks.map((track) => {
+        const newNotes = track.notes.map((note) => {
+          const newDuration: number = note.duration * tempoConversionFactor;
+          const newNoteTime: number = note.noteTime * tempoConversionFactor;
+
+          return { ...note, duration: newDuration, noteTime: newNoteTime };
+        });
+
+        return { ...track, notes: newNotes };
+      });
+    }
+  }
+
+  // update project in the database based on the project update data
+  const updatedProject: Project | null = await ProjectModel.findOneAndUpdate(
     { _id: projectObjectId },
     { $set: data },
-    { new: true, projection: { __v: 0 } }
+    // using "new" flag to retrieve the updated document and projection to avoid retrieving unnecessary fields
+    { new: true, projection: { _id: 0, lastTrackID: 0, "tracks.lastNoteID": 0, __v: 0 } }
   );
-  if (!project) throw new NotFoundError(`No project found for ID: ${projectID}`);
+  if (!updatedProject) throw new NotFoundError(`No project found for ID: ${projectID}`);
 
   // log successful project update to the console
   console.log(`User ${username} updated project: ${projectID}`);
 
   // broadcast project update
-  broadcast(projectID, { action: "updateProject", success: true, data });
+  broadcast(projectID, { action: "updateProject", success: true, data: updatedProject });
 };
 
 // import MIDI (WebSocket)
-export const importMidi = async (ws: WebSocket, projectID: string, username: string, data: any) => {
+// TODO: Likely need a loading screen for the client making the request
+export const importMidi = async (_ws: WebSocket, projectID: string, username: string, data: any) => {
   // validate data with Joi schema
   const { error } = importMidiSchema.validate(data, { abortEarly: false });
   if (error) throw new BadMessageError(String(error));
 
-  // TODO: Which data gets sent back (same question for similar project-editing controllers)?
-  // respond successfully with project data
-  if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ action: "importMidi", success: true, data: project }));
-};
+  // convert projectID string to a MongoDB ObjectId
+  const projectObjectId = new mongoose.Types.ObjectId(projectID);
 
-// change tempo (WebSocket)
-export const changeTempo = async (ws: WebSocket, projectID: string, username: string, data: any) => {
-  // validate data with Joi schema
-  const { error } = changeTempoSchema.validate(data, { abortEarly: false });
-  if (error) throw new BadMessageError(String(error));
+  // block request if user is not an admin
+  const isAdmin: boolean = (await checkProjectAdmin(username, projectObjectId)) || (await checkAdmin(username));
+  if (!isAdmin) {
+    throw new ForbiddenActionError(`Cannot import MIDI - User ${username} does not have admin privileges for Project ${projectID}`);
+  }
 
-  // respond successfully with project data
-  if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ action: "changeTempo", success: true, data: project }));
+  // get project's current lastTrackID value from the database using projectID
+  const projectData = await ProjectModel.findOne({ _id: projectObjectId }, { lastTrackID: 1 });
+  if (!projectData) throw new NotFoundError(`No project found for ID: ${projectID}`);
+
+  // set lastTrackID in the project update data to the database's current lastTrackID plus the amount of tracks being imported
+  data.lastTrackID = data.tracks.length + projectData.lastTrackID;
+
+  // set the trackID for each track being imported by incrementing from the database's current lastTrackID
+  for (let i = 0; i < data.tracks.length; i++) {
+    data.tracks[i].trackID = projectData.lastTrackID + i + 1;
+  }
+
+  // update project in the database based on the project update data
+  const updatedProject = await ProjectModel.findOneAndUpdate(
+    { _id: projectObjectId },
+    { $set: data },
+    // using "new" flag to retrieve the updated document and projection to avoid retrieving unnecessary fields
+    { new: true, projection: { _id: 0, name: 0, lastTrackID: 0, "tracks.lastNoteID": 0, __v: 0 } }
+  );
+  if (!updatedProject) throw new NotFoundError(`No project found for ID: ${projectID}`);
+
+  // log successful MIDI import to the console
+  console.log(`User ${username} imported MIDI data for project: ${projectID}`);
+
+  // broadcast MIDI import
+  broadcast(projectID, { action: "importMidi", success: true, data: updatedProject });
 };
 
 // add track (WebSocket)
-export const addTrack = async (ws: WebSocket, projectID: string, username: string) => {
+export const addTrack = async (_ws: WebSocket, projectID: string, username: string) => {
   // respond successfully with project data
   if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ action: "addTrack", success: true, data: project }));
 };
 
 // update track (WebSocket)
-export const updateTrack = async (ws: WebSocket, projectID: string, username: string, data: any) => {
+// TODO: Needs optimistic updates?
+export const updateTrack = async (_ws: WebSocket, projectID: string, username: string, data: any) => {
   // validate data with Joi schema
   const { error } = updateTrackSchema.validate(data, { abortEarly: false });
   if (error) throw new BadMessageError(String(error));
@@ -204,7 +252,7 @@ export const updateTrack = async (ws: WebSocket, projectID: string, username: st
 };
 
 // delete track (WebSocket)
-export const deleteTrack = async (ws: WebSocket, projectID: string, username: string, data: any) => {
+export const deleteTrack = async (_ws: WebSocket, projectID: string, username: string, data: any) => {
   // validate data with Joi schema
   const { error } = deleteTrackSchema.validate(data, { abortEarly: false });
   if (error) throw new BadMessageError(String(error));

@@ -32,6 +32,7 @@ export const addNotes = async (ws: WebSocket, projectID: string, username: strin
 };
 
 // update note (WebSocket)
+// TODO: Needs optimistic updates?
 export const updateNote = async (ws: WebSocket, projectID: string, username: string, data: any) => {
   // validate data with Joi schema
   const { error } = updateNoteSchema.validate(data, { abortEarly: false });
@@ -42,6 +43,7 @@ export const updateNote = async (ws: WebSocket, projectID: string, username: str
 };
 
 // update notes (WebSocket)
+// TODO: Needs optimistic updates?
 export const updateNotes = async (ws: WebSocket, projectID: string, username: string, data: any) => {
   // validate data with Joi schema
   const { error } = updateNotesSchema.validate(data, { abortEarly: false });
