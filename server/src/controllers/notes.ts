@@ -10,6 +10,8 @@ import {
 } from "../validation/schemas";
 import { BadMessageError } from "../errors";
 
+// TODO: All of these need optimistic update logic
+
 // add note (WebSocket)
 export const addNote = async (ws: WebSocket, projectID: string, username: string, data: any) => {
   // validate data with Joi schema

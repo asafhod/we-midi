@@ -5,11 +5,14 @@ import projectsRouter from "./routes/projects";
 import projectUsersRouter from "./routes/projectUsers";
 import httpErrorHandler from "./middleware/httpErrorHandler";
 import routeNotFound from "./middleware/routeNotFound";
+// TODO: Import security middleware
 
 export const configureHttpServer = (app: express.Application) => {
   // middleware
+  // TODO: Security middleware
   app.use(express.static("public"));
   app.use(express.json());
+  // TODO: Security middleware
 
   // routes
   app.use("/users", usersRouter);

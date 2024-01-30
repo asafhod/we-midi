@@ -3,23 +3,21 @@ import mongoose from "mongoose";
 import WebSocket from "ws";
 import webSocketManager from "../webSocketManager";
 import ProjectModel, { Project } from "../models/projectModel";
-import ProjectUserModel, { ProjectUser } from "../models/projectUserModel";
-import {
-  addProjectSchema,
-  updateProjectSchema,
-  importMidiSchema,
-  changeTempoSchema,
-  updateTrackSchema,
-  deleteTrackSchema,
-} from "../validation/schemas";
+import ProjectUserModel from "../models/projectUserModel";
+import { addProjectSchema, updateProjectSchema, importMidiSchema, updateTrackSchema, deleteTrackSchema } from "../validation/schemas";
 import { BadRequestError, BadMessageError, ForbiddenError, ForbiddenActionError, NotFoundError } from "../errors";
 import { SERVER_ERROR } from "../errors/errorMessages";
 import { checkProjectAdmin, checkAdmin } from "../middleware/checkAdmin";
-import { broadcast, sendMessage, formatQueryArray } from "./helpers";
+import { broadcast, sendMessage } from "./helpers";
+
+// TODO: Add source property to all actions for the entire app
+//       Update updateProject controller so that the projection of the returned data corresponds to the fields being changed by the message data
+//       Implement addTrack and deleteTrack, then updateTrack
 
 // TODO: Move often-used code to helper functions
-//       Once you change note timing to measure-based, can likely delete the changeTempo controller and use the updateProject controller for that instead as is
-//       Admin only get queries for data access/monitoring (low priority)
+//       Once you change note timing to measure-based, simplify the tempo logic in the updateProject controller
+//         Would just set the tempo like any other field update (wouldn't need to change notes)
+//       Admin-only GET queries for data access/monitoring (low priority)
 
 // get projects by username
 export const getProjects = async (req: Request, res: Response, next: NextFunction) => {
@@ -241,7 +239,7 @@ export const addTrack = async (_ws: WebSocket, projectID: string, username: stri
 };
 
 // update track (WebSocket)
-// TODO: Needs optimistic updates?
+// TODO: Needs optimistic update logic
 export const updateTrack = async (_ws: WebSocket, projectID: string, username: string, data: any) => {
   // validate data with Joi schema
   const { error } = updateTrackSchema.validate(data, { abortEarly: false });
