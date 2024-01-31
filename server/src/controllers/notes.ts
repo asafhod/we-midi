@@ -19,7 +19,7 @@ export const addNote = async (ws: WebSocket, projectID: string, username: string
   if (error) throw new BadMessageError(String(error));
 
   // respond successfully with note data
-  if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ action: "addNote", success: true, data: note }));
+  if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ action: "addNote", source: username, success: true, data: note }));
 };
 
 // add notes (WebSocket)
@@ -30,7 +30,7 @@ export const addNotes = async (ws: WebSocket, projectID: string, username: strin
   if (error) throw new BadMessageError(String(error));
 
   // respond successfully with data for the notes
-  if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ action: "addNotes", success: true, data: notes }));
+  if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ action: "addNotes", source: username, success: true, data: notes }));
 };
 
 // update note (WebSocket)
@@ -41,7 +41,7 @@ export const updateNote = async (ws: WebSocket, projectID: string, username: str
   if (error) throw new BadMessageError(String(error));
 
   // respond successfully with note data
-  if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ action: "updateNote", success: true, data: note }));
+  if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ action: "updateNote", source: username, success: true, data: note }));
 };
 
 // update notes (WebSocket)
@@ -52,7 +52,9 @@ export const updateNotes = async (ws: WebSocket, projectID: string, username: st
   if (error) throw new BadMessageError(String(error));
 
   // respond successfully with data for the notes
-  if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ action: "updateNotes", success: true, data: notes }));
+  if (ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ action: "updateNotes", source: username, success: true, data: notes }));
+  }
 };
 
 // delete note (WebSocket)
@@ -62,7 +64,7 @@ export const deleteNote = async (ws: WebSocket, projectID: string, username: str
   if (error) throw new BadMessageError(String(error));
 
   // respond successfully with note data
-  if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ action: "deleteNote", success: true, data: note }));
+  if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ action: "deleteNote", source: username, success: true, data: note }));
 };
 
 // delete notes (WebSocket)
@@ -72,7 +74,9 @@ export const deleteNotes = async (ws: WebSocket, projectID: string, username: st
   if (error) throw new BadMessageError(String(error));
 
   // respond successfully with data for the notes
-  if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ action: "deleteNotes", success: true, data: notes }));
+  if (ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ action: "deleteNotes", source: username, success: true, data: notes }));
+  }
 };
 
 // delete all notes on track (WebSocket)
@@ -82,5 +86,7 @@ export const deleteAllNotesOnTrack = async (ws: WebSocket, projectID: string, us
   if (error) throw new BadMessageError(String(error));
 
   // respond successfully with data for the notes
-  if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ action: "deleteAllNotesOnTrack", success: true, data: notes }));
+  if (ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ action: "deleteAllNotesOnTrack", source: username, success: true, data: notes }));
+  }
 };

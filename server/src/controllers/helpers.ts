@@ -4,6 +4,7 @@ import { SERVER_ERROR } from "../errors/errorMessages";
 
 interface Message {
   action: string;
+  source?: string;
   success: boolean;
   data: any;
 }

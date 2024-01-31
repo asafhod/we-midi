@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import mongoose from "mongoose";
 import WebSocket from "ws";
 import webSocketManager from "../webSocketManager";
-import ProjectModel, { Project } from "../models/projectModel";
+import ProjectModel, { Project, DEFAULT_VOLUME } from "../models/projectModel";
 import ProjectUserModel from "../models/projectUserModel";
 import { addProjectSchema, updateProjectSchema, importMidiSchema, updateTrackSchema, deleteTrackSchema } from "../validation/schemas";
 import { BadRequestError, BadMessageError, ForbiddenError, ForbiddenActionError, NotFoundError } from "../errors";
@@ -10,9 +10,10 @@ import { SERVER_ERROR } from "../errors/errorMessages";
 import { checkProjectAdmin, checkAdmin } from "../middleware/checkAdmin";
 import { broadcast, sendMessage } from "./helpers";
 
-// TODO: Add source property to all actions for the entire app
-//       Update updateProject controller so that the projection of the returned data corresponds to the fields being changed by the message data
-//       Implement addTrack and deleteTrack, then updateTrack
+// TODO: Implement deleteTrack
+// TODO: Update updateProject controller so that the projection of the returned data corresponds to the fields being changed by the message data
+//         Where should I retrieve less and what's the syntax? Flesh out what you set up. Should I just forgo this and return a lot of fields?
+// TODO: Implement updateTrack
 
 // TODO: Move often-used code to helper functions
 //       Once you change note timing to measure-based, simplify the tempo logic in the updateProject controller
@@ -150,6 +151,14 @@ export const updateProject = async (_ws: WebSocket, projectID: string, username:
     throw new ForbiddenActionError(`Cannot update project - User ${username} does not have admin privileges for Project ${projectID}`);
   }
 
+  // calculate projection of fields to retrieve from the project database
+  const projection: Record<string, any> = {};
+
+  for (const property of Object.keys(data)) {
+    projection[property] = 1;
+  }
+
+  // TODO: Should I retrieve less data here?
   if (data.tempo) {
     // get current project tempo and tracks from the database using projectID
     const projectData = await ProjectModel.findOne({ _id: projectObjectId }, { tempo: 1, tracks: 1 });
@@ -169,15 +178,24 @@ export const updateProject = async (_ws: WebSocket, projectID: string, username:
 
         return { ...track, notes: newNotes };
       });
+
+      // include tempo change data in the field retrieval projection
+      // TODO: Make sure this works as intended. Should not retrieve _id, lastTrackID, tracks.lastNoteID, or __v.
+      projection.tracks = 1;
+      projection.tracks.trackID = 1;
+      projection.tracks.notes = 1;
+      projection.tracks.notes.noteID = 1;
+      projection.tracks.notes.duration = 1;
+      projection.tracks.notes.noteTime = 1;
     }
   }
 
   // update project in the database based on the project update data
-  const updatedProject: Project | null = await ProjectModel.findOneAndUpdate(
+  const updatedProject = await ProjectModel.findOneAndUpdate(
     { _id: projectObjectId },
     { $set: data },
     // using "new" flag to retrieve the updated document and projection to avoid retrieving unnecessary fields
-    { new: true, projection: { _id: 0, lastTrackID: 0, "tracks.lastNoteID": 0, __v: 0 } }
+    { new: true, projection }
   );
   if (!updatedProject) throw new NotFoundError(`No project found for ID: ${projectID}`);
 
@@ -185,7 +203,7 @@ export const updateProject = async (_ws: WebSocket, projectID: string, username:
   console.log(`User ${username} updated project: ${projectID}`);
 
   // broadcast project update
-  broadcast(projectID, { action: "updateProject", success: true, data: updatedProject });
+  broadcast(projectID, { action: "updateProject", source: username, success: true, data: updatedProject });
 };
 
 // import MIDI (WebSocket)
@@ -229,13 +247,54 @@ export const importMidi = async (_ws: WebSocket, projectID: string, username: st
   console.log(`User ${username} imported MIDI data for project: ${projectID}`);
 
   // broadcast MIDI import
-  broadcast(projectID, { action: "importMidi", success: true, data: updatedProject });
+  broadcast(projectID, { action: "importMidi", source: username, success: true, data: updatedProject });
 };
 
 // add track (WebSocket)
 export const addTrack = async (_ws: WebSocket, projectID: string, username: string) => {
-  // respond successfully with project data
-  if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ action: "addTrack", success: true, data: project }));
+  // convert projectID string to a MongoDB ObjectId
+  const projectObjectId = new mongoose.Types.ObjectId(projectID);
+
+  // block request if user is not an admin
+  const isAdmin: boolean = (await checkProjectAdmin(username, projectObjectId)) || (await checkAdmin(username));
+  if (!isAdmin) {
+    throw new ForbiddenActionError(`Cannot add track - User ${username} does not have admin privileges for Project ${projectID}`);
+  }
+
+  // get project's current lastTrackID value from the database using projectID
+  const projectData = await ProjectModel.findOne({ _id: projectObjectId }, { lastTrackID: 1 });
+  if (!projectData) throw new NotFoundError(`No project found for ID: ${projectID}`);
+
+  // calculate new track's ID by incrementing the current lastTrackID by 1
+  const newTrackID: number = projectData.lastTrackID + 1;
+
+  // set up the new track object
+  const newTrack = {
+    trackID: newTrackID,
+    trackName: `Track ${newTrackID}`,
+    instrument: "p", // TODO: Make sure everything is using instrument codes, or stop using them across the board
+    volume: DEFAULT_VOLUME,
+    pan: 0,
+    solo: false,
+    mute: false,
+    lastNoteID: 0,
+    notes: [],
+  };
+
+  // push the new track to the tracks array for the project in the database and set the new lastTrackID
+  const updatedProject = await ProjectModel.findOneAndUpdate(
+    { _id: projectObjectId },
+    { $set: { lastTrackID: newTrackID }, $push: { tracks: newTrack } },
+    // using "new" flag to retrieve the updated document and projection to avoid retrieving unnecessary fields
+    { new: true, __v: 0 }
+  );
+  if (!updatedProject) throw new NotFoundError(`No project found for ID: ${projectID}`);
+
+  // log successful track addition to the console
+  console.log(`User ${username} added a new track to project: ${projectID}`);
+
+  // broadcast track addition
+  broadcast(projectID, { action: "addTrack", source: username, success: true, data: { trackID: newTrackID } });
 };
 
 // update track (WebSocket)
@@ -246,7 +305,8 @@ export const updateTrack = async (_ws: WebSocket, projectID: string, username: s
   if (error) throw new BadMessageError(String(error));
 
   // respond successfully with project data
-  if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ action: "updateTrack", success: true, data: project }));
+  if (ws.readyState === WebSocket.OPEN)
+    ws.send(JSON.stringify({ action: "updateTrack", source: username, success: true, data: project }));
 };
 
 // delete track (WebSocket)
@@ -256,7 +316,8 @@ export const deleteTrack = async (_ws: WebSocket, projectID: string, username: s
   if (error) throw new BadMessageError(String(error));
 
   // respond successfully with project data
-  if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ action: "deleteTrack", success: true, data: project }));
+  if (ws.readyState === WebSocket.OPEN)
+    ws.send(JSON.stringify({ action: "deleteTrack", source: username, success: true, data: project }));
 };
 
 // delete project - used when deleting a project from the project's workspace (WebSocket)

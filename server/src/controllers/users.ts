@@ -233,7 +233,12 @@ export const deleteUser = async (req: Request, res: Response, next: NextFunction
 
     // broadcast the ProjectUser deletion to any projects on which the user was a member
     for (const memberProject of memberProjects) {
-      broadcast(memberProject.projectID.toString(), { action: "deleteProjectUser", success: true, data: { username } });
+      broadcast(memberProject.projectID.toString(), {
+        action: "deleteProjectUser",
+        source: "ADMIN",
+        success: true,
+        data: { username },
+      });
     }
 
     // respond successfully

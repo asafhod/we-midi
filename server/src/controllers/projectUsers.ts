@@ -8,7 +8,7 @@ import { BadRequestError, BadMessageError, ForbiddenError, ForbiddenActionError,
 import { checkProjectAdmin, checkAdmin } from "../middleware/checkAdmin";
 import { broadcast, formatQueryArray } from "./helpers";
 
-// TODO: Add controllers, routes, and schemas for userChangedView and userMouse
+// TODO: Add controllers, routes, and schemas for userChangedView, userMouse, and userSentMessage
 
 // TODO: Move often-used code to helper functions
 //       Update the delete controllers to not kick global admins when their ProjectUser is deleted (low priority)
@@ -188,7 +188,7 @@ export const addProjectUsers = async (_ws: WebSocket, projectID: string, usernam
     console.log(`User ${username} added ${result.length} ProjectUser(s) to Project ${projectID}`);
 
     // broadcast ProjectUser(s) addition
-    broadcast(projectID, { action: "addProjectUsers", success: true, data });
+    broadcast(projectID, { action: "addProjectUsers", source: username, success: true, data });
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
@@ -252,7 +252,7 @@ export const updateProjectUsers = async (_ws: WebSocket, projectID: string, user
     console.log(`User ${username} updated ${result.modifiedCount} ProjectUser(s) on Project ${projectID}`);
 
     // broadcast ProjectUser(s) update
-    broadcast(projectID, { action: "updateProjectUsers", success: true, data });
+    broadcast(projectID, { action: "updateProjectUsers", source: username, success: true, data });
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
@@ -322,7 +322,7 @@ export const deleteProjectUsers = async (_ws: WebSocket, projectID: string, user
       }
 
       // broadcast ProjectUser(s) deletion
-      broadcast(projectID, { action: "deleteProjectUsers", success: true, data });
+      broadcast(projectID, { action: "deleteProjectUsers", source: username, success: true, data });
     }
   } catch (error) {
     await session.abortTransaction();
