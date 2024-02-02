@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import mongoose from "mongoose";
 import WebSocket from "ws";
 import webSocketManager from "../webSocketManager";
-import ProjectModel, { Project, DEFAULT_VOLUME } from "../models/projectModel";
+import ProjectModel, { Project, Track, Note, DEFAULT_VOLUME } from "../models/projectModel";
 import ProjectUserModel from "../models/projectUserModel";
 import { addProjectSchema, updateProjectSchema, importMidiSchema, updateTrackSchema, deleteTrackSchema } from "../validation/schemas";
 import { BadRequestError, BadMessageError, ForbiddenError, ForbiddenActionError, NotFoundError } from "../errors";
@@ -10,7 +10,6 @@ import { SERVER_ERROR } from "../errors/errorMessages";
 import { checkProjectAdmin, checkAdmin } from "../middleware/checkAdmin";
 import { broadcast, sendMessage } from "./helpers";
 
-// TODO: Implement deleteTrack
 // TODO: Update updateProject controller so that the projection of the returned data corresponds to the fields being changed by the message data
 //         Where should I retrieve less and what's the syntax? Flesh out what you set up. Should I just forgo this and return a lot of fields?
 // TODO: Implement updateTrack
@@ -168,8 +167,8 @@ export const updateProject = async (_ws: WebSocket, projectID: string, username:
       // Update is attempting to change the song's tempo. Adjust the notes accordingly.
       const tempoConversionFactor: number = projectData.tempo / data.tempo;
 
-      data.tracks = projectData.tracks.map((track) => {
-        const newNotes = track.notes.map((note) => {
+      data.tracks = projectData.tracks.map((track: Track) => {
+        const newNotes = track.notes.map((note: Note) => {
           const newDuration: number = note.duration * tempoConversionFactor;
           const newNoteTime: number = note.noteTime * tempoConversionFactor;
 
@@ -269,7 +268,7 @@ export const addTrack = async (_ws: WebSocket, projectID: string, username: stri
   const newTrackID: number = projectData.lastTrackID + 1;
 
   // set up the new track object
-  const newTrack = {
+  const newTrack: Track = {
     trackID: newTrackID,
     trackName: `Track ${newTrackID}`,
     instrument: "p", // TODO: Make sure everything is using instrument codes, or stop using them across the board
@@ -282,7 +281,7 @@ export const addTrack = async (_ws: WebSocket, projectID: string, username: stri
   };
 
   // push the new track to the tracks array for the project in the database and set the new lastTrackID
-  const updatedProject = await ProjectModel.findOneAndUpdate(
+  const updatedProject: Project | null = await ProjectModel.findOneAndUpdate(
     { _id: projectObjectId },
     { $set: { lastTrackID: newTrackID }, $push: { tracks: newTrack } },
     // using "new" flag to retrieve the updated document and projection to avoid retrieving unnecessary fields
@@ -315,9 +314,26 @@ export const deleteTrack = async (_ws: WebSocket, projectID: string, username: s
   const { error } = deleteTrackSchema.validate(data, { abortEarly: false });
   if (error) throw new BadMessageError(String(error));
 
-  // respond successfully with project data
-  if (ws.readyState === WebSocket.OPEN)
-    ws.send(JSON.stringify({ action: "deleteTrack", source: username, success: true, data: project }));
+  // convert projectID string to a MongoDB ObjectId
+  const projectObjectId = new mongoose.Types.ObjectId(projectID);
+
+  // block request if user is not an admin
+  const isAdmin: boolean = (await checkProjectAdmin(username, projectObjectId)) || (await checkAdmin(username));
+  if (!isAdmin) {
+    throw new ForbiddenActionError(`Cannot add track - User ${username} does not have admin privileges for Project ${projectID}`);
+  }
+
+  // delete track from the tracks array for the project in the database
+  const updatedProject: Project | null = await ProjectModel.findOneAndUpdate(
+    { _id: projectObjectId },
+    { $pull: { tracks: { trackID: data.trackID } } },
+    // using "new" flag to retrieve the updated document and projection to avoid retrieving unnecessary fields
+    { new: true, __v: 0 }
+  );
+  if (!updatedProject) throw new NotFoundError(`No project found for ID: ${projectID}`);
+
+  // broadcast track deletion
+  broadcast(projectID, { action: "deleteTrack", source: username, success: true, data });
 };
 
 // delete project - used when deleting a project from the project's workspace (WebSocket)

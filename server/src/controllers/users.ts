@@ -134,7 +134,7 @@ export const updateUser = async (req: Request, res: Response, next: NextFunction
     if (req.body.isAdmin !== undefined && req.body.isAdmin !== null && !req.body.isAdmin) {
       const memberProjects: ProjectUser[] = await ProjectUserModel.find({ username, isAccepted: true }, { __v: 0 });
       // map to string array
-      const memberProjectIDs: string[] = memberProjects.map((memberProject) => memberProject.projectID.toString());
+      const memberProjectIDs: string[] = memberProjects.map((memberProject: ProjectUser) => memberProject.projectID.toString());
 
       for (const [projectID, projectConnections] of Object.entries(webSocketManager)) {
         if (!memberProjectIDs.includes(projectID)) {

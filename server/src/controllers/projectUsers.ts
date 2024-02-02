@@ -30,7 +30,7 @@ export const getProjectUsers = async (req: Request, res: Response, next: NextFun
       // split projectIDs string argument string into array and map each entry to a MongoDB ObjectId
       const projectIDsArray: mongoose.Types.ObjectId[] = (projectIDs as string)
         .split(",")
-        .map((projectID) => new mongoose.Types.ObjectId(projectID));
+        .map((projectID: string) => new mongoose.Types.ObjectId(projectID));
 
       // set a query field for the projectID argument with the "$in" property to allow querying based on all of the projectIDs array entries
       query.projectID = { $in: projectIDsArray };

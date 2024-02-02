@@ -5,6 +5,28 @@ const DEFAULT_TEMPO: number = 120;
 const DEFAULT_PPQ: number = 480;
 export const DEFAULT_VOLUME: number = -16;
 
+// define Note interface
+export interface Note {
+  noteID: number;
+  midiNum: number;
+  duration: number;
+  noteTime: number;
+  velocity: number;
+}
+
+// define Track interface
+export interface Track {
+  trackID: number;
+  trackName: string;
+  instrument: string;
+  volume: number;
+  pan: number;
+  solo: boolean;
+  mute: boolean;
+  lastNoteID: number;
+  notes: Note[];
+}
+
 // define Project interface
 export interface Project extends Document {
   _id: Types.ObjectId;
@@ -12,23 +34,7 @@ export interface Project extends Document {
   tempo: number;
   ppq: number;
   lastTrackID: number;
-  tracks: {
-    trackID: number;
-    trackName: string;
-    instrument: string;
-    volume: number;
-    pan: number;
-    solo: boolean;
-    mute: boolean;
-    lastNoteID: number;
-    notes: {
-      noteID: number;
-      midiNum: number;
-      duration: number;
-      noteTime: number;
-      velocity: number;
-    }[];
-  }[];
+  tracks: Track[];
 }
 
 // database schema for Project
