@@ -120,7 +120,7 @@ const useLoadSong = (
         }
 
         ppq = midi.header.ppq;
-        bpm = midi.header.tempos[0].bpm;
+        if (midi.header.tempos.length) bpm = midi.header.tempos[0].bpm;
       } else {
         // save new project to db, get newID
         newID = 3;

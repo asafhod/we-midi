@@ -47,6 +47,7 @@ export const importMidiSchema: ObjectSchema<any> = Joi.object({
 });
 
 // validation for the Update Track request
+// TODO: Make sure client rolls back changes to very first value on error for volume and pan
 export const updateTrackSchema: ObjectSchema<any> = Joi.object({
   trackID: Joi.number().min(1).required(),
   trackName: Joi.string().min(1).max(15),
@@ -65,6 +66,7 @@ export const deleteTrackSchema: ObjectSchema<any> = Joi.object({
 // validation for the Add Note request
 export const addNoteSchema: ObjectSchema<any> = Joi.object({
   trackID: Joi.number().min(1).required(),
+  clientNoteID: Joi.number().min(0).required(),
   midiNum: Joi.number().min(21).max(108).required(),
   duration: Joi.number().min(0.00625).max(60000).required(),
   noteTime: Joi.number().min(0).max(59998.125).required(),
@@ -78,6 +80,7 @@ export const addNotesSchema: ObjectSchema<any> = Joi.object({
     .min(2)
     // .max(1500) TODO: Enforce with check on client that doesn't allow the amount of new notes plus the amount of existing ones for the track (notes.length) to exceed 1500
     .items({
+      clientNoteID: Joi.number().min(0).required(),
       midiNum: Joi.number().min(21).max(108).required(),
       duration: Joi.number().min(0.00625).max(60000).required(),
       noteTime: Joi.number().min(0).max(59998.125).required(),

@@ -11,6 +11,7 @@ const router = (ws: WebSocket, message: string, username: string, projectID: str
 
   let action: unknown;
   let data: any;
+  let errorData: any = {};
 
   try {
     try {
@@ -44,25 +45,25 @@ const router = (ws: WebSocket, message: string, username: string, projectID: str
         deleteTrack(ws, projectID, username, data);
         break;
       case "addNote":
-        addNote(ws, projectID, username, data);
+        addNote(ws, projectID, username, data, errorData);
         break;
       case "addNotes":
-        addNotes(ws, projectID, username, data);
+        addNotes(ws, projectID, username, data, errorData);
         break;
       case "updateNote":
-        updateNote(ws, projectID, username, data);
+        updateNote(ws, projectID, username, data, errorData);
         break;
       case "updateNotes":
-        updateNotes(ws, projectID, username, data);
+        updateNotes(ws, projectID, username, data, errorData);
         break;
       case "deleteNote":
-        deleteNote(ws, projectID, username, data);
+        deleteNote(ws, projectID, username, data, errorData);
         break;
       case "deleteNotes":
-        deleteNotes(ws, projectID, username, data);
+        deleteNotes(ws, projectID, username, data, errorData);
         break;
       case "deleteAllNotesOnTrack":
-        deleteAllNotesOnTrack(ws, projectID, username, data);
+        deleteAllNotesOnTrack(ws, projectID, username, data, errorData);
         break;
       case "searchUsers":
         searchUsers(ws, username, data);
@@ -84,7 +85,7 @@ const router = (ws: WebSocket, message: string, username: string, projectID: str
     }
   } catch (error) {
     // handle error
-    wsErrorHandler(error, ws, action);
+    wsErrorHandler(error, ws, action, errorData);
   }
 };
 

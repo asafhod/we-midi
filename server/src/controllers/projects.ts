@@ -180,6 +180,7 @@ export const updateProject = async (_ws: WebSocket, projectID: string, username:
 
       // include tempo change data in the field retrieval projection
       // TODO: Make sure this works as intended. Should not retrieve _id, lastTrackID, tracks.lastNoteID, or __v.
+      // TODO: Better way to do this?
       projection.tracks = 1;
       projection.tracks.trackID = 1;
       projection.tracks.notes = 1;
@@ -297,15 +298,46 @@ export const addTrack = async (_ws: WebSocket, projectID: string, username: stri
 };
 
 // update track (WebSocket)
-// TODO: Needs optimistic update logic
-export const updateTrack = async (_ws: WebSocket, projectID: string, username: string, data: any) => {
+// TODO: Client-side variable (likely useRef) and logic to rollback on error
+export const updateTrack = async (ws: WebSocket, projectID: string, username: string, data: any) => {
   // validate data with Joi schema
   const { error } = updateTrackSchema.validate(data, { abortEarly: false });
   if (error) throw new BadMessageError(String(error));
 
-  // respond successfully with project data
-  if (ws.readyState === WebSocket.OPEN)
-    ws.send(JSON.stringify({ action: "updateTrack", source: username, success: true, data: project }));
+  // convert projectID string to a MongoDB ObjectId
+  const projectObjectId = new mongoose.Types.ObjectId(projectID);
+
+  // block request if user is not an admin
+  const isAdmin: boolean = (await checkProjectAdmin(username, projectObjectId)) || (await checkAdmin(username));
+  if (!isAdmin) {
+    throw new ForbiddenActionError(`Cannot update track - User ${username} does not have admin privileges for Project ${projectID}`);
+  }
+
+  // destructure message data to separate trackID from the fields to be updated
+  const { trackID, ...updateFields } = data;
+
+  // set up update query object
+  const trackUpdate: Record<string, any> = {};
+
+  for (const [key, value] of Object.entries(updateFields)) {
+    // prepend "tracks.$." to each field so update query can target the matching track from the filter object
+    trackUpdate[`tracks.$.${key}`] = value;
+  }
+
+  // update the specified track in the tracks array for the project in the database
+  const updatedProject: Project | null = await ProjectModel.findOneAndUpdate(
+    { _id: projectObjectId, "tracks.trackID": trackID },
+    { $set: updateFields },
+    // using "new" flag to retrieve the updated document and projection to avoid retrieving unnecessary fields
+    { new: true, __v: 0 }
+  );
+  if (!updatedProject) throw new NotFoundError(`No track found for Project ID ${projectID} and Track ID ${trackID}`);
+
+  // log successful track update to the console
+  console.log(`User ${username} updated track ${trackID} on project: ${projectID}`);
+
+  // broadcast track update to any other users currently connected to the project
+  broadcast(projectID, { action: "updateTrack", source: username, success: true, data }, ws);
 };
 
 // delete track (WebSocket)
@@ -320,10 +352,10 @@ export const deleteTrack = async (_ws: WebSocket, projectID: string, username: s
   // block request if user is not an admin
   const isAdmin: boolean = (await checkProjectAdmin(username, projectObjectId)) || (await checkAdmin(username));
   if (!isAdmin) {
-    throw new ForbiddenActionError(`Cannot add track - User ${username} does not have admin privileges for Project ${projectID}`);
+    throw new ForbiddenActionError(`Cannot delete track - User ${username} does not have admin privileges for Project ${projectID}`);
   }
 
-  // delete track from the tracks array for the project in the database
+  // delete the specified track from the tracks array for the project in the database
   const updatedProject: Project | null = await ProjectModel.findOneAndUpdate(
     { _id: projectObjectId },
     { $pull: { tracks: { trackID: data.trackID } } },
@@ -331,6 +363,9 @@ export const deleteTrack = async (_ws: WebSocket, projectID: string, username: s
     { new: true, __v: 0 }
   );
   if (!updatedProject) throw new NotFoundError(`No project found for ID: ${projectID}`);
+
+  // log successful track deletion to the console
+  console.log(`User ${username} deleted track ${data.trackID} from project: ${projectID}`);
 
   // broadcast track deletion
   broadcast(projectID, { action: "deleteTrack", source: username, success: true, data });
