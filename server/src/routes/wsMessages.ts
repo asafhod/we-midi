@@ -2,7 +2,7 @@ import WebSocket from "ws";
 import { searchUsers } from "../controllers/users";
 import { getProject, updateProject, deleteProject, importMidi, addTrack, updateTrack, deleteTrack } from "../controllers/projects";
 import { addProjectUsers, updateProjectUsers, deleteProjectUsers, deleteProjectUser } from "../controllers/projectUsers";
-import { addNote, addNotes, updateNote, updateNotes, deleteNote, deleteNotes, deleteAllNotesOnTrack } from "../controllers/notes";
+import { addNote, addNotes, updateNote, updateNotes, deleteNote, deleteNotes } from "../controllers/notes";
 import wsErrorHandler from "../errors/wsErrorHandler";
 import { BadMessageError } from "../errors/";
 
@@ -11,7 +11,7 @@ const router = (ws: WebSocket, message: string, username: string, projectID: str
 
   let action: unknown;
   let data: any;
-  let errorData: any = {};
+  const errorData: any = {};
 
   try {
     try {
@@ -39,7 +39,7 @@ const router = (ws: WebSocket, message: string, username: string, projectID: str
         addTrack(ws, projectID, username);
         break;
       case "updateTrack":
-        updateTrack(ws, projectID, username, data);
+        updateTrack(ws, projectID, username, data, errorData);
         break;
       case "deleteTrack":
         deleteTrack(ws, projectID, username, data);
@@ -51,19 +51,16 @@ const router = (ws: WebSocket, message: string, username: string, projectID: str
         addNotes(ws, projectID, username, data, errorData);
         break;
       case "updateNote":
-        updateNote(ws, projectID, username, data, errorData);
+        updateNote(ws, projectID, username, data);
         break;
       case "updateNotes":
-        updateNotes(ws, projectID, username, data, errorData);
+        updateNotes(ws, projectID, username, data);
         break;
       case "deleteNote":
-        deleteNote(ws, projectID, username, data, errorData);
+        deleteNote(ws, projectID, username, data);
         break;
       case "deleteNotes":
-        deleteNotes(ws, projectID, username, data, errorData);
-        break;
-      case "deleteAllNotesOnTrack":
-        deleteAllNotesOnTrack(ws, projectID, username, data, errorData);
+        deleteNotes(ws, projectID, username, data);
         break;
       case "searchUsers":
         searchUsers(ws, username, data);

@@ -1,6 +1,5 @@
 import mongoose from "mongoose";
 import WebSocket from "ws";
-import webSocketManager from "../webSocketManager";
 import ProjectModel, { Project, Note } from "../models/projectModel";
 import {
   addNoteSchema,
@@ -9,12 +8,10 @@ import {
   updateNotesSchema,
   deleteNoteSchema,
   deleteNotesSchema,
-  deleteAllNotesOnTrackSchema,
 } from "../validation/schemas";
 import { BadMessageError, NotFoundError } from "../errors";
+import { SERVER_ERROR } from "../errors/errorMessages";
 import { broadcast, sendMessage } from "./helpers";
-
-// TODO: All of these need optimistic update logic
 
 // add note (WebSocket)
 export const addNote = async (ws: WebSocket, projectID: string, username: string, data: any, errorData: any) => {
@@ -49,7 +46,7 @@ export const addNote = async (ws: WebSocket, projectID: string, username: string
     if (!updatedProject) throw new NotFoundError(`No track found for Project ID ${projectID} and Track ID ${trackID}`);
 
     // log successful note addition to the console
-    console.log(`User ${username} added a new note to track ${trackID} of project: ${projectID}`);
+    console.log(`User ${username} added new note ${newNoteID} to track ${trackID} of project ${projectID}`);
 
     // send the new Note ID to the user that added the note
     sendMessage(ws, { action: "addNote", source: username, success: true, data: { trackID, clientNoteID, noteID: newNoteID } });
@@ -106,12 +103,16 @@ export const addNotes = async (ws: WebSocket, projectID: string, username: strin
         { _id: projectObjectId, "tracks.trackID": trackID },
         { $set: { "tracks.$.lastNoteID": newNoteID }, $push: { "tracks.$.notes": { $each: newNotes } } },
         // using "new" flag to retrieve the updated document and projection to avoid retrieving unnecessary fields
-        { new: true, __v: 0 }
+        { new: true, __v: 0, session }
       );
       if (!updatedProject) throw new NotFoundError(`No track found for Project ID ${projectID} and Track ID ${trackID}`);
 
+      // if successful, commit and end the transaction
+      await session.commitTransaction();
+      session.endSession();
+
       // log successful batch note addition to the console
-      console.log(`User ${username} added a new notes to track ${trackID} of project: ${projectID}`);
+      console.log(`User ${username} added new notes to track ${trackID} of project ${projectID}`);
 
       // map notes array, keeping only the clientNoteID and noteID fields so the new Note IDs can be sent to the user to update
       const newNoteIDs = notes.map(({ clientNoteID, noteID }: { clientNoteID: number; noteID: number }) => ({ clientNoteID, noteID }));
@@ -137,57 +138,175 @@ export const addNotes = async (ws: WebSocket, projectID: string, username: strin
 };
 
 // update note (WebSocket)
-export const updateNote = async (ws: WebSocket, projectID: string, username: string, data: any, errorData: any) => {
-  // validate data with Joi schema
-  const { error } = updateNoteSchema.validate(data, { abortEarly: false });
-  if (error) throw new BadMessageError(String(error));
+export const updateNote = async (ws: WebSocket, projectID: string, username: string, data: any) => {
+  try {
+    // validate data with Joi schema
+    const { error } = updateNoteSchema.validate(data, { abortEarly: false });
+    if (error) throw new BadMessageError(String(error));
 
-  // respond successfully with note data
-  if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ action: "updateNote", source: username, success: true, data: note }));
+    // destructure necessary fields from message data
+    const { trackID, ...updatedNote } = data;
+
+    // convert projectID string to a MongoDB ObjectId
+    const projectObjectId = new mongoose.Types.ObjectId(projectID);
+
+    // update the note in the notes array for the track on the project in the database
+    const updatedProject: Project | null = await ProjectModel.findOneAndUpdate(
+      { _id: projectObjectId, "tracks.trackID": trackID, "tracks.notes.noteID": updatedNote.noteID },
+      { $set: { "tracks.$[outer].notes.$[inner]": updatedNote } },
+      // using "new" flag to retrieve the updated document and projection to avoid retrieving unnecessary fields
+      { arrayFilters: [{ "outer.trackID": trackID }, { "inner.noteID": updatedNote.noteID }], new: true, __v: 0 }
+    );
+
+    if (updatedProject) {
+      // log successful note update to the console
+      console.log(`User ${username} updated note ${updatedNote.noteID} on track ${trackID} of project ${projectID}`);
+
+      // broadcast the note update to all connected users for the project
+      broadcast(projectID, { action: "updateNote", source: username, success: true, data });
+    }
+  } catch (error) {
+    // note cannot be updated or rolled back due to a database error, close the WebSocket connection with a Server Error message if it's open
+    if (ws.readyState === WebSocket.OPEN) ws.close(1011, SERVER_ERROR);
+    console.error(`Action: updateNote\nError: Could not update note - ${error}`);
+  }
 };
 
 // update notes (WebSocket)
-export const updateNotes = async (ws: WebSocket, projectID: string, username: string, data: any, errorData: any) => {
-  // validate data with Joi schema
-  const { error } = updateNotesSchema.validate(data, { abortEarly: false });
-  if (error) throw new BadMessageError(String(error));
+export const updateNotes = async (ws: WebSocket, projectID: string, username: string, data: any) => {
+  try {
+    // validate data with Joi schema
+    const { error } = updateNotesSchema.validate(data, { abortEarly: false });
+    if (error) throw new BadMessageError(String(error));
 
-  // respond successfully with data for the notes
-  if (ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify({ action: "updateNotes", source: username, success: true, data: notes }));
+    // destructure the trackID and array of notes to update from the message data
+    const { trackID, notes } = data;
+
+    // convert projectID string to a MongoDB ObjectId
+    const projectObjectId = new mongoose.Types.ObjectId(projectID);
+
+    // set up the update operations array
+    const updateNoteOperations = notes.map((updatedNote: Note) => {
+      return {
+        updateOne: {
+          filter: { _id: projectObjectId, "tracks.trackID": trackID, "tracks.notes.noteID": updatedNote.noteID },
+          update: { $set: { "tracks.$[outer].notes.$[inner]": updatedNote } },
+          arrayFilters: [{ "outer.trackID": trackID }, { "inner.noteID": updatedNote.noteID }],
+        },
+      };
+    });
+
+    // set up transaction for batch note update operation
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      // update the notes in the specified track for the project in the database
+      const result = await ProjectModel.bulkWrite(updateNoteOperations, { session });
+
+      // if successful, commit and end the transaction
+      await session.commitTransaction();
+      session.endSession();
+
+      if (result.modifiedCount) {
+        // log successful batch note update to the console
+        console.log(`User ${username} updated notes on track ${trackID} of project ${projectID}`);
+
+        // broadcast the batch note update to all connected users for the project
+        broadcast(projectID, { action: "updateNotes", source: username, success: true, data });
+      }
+    } catch (error) {
+      await session.abortTransaction();
+      session.endSession();
+      throw error;
+    }
+  } catch (error) {
+    // notes cannot be updated or rolled back due to a database error, close the WebSocket connection with a Server Error message if it's open
+    if (ws.readyState === WebSocket.OPEN) ws.close(1011, SERVER_ERROR);
+    console.error(`Action: updateNotes\nError: Could not update notes - ${error}`);
   }
 };
 
 // delete note (WebSocket)
-export const deleteNote = async (ws: WebSocket, projectID: string, username: string, data: any, errorData: any) => {
-  // validate data with Joi schema
-  const { error } = deleteNoteSchema.validate(data, { abortEarly: false });
-  if (error) throw new BadMessageError(String(error));
+export const deleteNote = async (ws: WebSocket, projectID: string, username: string, data: any) => {
+  try {
+    // validate data with Joi schema
+    const { error } = deleteNoteSchema.validate(data, { abortEarly: false });
+    if (error) throw new BadMessageError(String(error));
 
-  // respond successfully with note data
-  if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ action: "deleteNote", source: username, success: true, data: note }));
-};
+    // destructure necessary fields from message data
+    const { trackID, noteID } = data;
 
-// delete notes (WebSocket)
-export const deleteNotes = async (ws: WebSocket, projectID: string, username: string, data: any, errorData: any) => {
-  // validate data with Joi schema
-  const { error } = deleteNotesSchema.validate(data, { abortEarly: false });
-  if (error) throw new BadMessageError(String(error));
+    // convert projectID string to a MongoDB ObjectId
+    const projectObjectId = new mongoose.Types.ObjectId(projectID);
 
-  // respond successfully with data for the notes
-  if (ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify({ action: "deleteNotes", source: username, success: true, data: notes }));
+    // delete the note from the specified track for the project in the database
+    const updatedProject: Project | null = await ProjectModel.findOneAndUpdate(
+      { _id: projectObjectId, "tracks.trackID": trackID },
+      { $pull: { "tracks.$.notes": { noteID } } },
+      // using "new" flag to retrieve the updated document and projection to avoid retrieving unnecessary fields
+      { new: true, __v: 0 }
+    );
+
+    if (updatedProject) {
+      // log successful note deletion to the console
+      console.log(`User ${username} deleted note ${noteID} from track ${trackID} of project ${projectID}`);
+
+      // broadcast the note deletion to any other connected users for the project
+      broadcast(projectID, { action: "deleteNote", source: username, success: true, data }, ws);
+    }
+  } catch (error) {
+    // note cannot be deleted or rolled back due to a database error, close the WebSocket connection with a Server Error message if it's open
+    if (ws.readyState === WebSocket.OPEN) ws.close(1011, SERVER_ERROR);
+    console.error(`Action: deleteNote\nError: Could not delete note - ${error}`);
   }
 };
 
-// delete all notes on track (WebSocket)
-export const deleteAllNotesOnTrack = async (ws: WebSocket, projectID: string, username: string, data: any, errorData: any) => {
-  // validate data with Joi schema
-  const { error } = deleteAllNotesOnTrackSchema.validate(data, { abortEarly: false });
-  if (error) throw new BadMessageError(String(error));
+// delete notes (WebSocket)
+export const deleteNotes = async (ws: WebSocket, projectID: string, username: string, data: any) => {
+  try {
+    // validate data with Joi schema
+    const { error } = deleteNotesSchema.validate(data, { abortEarly: false });
+    if (error) throw new BadMessageError(String(error));
 
-  // respond successfully with data for the notes
-  if (ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify({ action: "deleteAllNotesOnTrack", source: username, success: true, data: notes }));
+    // destructure the trackID and array of Note IDs for the batch deletion from the message data
+    const { trackID, noteIDs } = data;
+
+    // convert projectID string to a MongoDB ObjectId
+    const projectObjectId = new mongoose.Types.ObjectId(projectID);
+
+    // set up transaction for batch note deletion update operation
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      // delete the notes from the specified track for the project in the database
+      const updatedProject: Project | null = await ProjectModel.findOneAndUpdate(
+        { _id: projectObjectId, "tracks.trackID": trackID },
+        { $pull: { "tracks.$.notes": { noteID: { $in: noteIDs } } } },
+        // using "new" flag to retrieve the updated document and projection to avoid retrieving unnecessary fields
+        { new: true, __v: 0, session }
+      );
+
+      // if successful, commit and end the transaction
+      await session.commitTransaction();
+      session.endSession();
+
+      if (updatedProject) {
+        // log successful batch note deletion to the console
+        console.log(`User ${username} deleted notes from track ${trackID} of project ${projectID}`);
+
+        // broadcast the batch note deletion to any other connected users for the project
+        broadcast(projectID, { action: "deleteNotes", source: username, success: true, data }, ws);
+      }
+    } catch (error) {
+      await session.abortTransaction();
+      session.endSession();
+      throw error;
+    }
+  } catch (error) {
+    // notes cannot be deleted or rolled back due to a database error, close the WebSocket connection with a Server Error message if it's open
+    if (ws.readyState === WebSocket.OPEN) ws.close(1011, SERVER_ERROR);
+    console.error(`Action: deleteNotes\nError: Could not delete notes - ${error}`);
   }
 };

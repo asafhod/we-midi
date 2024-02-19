@@ -299,7 +299,7 @@ export const addTrack = async (_ws: WebSocket, projectID: string, username: stri
 
 // update track (WebSocket)
 // TODO: Client-side variable (likely useRef) and logic to rollback on error
-export const updateTrack = async (ws: WebSocket, projectID: string, username: string, data: any) => {
+export const updateTrack = async (ws: WebSocket, projectID: string, username: string, data: any, errorData: any) => {
   // validate data with Joi schema
   const { error } = updateTrackSchema.validate(data, { abortEarly: false });
   if (error) throw new BadMessageError(String(error));

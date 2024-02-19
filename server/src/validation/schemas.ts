@@ -93,10 +93,10 @@ export const addNotesSchema: ObjectSchema<any> = Joi.object({
 export const updateNoteSchema: ObjectSchema<any> = Joi.object({
   trackID: Joi.number().min(1).required(),
   noteID: Joi.number().min(1).required(),
-  midiNum: Joi.number().min(21).max(108),
-  duration: Joi.number().min(0.00625).max(60000),
-  noteTime: Joi.number().min(0).max(59998.125),
-  velocity: Joi.number().min(0).max(127),
+  midiNum: Joi.number().min(21).max(108).required(),
+  duration: Joi.number().min(0.00625).max(60000).required(),
+  noteTime: Joi.number().min(0).max(59998.125).required(),
+  velocity: Joi.number().min(0).max(127).required(),
 });
 
 // validation for the Update Notes request
@@ -107,10 +107,10 @@ export const updateNotesSchema: ObjectSchema<any> = Joi.object({
     .max(1500)
     .items({
       noteID: Joi.number().min(1).required(),
-      midiNum: Joi.number().min(21).max(108),
-      duration: Joi.number().min(0.00625).max(60000),
-      noteTime: Joi.number().min(0).max(59998.125),
-      velocity: Joi.number().min(0).max(127),
+      midiNum: Joi.number().min(21).max(108).required(),
+      duration: Joi.number().min(0.00625).max(60000).required(),
+      noteTime: Joi.number().min(0).max(59998.125).required(),
+      velocity: Joi.number().min(0).max(127).required(),
     })
     .required(),
 });
@@ -124,18 +124,7 @@ export const deleteNoteSchema: ObjectSchema<any> = Joi.object({
 // validation for the Delete Notes request
 export const deleteNotesSchema: ObjectSchema<any> = Joi.object({
   trackID: Joi.number().min(1).required(),
-  notes: Joi.array()
-    .min(2)
-    .max(1499)
-    .items({
-      noteID: Joi.number().min(1).required(),
-    })
-    .required(),
-});
-
-// validation for the Delete All Notes On Track request
-export const deleteAllNotesOnTrackSchema: ObjectSchema<any> = Joi.object({
-  trackID: Joi.number().min(1).required(),
+  noteIDs: Joi.array().min(2).max(1499).items(Joi.number().min(1)).required(),
 });
 
 // validation schema for the Search Users request
