@@ -1,7 +1,5 @@
-import { Request } from "express";
-
-declare module "express" {
-  interface Request {
+declare namespace Express {
+  export interface Request {
     username?: string;
   }
 }

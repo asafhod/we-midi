@@ -42,7 +42,6 @@ const projectSchema = new Schema<Project>({
   _id: {
     type: Schema.Types.ObjectId,
     required: [true, "_id is required"],
-    unique: true,
   },
   name: {
     type: String,
