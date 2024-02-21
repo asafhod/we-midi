@@ -39,7 +39,7 @@ const router = (ws: WebSocket, message: string, username: string, projectID: str
         addTrack(ws, projectID, username);
         break;
       case "updateTrack":
-        updateTrack(ws, projectID, username, data, errorData);
+        updateTrack(ws, projectID, username, data);
         break;
       case "deleteTrack":
         deleteTrack(ws, projectID, username, data);

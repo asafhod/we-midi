@@ -12,7 +12,6 @@ import { broadcast, sendMessage } from "./helpers";
 
 // TODO: Update updateProject controller so that the projection of the returned data corresponds to the fields being changed by the message data
 //         Where should I retrieve less and what's the syntax? Flesh out what you set up. Should I just forgo this and return a lot of fields?
-// TODO: Implement updateTrack
 
 // TODO: Move often-used code to helper functions
 //       Once you change note timing to measure-based, simplify the tempo logic in the updateProject controller
@@ -123,7 +122,7 @@ export const addProject = async (req: Request, res: Response, next: NextFunction
     session.endSession();
 
     // log successful project creation to the console
-    console.log(`User ${req.username} created project: ${_id.toString()}`);
+    console.log(`User ${req.username} created project ${_id.toString()}`);
 
     // respond successfully with the project's _id
     res.status(201).json({ success: true, data: { _id } });
@@ -200,7 +199,7 @@ export const updateProject = async (_ws: WebSocket, projectID: string, username:
   if (!updatedProject) throw new NotFoundError(`No project found for ID: ${projectID}`);
 
   // log successful project update to the console
-  console.log(`User ${username} updated project: ${projectID}`);
+  console.log(`User ${username} updated project ${projectID}`);
 
   // broadcast project update
   broadcast(projectID, { action: "updateProject", source: username, success: true, data: updatedProject });
@@ -244,7 +243,7 @@ export const importMidi = async (_ws: WebSocket, projectID: string, username: st
   if (!updatedProject) throw new NotFoundError(`No project found for ID: ${projectID}`);
 
   // log successful MIDI import to the console
-  console.log(`User ${username} imported MIDI data for project: ${projectID}`);
+  console.log(`User ${username} imported MIDI data for project ${projectID}`);
 
   // broadcast MIDI import
   broadcast(projectID, { action: "importMidi", source: username, success: true, data: updatedProject });
@@ -291,53 +290,59 @@ export const addTrack = async (_ws: WebSocket, projectID: string, username: stri
   if (!updatedProject) throw new NotFoundError(`No project found for ID: ${projectID}`);
 
   // log successful track addition to the console
-  console.log(`User ${username} added a new track to project: ${projectID}`);
+  console.log(`User ${username} added a new track to project ${projectID}`);
 
   // broadcast track addition
   broadcast(projectID, { action: "addTrack", source: username, success: true, data: { trackID: newTrackID } });
 };
 
 // update track (WebSocket)
-// TODO: Client-side variable (likely useRef) and logic to rollback on error
-export const updateTrack = async (ws: WebSocket, projectID: string, username: string, data: any, errorData: any) => {
-  // validate data with Joi schema
-  const { error } = updateTrackSchema.validate(data, { abortEarly: false });
-  if (error) throw new BadMessageError(String(error));
+export const updateTrack = async (ws: WebSocket, projectID: string, username: string, data: any) => {
+  try {
+    // validate data with Joi schema
+    const { error } = updateTrackSchema.validate(data, { abortEarly: false });
+    if (error) throw new BadMessageError(String(error));
 
-  // convert projectID string to a MongoDB ObjectId
-  const projectObjectId = new mongoose.Types.ObjectId(projectID);
+    // convert projectID string to a MongoDB ObjectId
+    const projectObjectId = new mongoose.Types.ObjectId(projectID);
 
-  // block request if user is not an admin
-  const isAdmin: boolean = (await checkProjectAdmin(username, projectObjectId)) || (await checkAdmin(username));
-  if (!isAdmin) {
-    throw new ForbiddenActionError(`Cannot update track - User ${username} does not have admin privileges for Project ${projectID}`);
+    // block request if user is not an admin
+    const isAdmin: boolean = (await checkProjectAdmin(username, projectObjectId)) || (await checkAdmin(username));
+    if (!isAdmin) {
+      throw new ForbiddenActionError(`Cannot update track - User ${username} does not have admin privileges for Project ${projectID}`);
+    }
+
+    // destructure message data to separate trackID from the fields to be updated
+    const { trackID, ...updateFields } = data;
+
+    // set up update query object
+    const trackUpdate: Record<string, any> = {};
+
+    for (const [key, value] of Object.entries(updateFields)) {
+      // prepend "tracks.$." to each field so update query can target the matching track from the filter object
+      trackUpdate[`tracks.$.${key}`] = value;
+    }
+
+    // update the specified track in the tracks array for the project in the database
+    const updatedProject: Project | null = await ProjectModel.findOneAndUpdate(
+      { _id: projectObjectId, "tracks.trackID": trackID },
+      { $set: updateFields },
+      // using "new" flag to retrieve the updated document and projection to avoid retrieving unnecessary fields
+      { new: true, __v: 0 }
+    );
+
+    if (updatedProject) {
+      // log successful track update to the console
+      console.log(`User ${username} updated track ${trackID} on project ${projectID}`);
+
+      // broadcast track update to all users currently connected to the project
+      broadcast(projectID, { action: "updateTrack", source: username, success: true, data });
+    }
+  } catch (error) {
+    // track cannot be updated or rolled back due to a database error, close the WebSocket connection with a Server Error message if it's open
+    if (ws.readyState === WebSocket.OPEN) ws.close(1011, SERVER_ERROR);
+    console.error(`Action: updateTrack\nError: Could not update track - ${error}`);
   }
-
-  // destructure message data to separate trackID from the fields to be updated
-  const { trackID, ...updateFields } = data;
-
-  // set up update query object
-  const trackUpdate: Record<string, any> = {};
-
-  for (const [key, value] of Object.entries(updateFields)) {
-    // prepend "tracks.$." to each field so update query can target the matching track from the filter object
-    trackUpdate[`tracks.$.${key}`] = value;
-  }
-
-  // update the specified track in the tracks array for the project in the database
-  const updatedProject: Project | null = await ProjectModel.findOneAndUpdate(
-    { _id: projectObjectId, "tracks.trackID": trackID },
-    { $set: updateFields },
-    // using "new" flag to retrieve the updated document and projection to avoid retrieving unnecessary fields
-    { new: true, __v: 0 }
-  );
-  if (!updatedProject) throw new NotFoundError(`No track found for Project ID ${projectID} and Track ID ${trackID}`);
-
-  // log successful track update to the console
-  console.log(`User ${username} updated track ${trackID} on project: ${projectID}`);
-
-  // broadcast track update to any other users currently connected to the project
-  broadcast(projectID, { action: "updateTrack", source: username, success: true, data }, ws);
 };
 
 // delete track (WebSocket)
@@ -365,7 +370,7 @@ export const deleteTrack = async (_ws: WebSocket, projectID: string, username: s
   if (!updatedProject) throw new NotFoundError(`No project found for ID: ${projectID}`);
 
   // log successful track deletion to the console
-  console.log(`User ${username} deleted track ${data.trackID} from project: ${projectID}`);
+  console.log(`User ${username} deleted track ${data.trackID} from project ${projectID}`);
 
   // broadcast track deletion
   broadcast(projectID, { action: "deleteTrack", source: username, success: true, data });
@@ -399,7 +404,7 @@ export const deleteProject = async (_ws: WebSocket, projectID: string, username:
     session.endSession();
 
     // log successful project deletion to the console
-    console.log(`User ${username} deleted project: ${projectID}`);
+    console.log(`User ${username} deleted project ${projectID}`);
 
     // check if project currently has user connections, if so close them
     if (webSocketManager[projectID]) {
@@ -454,7 +459,7 @@ export const deleteProjectHttp = async (req: Request, res: Response, next: NextF
     session.endSession();
 
     // log successful project deletion to the console
-    console.log(`User ${req.username} deleted project: ${id}`);
+    console.log(`User ${req.username} deleted project ${id}`);
 
     // check if project currently has user connections, if so close them
     if (webSocketManager[id]) {

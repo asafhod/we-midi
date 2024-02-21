@@ -47,7 +47,6 @@ export const importMidiSchema: ObjectSchema<any> = Joi.object({
 });
 
 // validation for the Update Track request
-// TODO: Make sure client rolls back changes to very first value on error for volume and pan
 export const updateTrackSchema: ObjectSchema<any> = Joi.object({
   trackID: Joi.number().min(1).required(),
   trackName: Joi.string().min(1).max(15),
