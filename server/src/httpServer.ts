@@ -5,14 +5,22 @@ import projectsRouter from "./routes/projects";
 import projectUsersRouter from "./routes/projectUsers";
 import httpErrorHandler from "./middleware/httpErrorHandler";
 import routeNotFound from "./middleware/routeNotFound";
-// TODO: Import security middleware
+import helmet from "helmet";
+import cors from "cors";
+import xss from "xss-clean";
+import rateLimit from "express-rate-limit";
 
 export const configureHttpServer = (app: express.Application) => {
   // middleware
-  // TODO: Security middleware
+  app.set("trust proxy", 1); // use reverse proxy's settings
+  app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 1000 })); // limit each IP to 1000 requests per 15 minutes
+
   app.use(express.static("public"));
   app.use(express.json());
-  // TODO: Security middleware
+
+  app.use(helmet()); // HTTP header security
+  app.use(cors()); // enable cross-origin resource sharing
+  app.use(xss()); // sanitize HTML to prevent cross-site scripting attacks
 
   // routes
   app.use("/users", usersRouter);

@@ -31,5 +31,5 @@
 
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist"],
-  "files": ["src/types/custom.d.ts"]
+  "files": ["src/types/custom.d.ts", "src/types/xss-clean.d.ts"]
 }

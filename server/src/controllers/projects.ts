@@ -10,9 +10,6 @@ import { SERVER_ERROR } from "../errors/errorMessages";
 import { checkProjectAdmin, checkAdmin } from "../middleware/checkAdmin";
 import { broadcast, sendMessage } from "./helpers";
 
-// TODO: Update updateProject controller so that the projection of the returned data corresponds to the fields being changed by the message data
-//         Where should I retrieve less and what's the syntax? Flesh out what you set up. Should I just forgo this and return a lot of fields?
-
 // TODO: Move often-used code to helper functions
 //       Once you change note timing to measure-based, simplify the tempo logic in the updateProject controller
 //         Would just set the tempo like any other field update (wouldn't need to change notes)
@@ -149,14 +146,6 @@ export const updateProject = async (_ws: WebSocket, projectID: string, username:
     throw new ForbiddenActionError(`Cannot update project - User ${username} does not have admin privileges for Project ${projectID}`);
   }
 
-  // calculate projection of fields to retrieve from the project database
-  const projection: Record<string, any> = {};
-
-  for (const property of Object.keys(data)) {
-    projection[property] = 1;
-  }
-
-  // TODO: Should I retrieve less data here?
   if (data.tempo) {
     // get current project tempo and tracks from the database using projectID
     const projectData = await ProjectModel.findOne({ _id: projectObjectId }, { tempo: 1, tracks: 1 });
@@ -176,33 +165,28 @@ export const updateProject = async (_ws: WebSocket, projectID: string, username:
 
         return { ...track, notes: newNotes };
       });
-
-      // include tempo change data in the field retrieval projection
-      // TODO: Make sure this works as intended. Should not retrieve _id, lastTrackID, tracks.lastNoteID, or __v.
-      // TODO: Better way to do this?
-      projection.tracks = 1;
-      projection.tracks.trackID = 1;
-      projection.tracks.notes = 1;
-      projection.tracks.notes.noteID = 1;
-      projection.tracks.notes.duration = 1;
-      projection.tracks.notes.noteTime = 1;
     }
   }
 
   // update project in the database based on the project update data
-  const updatedProject = await ProjectModel.findOneAndUpdate(
+  const updatedProject: Project | null = await ProjectModel.findOneAndUpdate(
     { _id: projectObjectId },
     { $set: data },
     // using "new" flag to retrieve the updated document and projection to avoid retrieving unnecessary fields
-    { new: true, projection }
+    { new: true, __v: 0 }
   );
   if (!updatedProject) throw new NotFoundError(`No project found for ID: ${projectID}`);
 
   // log successful project update to the console
   console.log(`User ${username} updated project ${projectID}`);
 
+  if (data.tracks) {
+    // map tracks data to remove unnecessary fields prior to broadcasting
+    data.tracks = data.tracks.map((track: Track) => ({ trackID: track.trackID, notes: track.notes }));
+  }
+
   // broadcast project update
-  broadcast(projectID, { action: "updateProject", source: username, success: true, data: updatedProject });
+  broadcast(projectID, { action: "updateProject", source: username, success: true, data });
 };
 
 // import MIDI (WebSocket)
@@ -271,7 +255,7 @@ export const addTrack = async (_ws: WebSocket, projectID: string, username: stri
   const newTrack: Track = {
     trackID: newTrackID,
     trackName: `Track ${newTrackID}`,
-    instrument: "p", // TODO: Make sure everything is using instrument codes, or stop using them across the board
+    instrument: "p", // TODO: Make sure client sends instrument codes
     volume: DEFAULT_VOLUME,
     pan: 0,
     solo: false,

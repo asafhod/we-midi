@@ -156,3 +156,25 @@ export const deleteProjectUsersSchema: ArraySchema<any[]> = Joi.array()
   .items({
     username: Joi.string().min(1).max(128).required(),
   });
+
+// validation for the User Current View request
+export const userCurrentViewSchema: ObjectSchema<any> = Joi.object({
+  // trackID of 1 or higher corresponds to the track being edited in the MidiEditor view
+  // trackID of 0 corresponds to the TrackEditor view
+  trackID: Joi.number().min(0).required(),
+  targetUser: Joi.string().min(1).max(128),
+});
+
+// validation for the User Mouse request
+export const userMouseSchema: ObjectSchema<any> = Joi.object({
+  top: Joi.number().min(0).required(),
+  time: Joi.number().min(0).max(60000).required(),
+  leftClick: Joi.boolean().required(),
+  rightClick: Joi.boolean().required(),
+  targetUsers: Joi.array().min(1).items(Joi.string().min(1).max(128)).required(),
+});
+
+// validation for the Chat Message request
+export const chatMessageSchema: ObjectSchema<any> = Joi.object({
+  message: Joi.string().min(1).max(1000).required(),
+});

@@ -1,7 +1,15 @@
 import WebSocket from "ws";
 import { searchUsers } from "../controllers/users";
 import { getProject, updateProject, deleteProject, importMidi, addTrack, updateTrack, deleteTrack } from "../controllers/projects";
-import { addProjectUsers, updateProjectUsers, deleteProjectUsers, deleteProjectUser } from "../controllers/projectUsers";
+import {
+  addProjectUsers,
+  updateProjectUsers,
+  deleteProjectUsers,
+  deleteProjectUser,
+  userCurrentView,
+  userMouse,
+  chatMessage,
+} from "../controllers/projectUsers";
 import { addNote, addNotes, updateNote, updateNotes, deleteNote, deleteNotes } from "../controllers/notes";
 import wsErrorHandler from "../errors/wsErrorHandler";
 import { BadMessageError } from "../errors/";
@@ -76,6 +84,15 @@ const router = (ws: WebSocket, message: string, username: string, projectID: str
         break;
       case "deleteProjectUser":
         deleteProjectUser(ws, projectID, username);
+        break;
+      case "userCurrentView":
+        userCurrentView(ws, projectID, username, data);
+        break;
+      case "userMouse":
+        userMouse(ws, projectID, username, data);
+        break;
+      case "chatMessage":
+        chatMessage(ws, projectID, username, data);
         break;
       default:
         throw new BadMessageError(`Unknown message action: ${action}`);

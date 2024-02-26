@@ -3,12 +3,17 @@ import mongoose from "mongoose";
 import WebSocket from "ws";
 import webSocketManager from "../webSocketManager";
 import ProjectUserModel, { ProjectUser } from "../models/projectUserModel";
-import { addProjectUsersSchema, updateProjectUsersSchema, deleteProjectUsersSchema } from "../validation/schemas";
+import {
+  addProjectUsersSchema,
+  updateProjectUsersSchema,
+  deleteProjectUsersSchema,
+  userCurrentViewSchema,
+  userMouseSchema,
+  chatMessageSchema,
+} from "../validation/schemas";
 import { BadRequestError, BadMessageError, ForbiddenError, ForbiddenActionError, NotFoundError } from "../errors";
 import { checkProjectAdmin, checkAdmin } from "../middleware/checkAdmin";
-import { broadcast, formatQueryArray } from "./helpers";
-
-// TODO: Add controllers, routes, and schemas for userChangedView, userMouse, and userSentMessage
+import { broadcast, formatQueryArray, sendMessage } from "./helpers";
 
 // TODO: Move often-used code to helper functions
 //       Update the delete controllers to not kick global admins when their ProjectUser is deleted (low priority)
@@ -426,4 +431,64 @@ export const deleteProjectUserHttp = async (req: Request, res: Response, next: N
   } catch (error) {
     next(error);
   }
+};
+
+// User Current View (WebSocket)
+export const userCurrentView = async (ws: WebSocket, projectID: string, username: string, data: any) => {
+  // validate data with Joi schema
+  const { error } = userCurrentViewSchema.validate(data, { abortEarly: false });
+  if (error) throw new BadMessageError(String(error));
+
+  // destructure necessary fields from message data
+  const { trackID, targetUser } = data;
+
+  // set up message object with the user's current view
+  const userCurrentViewMessage = { action: "userCurrentView", source: username, success: true, data: { trackID } };
+
+  // check if a target user was specified
+  if (targetUser) {
+    // attempt to get the target user's WebSocket
+    const targetWebSocket: WebSocket | undefined = webSocketManager[projectID] && webSocketManager[projectID][targetUser];
+
+    if (targetWebSocket) {
+      // target user is connected, send them the User Current View message
+      sendMessage(targetWebSocket, userCurrentViewMessage);
+    }
+  } else {
+    // broadcast the User Current View message to all of the other connected users for the project
+    broadcast(projectID, userCurrentViewMessage, ws);
+  }
+};
+
+// User Mouse (WebSocket)
+export const userMouse = async (_ws: WebSocket, projectID: string, username: string, data: any) => {
+  // validate data with Joi schema
+  const { error } = userMouseSchema.validate(data, { abortEarly: false });
+  if (error) throw new BadMessageError(String(error));
+
+  // destructure necessary fields from message data
+  const { targetUsers, ...mouseData } = data;
+
+  // check if project currently has connected users
+  if (webSocketManager[projectID]) {
+    for (const targetUser of targetUsers) {
+      // attempt to get each target user's WebSocket
+      const targetWebSocket: WebSocket | undefined = webSocketManager[projectID][targetUser];
+
+      if (targetWebSocket) {
+        // target user is connected, send them a message with the user's mouse data
+        sendMessage(targetWebSocket, { action: "userMouse", source: username, success: true, data: mouseData });
+      }
+    }
+  }
+};
+
+// Chat Message (WebSocket)
+export const chatMessage = async (_ws: WebSocket, projectID: string, username: string, data: any) => {
+  // validate data with Joi schema
+  const { error } = chatMessageSchema.validate(data, { abortEarly: false });
+  if (error) throw new BadMessageError(String(error));
+
+  // broadcast the chat message to all connected users for the project
+  broadcast(projectID, { action: "chatMessage", source: username, success: true, data });
 };
