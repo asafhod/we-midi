@@ -82,170 +82,199 @@ export const searchUsers = async (ws: WebSocket, username: string, data: any) =>
 
 // update user (admin only)
 export const updateUser = async (req: Request, res: Response, next: NextFunction) => {
-  // validate request body with Joi schema
-  const { error } = updateUserSchema.validate(req.body, { abortEarly: false });
-  if (error) throw new BadRequestError(String(error));
-
-  // get target username from url parameter
-  const username: string = req.params.username.toLowerCase(); // to lower case for case-insensitivity
-
-  // validate username
-  if (username.length > 128) throw new BadRequestError("Username cannot exceed 128 characters");
-
-  // set up transaction for update operation
-  const session = await mongoose.startSession();
-  session.startTransaction();
-
   try {
-    // update the user in the database based on request body, using "new" flag to retrieve the updated document
-    const user: User | null = await UserModel.findOneAndUpdate(
-      { username },
-      { $set: req.body },
-      { new: true, projection: { __v: 0 }, session }
-    );
-    if (!user) throw new NotFoundError(`No user found for username: ${username}`);
+    // validate request body with Joi schema
+    const { error } = updateUserSchema.validate(req.body, { abortEarly: false });
+    if (error) throw new BadRequestError(String(error));
 
-    // set up Cognito Identity Service Provider
-    const cognito = new CognitoIdentityServiceProvider();
+    // get target username from url parameter
+    const username: string = req.params.username.toLowerCase(); // to lower case for case-insensitivity
 
-    // retrieve and validate AWS User Pool ID environment variable
-    const { AWS_USER_POOL_ID } = process.env;
-    if (!AWS_USER_POOL_ID) throw new Error("Environment variable AWS_USER_POOL_ID is required");
+    // validate username
+    if (username.length > 128) throw new BadRequestError("Username cannot exceed 128 characters");
 
-    // map user properties from the request body to Cognito user attribute object array
-    const userAttributes: { Name: string; Value: any }[] = Object.entries(req.body).map(([key, value]) => ({
-      Name: `custom:${key}`,
-      Value: typeof value === "boolean" ? Number(value) : value,
-    }));
+    // set up transaction for update operation
+    const session = await mongoose.startSession();
+    session.startTransaction();
 
-    // update matching Cognito custom attributes
-    await cognito
-      .adminUpdateUserAttributes({ UserAttributes: userAttributes, UserPoolId: AWS_USER_POOL_ID, Username: username })
-      .promise();
+    try {
+      // update the user in the database based on request body, using "new" flag to retrieve the updated document
+      const user: User | null = await UserModel.findOneAndUpdate(
+        { username },
+        { $set: req.body },
+        { new: true, projection: { __v: 0 }, session }
+      );
+      if (!user) throw new NotFoundError(`No user found for username: ${username}`);
 
-    // both updates were successful, commit and end the transaction
-    await session.commitTransaction();
-    session.endSession();
+      // set up Cognito Identity Service Provider
+      const cognito = new CognitoIdentityServiceProvider();
 
-    // log successful user update to the console
-    console.log(`User ${req.username} updated user: ${username}`);
+      // retrieve and validate AWS User Pool ID environment variable
+      const { AWS_USER_POOL_ID } = process.env;
+      if (!AWS_USER_POOL_ID) throw new Error("Environment variable AWS_USER_POOL_ID is required");
 
-    // if user lost Admin status, close any open WebSocket connections of theirs for the projects they are not members of
-    if (req.body.isAdmin !== undefined && req.body.isAdmin !== null && !req.body.isAdmin) {
-      const memberProjects: ProjectUser[] = await ProjectUserModel.find({ username, isAccepted: true }, { __v: 0 });
-      // map to string array
-      const memberProjectIDs: string[] = memberProjects.map((memberProject: ProjectUser) => memberProject.projectID.toString());
+      // map user properties from the request body to Cognito user attribute object array
+      const userAttributes: { Name: string; Value: any }[] = Object.entries(req.body).map(([key, value]) => {
+        let formattedValue: string = "";
 
-      for (const [projectID, projectConnections] of Object.entries(webSocketManager)) {
-        if (!memberProjectIDs.includes(projectID)) {
-          // user is not a member of this project, close any existing connection
-          const existingConnection: WebSocket | undefined = projectConnections[username];
-          if (existingConnection && existingConnection.readyState === WebSocket.OPEN) {
-            existingConnection.close(1000, "User has lost admin permissions and can no longer access the project");
+        switch (typeof value) {
+          case "boolean":
+            formattedValue = String(Number(value));
+            break;
+          case "number":
+            formattedValue = String(value);
+            break;
+          case "string":
+            formattedValue = value;
+            break;
+          default:
+            throw new BadRequestError("Custom attribute update value must be a boolean, number, or string");
+        }
+
+        return {
+          Name: `custom:${key}`,
+          Value: formattedValue,
+        };
+      });
+
+      // update matching Cognito custom attributes
+      await cognito
+        .adminUpdateUserAttributes({ UserAttributes: userAttributes, UserPoolId: AWS_USER_POOL_ID, Username: username })
+        .promise();
+
+      // both updates were successful, commit and end the transaction
+      await session.commitTransaction();
+      session.endSession();
+
+      // log successful user update to the console
+      console.log(`User ${req.username} updated user: ${username}`);
+
+      // if user lost Admin status, close any open WebSocket connections of theirs for the projects they are not members of
+      if (req.body.isAdmin !== undefined && req.body.isAdmin !== null && !req.body.isAdmin) {
+        const memberProjects: ProjectUser[] = await ProjectUserModel.find({ username, isAccepted: true }, { __v: 0 });
+        // map to string array
+        const memberProjectIDs: string[] = memberProjects.map((memberProject: ProjectUser) => memberProject.projectID.toString());
+
+        for (const [projectID, projectConnections] of Object.entries(webSocketManager)) {
+          if (!memberProjectIDs.includes(projectID)) {
+            // user is not a member of this project, close any existing connection
+            const existingConnection: WebSocket | undefined = projectConnections[username];
+            if (existingConnection && existingConnection.readyState === WebSocket.OPEN) {
+              existingConnection.close(1000, "User has lost admin permissions and can no longer access the project");
+            }
           }
         }
       }
-    }
 
-    // respond successfully with user data
-    res.status(200).json({ success: true, data: user });
+      // respond successfully with user data
+      res.status(200).json({ success: true, data: user });
+    } catch (error) {
+      await session.abortTransaction();
+      session.endSession();
+      throw error;
+    }
   } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
     next(error);
   }
 };
 
 // delete user (admin only)
 export const deleteUser = async (req: Request, res: Response, next: NextFunction) => {
-  // get target username from url parameter
-  const username: string = req.params.username.toLowerCase(); // to lower case for case-insensitivity
-
-  // validate username
-  if (username.length > 128) throw new BadRequestError("Username cannot exceed 128 characters");
-
-  // prevent user from deleting themselves
-  if (req.username === username) throw new ForbiddenError(`User ${username} cannot delete themselves`);
-
-  // get all projects where user is a member
-  const memberProjects: ProjectUser[] = await ProjectUserModel.find({ username }, { __v: 0 });
-
-  // get projectIDs for all projects where user is a Project Admin and accepted
-  const adminProjectIDs: mongoose.Types.ObjectId[] = memberProjects
-    .filter((project) => project.isProjectAdmin && project.isAccepted)
-    .map((adminProject) => adminProject.projectID);
-
-  // get any projects for which user is currently the only accepted Project Admin
-  const onlyAdminProjects = await ProjectUserModel.aggregate([
-    { $match: { projectID: { $in: adminProjectIDs }, isProjectAdmin: true, isAccepted: true } },
-    { $group: { _id: "$projectID", count: { $sum: 1 } } },
-    { $match: { count: 1 } },
-  ]);
-
-  if (onlyAdminProjects.length) {
-    // user is currently the only accepted Project Admin on at least one project, prevent deletion
-    const onlyAdminProjectIDs: string[] = onlyAdminProjects.map((onlyAdminProject) => onlyAdminProject._id.toString()); // map projectIDs to string array
-    throw new ForbiddenError(
-      `User ${username} could not be deleted because they are currently the only accepted project admin for Projects: ${onlyAdminProjectIDs.join(
-        ", "
-      )}`
-    );
-  }
-
-  // set up transaction for delete operation
-  const session = await mongoose.startSession();
-  session.startTransaction();
-
   try {
-    // delete the user's entries from the ProjectUser database
-    const projectUserDeleteResult = await ProjectUserModel.deleteMany({ username }, { session });
+    // get target username from url parameter
+    const username: string = req.params.username.toLowerCase(); // to lower case for case-insensitivity
 
-    // delete the user from the User database
-    const user: User | null = await UserModel.findOneAndDelete({ username }, { projection: { __v: 0 }, session });
-    if (!user) throw new NotFoundError(`No user found for username: ${username}`);
+    // validate username
+    if (username.length > 128) throw new BadRequestError("Username cannot exceed 128 characters");
 
-    // set up Cognito Identity Service Provider
-    const cognito = new CognitoIdentityServiceProvider();
+    // prevent user from deleting themselves
+    if (req.username === username) throw new ForbiddenError(`User ${username} cannot delete themselves`);
 
-    // retrieve and validate AWS User Pool ID environment variable
-    const { AWS_USER_POOL_ID } = process.env;
-    if (!AWS_USER_POOL_ID) throw new Error("Environment variable AWS_USER_POOL_ID is required");
+    // get all projects where user is a member
+    const memberProjects: ProjectUser[] = await ProjectUserModel.find({ username }, { __v: 0 });
 
-    // delete the user from Cognito
-    await cognito.adminDeleteUser({ UserPoolId: AWS_USER_POOL_ID, Username: username }).promise();
+    // get projectIDs for all projects where user is a Project Admin and accepted
+    const adminProjectIDs: mongoose.Types.ObjectId[] = memberProjects
+      .filter((project) => project.isProjectAdmin && project.isAccepted)
+      .map((adminProject) => adminProject.projectID);
 
-    // all delete operations were successful, commit and end the transaction
-    await session.commitTransaction();
-    session.endSession();
+    // get any projects for which user is currently the only accepted Project Admin
+    const onlyAdminProjects = await ProjectUserModel.aggregate([
+      { $match: { projectID: { $in: adminProjectIDs }, isProjectAdmin: true, isAccepted: true } },
+      { $group: { _id: "$projectID", count: { $sum: 1 } } },
+      { $match: { count: 1 } },
+    ]);
 
-    // log successful user deletion to the console
-    console.log(
-      `User ${req.username} deleted user: ${username}\nThe user was removed from ${projectUserDeleteResult.deletedCount} projects`
-    );
+    if (onlyAdminProjects.length) {
+      // user is currently the only accepted Project Admin on at least one project, prevent deletion
+      const onlyAdminProjectIDs: string[] = onlyAdminProjects.map((onlyAdminProject) => onlyAdminProject._id.toString()); // map projectIDs to string array
+      throw new ForbiddenError(
+        `User ${username} could not be deleted because they are currently the only accepted project admin for Projects: ${onlyAdminProjectIDs.join(
+          ", "
+        )}`
+      );
+    }
 
-    // close any open WebSocket connection for the user
-    for (const projectConnections of Object.values(webSocketManager)) {
-      const existingConnection: WebSocket | undefined = projectConnections[username];
-      if (existingConnection && existingConnection.readyState === WebSocket.OPEN) {
-        existingConnection.close(1000, "User has been deleted");
+    // set up transaction for delete operation
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      // delete the user's entries from the ProjectUser database
+      const projectUserDeleteResult = await ProjectUserModel.deleteMany({ username }, { session });
+
+      // delete the user from the User database
+      const user: User | null = await UserModel.findOneAndDelete({ username }, { projection: { __v: 0 }, session });
+      if (!user) throw new NotFoundError(`No user found for username: ${username}`);
+
+      // set up Cognito Identity Service Provider
+      const cognito = new CognitoIdentityServiceProvider();
+
+      // retrieve and validate AWS User Pool ID environment variable
+      const { AWS_USER_POOL_ID } = process.env;
+      if (!AWS_USER_POOL_ID) throw new Error("Environment variable AWS_USER_POOL_ID is required");
+
+      // delete the user from Cognito
+      await cognito.adminDeleteUser({ UserPoolId: AWS_USER_POOL_ID, Username: username }).promise();
+
+      // all delete operations were successful, commit and end the transaction
+      await session.commitTransaction();
+      session.endSession();
+
+      // log successful user deletion to the console
+      console.log(`User ${req.username} deleted user: ${username}`);
+
+      // log count of projects user was removed from (if any)
+      if (projectUserDeleteResult.deletedCount > 0) {
+        console.log(`The user was removed from ${projectUserDeleteResult.deletedCount} project(s)`);
       }
-    }
 
-    // broadcast the ProjectUser deletion to any projects on which the user was a member
-    for (const memberProject of memberProjects) {
-      broadcast(memberProject.projectID.toString(), {
-        action: "deleteProjectUser",
-        source: "ADMIN",
-        success: true,
-        data: { username },
-      });
-    }
+      // close any open WebSocket connection for the user
+      for (const projectConnections of Object.values(webSocketManager)) {
+        const existingConnection: WebSocket | undefined = projectConnections[username];
+        if (existingConnection && existingConnection.readyState === WebSocket.OPEN) {
+          existingConnection.close(1000, "User has been deleted");
+        }
+      }
 
-    // respond successfully
-    res.sendStatus(204);
+      // broadcast the ProjectUser deletion to any projects on which the user was a member
+      for (const memberProject of memberProjects) {
+        broadcast(memberProject.projectID.toString(), {
+          action: "deleteProjectUser",
+          source: "ADMIN",
+          success: true,
+          data: { username },
+        });
+      }
+
+      // respond successfully
+      res.sendStatus(204);
+    } catch (error) {
+      await session.abortTransaction();
+      session.endSession();
+      throw error;
+    }
   } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
     next(error);
   }
 };

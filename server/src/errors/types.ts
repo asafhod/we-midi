@@ -16,7 +16,7 @@ interface ExpressBodyParserError extends Error {
 
 // type guards to enforce the error types at runtime
 export const isMongoWriteError = (error: any): error is MongoWriteError => {
-  return error instanceof WriteError && "keyValue" in error && typeof error.keyValue === "object";
+  return "name" in error && error.name === "MongoError" && "keyValue" in error && typeof error.keyValue === "object";
 };
 
 export const isMongooseCastError = (error: any): error is MongooseCastError => {

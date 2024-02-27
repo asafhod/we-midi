@@ -6,15 +6,19 @@ import { ForbiddenError } from "../errors";
 
 // middleware that checks if the user making the request is an admin
 export const checkAdminMiddleware = async (req: Request, _res: Response, next: NextFunction) => {
-  // check if an admin user exists for the username specified on the request
-  const adminExists = await UserModel.exists({ username: req.username, isAdmin: true });
+  try {
+    // check if an admin user exists for the username specified on the request
+    const adminExists = await UserModel.exists({ username: req.username, isAdmin: true });
 
-  if (adminExists) {
-    // user is an admin - call next middleware
-    next();
-  } else {
-    // user is not an admin - throw Forbidden error
-    throw new ForbiddenError(`Request rejected - User ${req.username} is not an admin`);
+    if (adminExists) {
+      // user is an admin - call next middleware
+      next();
+    } else {
+      // user is not an admin - throw Forbidden error
+      throw new ForbiddenError(`Request rejected - User ${req.username} is not an admin`);
+    }
+  } catch (error) {
+    next(error);
   }
 };
 

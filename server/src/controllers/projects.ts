@@ -91,41 +91,45 @@ export const getProject = async (ws: WebSocket, projectID: string) => {
 
 // add project
 export const addProject = async (req: Request, res: Response, next: NextFunction) => {
-  // validate request body with Joi schema
-  const { error } = addProjectSchema.validate(req.body, { abortEarly: false });
-  if (error) throw new BadRequestError(String(error));
-
-  // set up transaction for Project creation operation
-  const session = await mongoose.startSession();
-  session.startTransaction();
-
   try {
-    // create new project in the database based on json in request body and destructure its _id
-    const { _id }: Project = (await ProjectModel.create(req.body, { new: true, session }))[0];
+    // validate request body with Joi schema
+    const { error } = addProjectSchema.validate(req.body, { abortEarly: false });
+    if (error) throw new BadRequestError(String(error));
 
-    // create new ProjectUser in the database for the user on the new project, setting them as an accepted Project Admin
-    await ProjectUserModel.create(
-      {
-        projectID: _id,
-        username: req.username,
-        isProjectAdmin: true,
-        isAccepted: true,
-      },
-      { session }
-    );
+    // set up transaction for Project creation operation
+    const session = await mongoose.startSession();
+    session.startTransaction();
 
-    // if successful, commit and end the transaction
-    await session.commitTransaction();
-    session.endSession();
+    try {
+      // create new project in the database based on json in request body and destructure its _id
+      const { _id }: Project = (await ProjectModel.create(req.body, { new: true, session }))[0];
 
-    // log successful project creation to the console
-    console.log(`User ${req.username} created project ${_id.toString()}`);
+      // create new ProjectUser in the database for the user on the new project, setting them as an accepted Project Admin
+      await ProjectUserModel.create(
+        {
+          projectID: _id,
+          username: req.username,
+          isProjectAdmin: true,
+          isAccepted: true,
+        },
+        { session }
+      );
 
-    // respond successfully with the project's _id
-    res.status(201).json({ success: true, data: { _id } });
+      // if successful, commit and end the transaction
+      await session.commitTransaction();
+      session.endSession();
+
+      // log successful project creation to the console
+      console.log(`User ${req.username} created project ${_id.toString()}`);
+
+      // respond successfully with the project's _id
+      res.status(201).json({ success: true, data: { _id } });
+    } catch (error) {
+      await session.abortTransaction();
+      session.endSession();
+      throw error;
+    }
   } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
     next(error);
   }
 };
@@ -407,58 +411,65 @@ export const deleteProject = async (_ws: WebSocket, projectID: string, username:
 
 // delete project - used when deleting a project from the user dashboard
 export const deleteProjectHttp = async (req: Request, res: Response, next: NextFunction) => {
-  // get project's ID from url parameter
-  const { id } = req.params;
-
-  // validate project ID is a 24-character hexadecimal string (a valid MongoDB ObjectId)
-  const objectIdRegex: RegExp = /^[0-9a-fA-F]{24}$/;
-  if (!objectIdRegex.test(id)) throw new BadRequestError("ProjectID is not a valid MongoDB ObjectId");
-
-  // convert project ID string to a MongoDB ObjectId
-  const projectObjectId = new mongoose.Types.ObjectId(id);
-
-  // verify username exists on request
-  if (!req.username) throw new Error("Cannot delete project - Username is missing from request");
-
-  // block request if user is not an admin
-  const isAdmin: boolean = (await checkProjectAdmin(req.username, projectObjectId)) || (await checkAdmin(req.username));
-  if (!isAdmin) {
-    throw new ForbiddenError(`Cannot delete project - User ${req.username} does not have admin privileges for Project ${id}`);
-  }
-
-  // set up transaction for Project deletion operation
-  const session = await mongoose.startSession();
-  session.startTransaction();
-
   try {
-    // delete all ProjectUsers for the project from the database
-    await ProjectUserModel.deleteMany({ projectID: projectObjectId }, { session });
+    // get project's ID from url parameter
+    const { id } = req.params;
 
-    // delete project from the database
-    const project: Project | null = await ProjectModel.findOneAndDelete({ _id: projectObjectId }, { projection: { __v: 0 }, session });
-    if (!project) throw new NotFoundError(`No project found for ID: ${id}`);
+    // validate project ID is a 24-character hexadecimal string (a valid MongoDB ObjectId)
+    const objectIdRegex: RegExp = /^[0-9a-fA-F]{24}$/;
+    if (!objectIdRegex.test(id)) throw new BadRequestError("ProjectID is not a valid MongoDB ObjectId");
 
-    // if successful, commit and end the transaction
-    await session.commitTransaction();
-    session.endSession();
+    // convert project ID string to a MongoDB ObjectId
+    const projectObjectId = new mongoose.Types.ObjectId(id);
 
-    // log successful project deletion to the console
-    console.log(`User ${req.username} deleted project ${id}`);
+    // verify username exists on request
+    if (!req.username) throw new Error("Cannot delete project - Username is missing from request");
 
-    // check if project currently has user connections, if so close them
-    if (webSocketManager[id]) {
-      for (const connection of Object.values(webSocketManager[id])) {
-        // close any open connections with code 4204
-        // this code indicates ProjectUser deletion and prevents the connection closures from being needlessly broadcast to each other, since they are all being closed
-        if (connection.readyState === WebSocket.OPEN) connection.close(4204, "Project was deleted");
-      }
+    // block request if user is not an admin
+    const isAdmin: boolean = (await checkProjectAdmin(req.username, projectObjectId)) || (await checkAdmin(req.username));
+    if (!isAdmin) {
+      throw new ForbiddenError(`Cannot delete project - User ${req.username} does not have admin privileges for Project ${id}`);
     }
 
-    // respond successfully
-    res.sendStatus(204);
+    // set up transaction for Project deletion operation
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      // delete all ProjectUsers for the project from the database
+      await ProjectUserModel.deleteMany({ projectID: projectObjectId }, { session });
+
+      // delete project from the database
+      const project: Project | null = await ProjectModel.findOneAndDelete(
+        { _id: projectObjectId },
+        { projection: { __v: 0 }, session }
+      );
+      if (!project) throw new NotFoundError(`No project found for ID: ${id}`);
+
+      // if successful, commit and end the transaction
+      await session.commitTransaction();
+      session.endSession();
+
+      // log successful project deletion to the console
+      console.log(`User ${req.username} deleted project ${id}`);
+
+      // check if project currently has user connections, if so close them
+      if (webSocketManager[id]) {
+        for (const connection of Object.values(webSocketManager[id])) {
+          // close any open connections with code 4204
+          // this code indicates ProjectUser deletion and prevents the connection closures from being needlessly broadcast to each other, since they are all being closed
+          if (connection.readyState === WebSocket.OPEN) connection.close(4204, "Project was deleted");
+        }
+      }
+
+      // respond successfully
+      res.sendStatus(204);
+    } catch (error) {
+      await session.abortTransaction();
+      session.endSession();
+      throw error;
+    }
   } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
     next(error);
   }
 };
