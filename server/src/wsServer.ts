@@ -13,6 +13,16 @@ import { getProject } from "./controllers/projects";
 //         Though ChatGPT didn't point out anything at the general level. Double check.
 //       Update close event handler logic so that existing connection checks don't needlessly happen again when a controller already checked (medium-low priority)
 
+// retrieve base server URL from environment variables
+const { SERVER_URL } = process.env;
+
+// validate server URL
+if (!SERVER_URL) {
+  console.error("Environment variable SERVER_URL is required");
+  process.exit(1);
+}
+
+// interface for WebSocketConnectionRequest
 interface WebSocketConnectionRequest extends IncomingMessage {
   username?: string;
   projectID?: string;
@@ -44,8 +54,10 @@ const verifyClient: WebSocket.VerifyClientCallbackAsync = async (info: { req: We
       return cb(false, 400, BAD_REQUEST);
     }
 
-    // get projectID from web request
-    const url = new URL(info.req.url || "");
+    // build full request URL by appending base server URL and port to the request info URL
+    const url = new URL(`${SERVER_URL}:${process.env.PORT || "5000"}${info.req.url}`);
+
+    // get projectID from request URL query parameter
     const projectID: string | null = url.searchParams.get("projectID");
     if (!projectID) {
       console.error("WebSocket client verification failed: Project ID is required");
@@ -97,14 +109,14 @@ export const configureWsServer = (server: http.Server) => {
     const { username, projectID } = req;
     if (!username || !projectID) {
       console.error(
-        `WebSocket connection aborted - Username and/or projectID were not passed from Client Verification function to Connection Event callback`
+        `WebSocket connection aborted - Username and/or Project ID were not passed from Client Verification function to Connection Event callback`
       );
       if (ws.readyState === WebSocket.OPEN) ws.close(1011, SERVER_ERROR);
 
       return;
     }
 
-    console.log(`A WebSocket connection has been established with user ${username} for project ID ${projectID}`);
+    console.log(`A WebSocket connection has been established with User ${username} for Project ${projectID}`);
 
     // add client WebSocket connection to the WebSocket manager
     if (!webSocketManager[projectID]) {
@@ -120,7 +132,7 @@ export const configureWsServer = (server: http.Server) => {
       if (existingConnection && existingConnection.readyState === WebSocket.OPEN) {
         // close the out-of-date WebSocket connection
         existingConnection.close(1000, "Replaced by a new WebSocket connection");
-        console.log(`Out-of-date WebSocket connection replaced by new connection for user ${username} on projectID ${projectID}`);
+        console.log(`Out-of-date WebSocket connection replaced by new connection for User ${username} on Project ${projectID}`);
       } else {
         // broadcast that the user has connected
         broadcast(projectID, { action: "userConnected", success: true, data: { username } }, ws);
@@ -134,9 +146,7 @@ export const configureWsServer = (server: http.Server) => {
     ws.on("close", (code: number, data: string | Buffer | undefined) => {
       const closeReason: string = typeof data === "string" ? ` Reason: ${data}` : "";
 
-      console.log(
-        `A WebSocket connection has been closed for user ${username} on project ID ${projectID}\nCode: ${code}${closeReason}`
-      );
+      console.log(`A WebSocket connection has been closed for User ${username} on Project ${projectID}\nCode: ${code}${closeReason}`);
 
       const existingConnection: WebSocket | undefined = webSocketManager[projectID] && webSocketManager[projectID][username];
       if (existingConnection === ws) {

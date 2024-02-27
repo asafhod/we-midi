@@ -15,8 +15,6 @@ import wsErrorHandler from "../errors/wsErrorHandler";
 import { BadMessageError } from "../errors/";
 
 const router = (ws: WebSocket, message: string, username: string, projectID: string) => {
-  console.log(`Received message from user ${username} for project ID ${projectID}: ${message}`);
-
   let action: unknown;
   let data: any;
   const errorData: any = {};

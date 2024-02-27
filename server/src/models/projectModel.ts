@@ -39,10 +39,6 @@ export interface Project extends Document {
 
 // database schema for Project
 const projectSchema = new Schema<Project>({
-  _id: {
-    type: Schema.Types.ObjectId,
-    required: [true, "_id is required"],
-  },
   name: {
     type: String,
     required: [true, "Name is required"],

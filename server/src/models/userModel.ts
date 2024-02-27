@@ -7,17 +7,14 @@ export interface User extends Document {
 }
 
 // database schema for User
-const userSchema = new Schema<User>(
-  {
-    username: {
-      type: String,
-      required: [true, "Username is required"],
-      unique: true,
-    },
-    isAdmin: { type: Boolean, default: false },
+const userSchema = new Schema<User>({
+  username: {
+    type: String,
+    required: [true, "Username is required"],
+    unique: true,
   },
-  { _id: false }
-);
+  isAdmin: { type: Boolean, default: false },
+});
 
 // create model for User using schema
 const UserModel = mongoose.model("User", userSchema);

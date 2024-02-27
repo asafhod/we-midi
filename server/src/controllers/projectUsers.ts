@@ -59,7 +59,7 @@ export const getProjectUsers = async (req: Request, res: Response, next: NextFun
     }
 
     // query the database using the query object (an empty object returns all ProjectUsers)
-    const projectUsers: ProjectUser[] = await ProjectUserModel.find(query, { __v: 0 }); // use projection to avoid retrieving unnecessary field __v
+    const projectUsers: ProjectUser[] = await ProjectUserModel.find(query, { _id: 0, __v: 0 }); // use projection to avoid retrieving unnecessary fields
 
     // respond successfully with ProjectUser data
     res.status(200).json({ success: true, data: projectUsers });
@@ -77,7 +77,7 @@ export const getProjectUser = async (req: Request, res: Response, next: NextFunc
 
     // validate projectID is a 24-character hexadecimal string (a valid MongoDB ObjectId)
     const objectIdRegex: RegExp = /^[0-9a-fA-F]{24}$/;
-    if (!objectIdRegex.test(projectID)) throw new BadRequestError("ProjectID is not a valid MongoDB ObjectId");
+    if (!objectIdRegex.test(projectID)) throw new BadRequestError("Project ID is not a valid MongoDB ObjectId");
 
     // validate username
     if (username.length > 128) throw new BadRequestError("Username cannot exceed 128 characters");
@@ -85,9 +85,9 @@ export const getProjectUser = async (req: Request, res: Response, next: NextFunc
     // query database for ProjectUser matching the projectID and username
     const projectUser: ProjectUser | null = await ProjectUserModel.findOne(
       { projectID: new mongoose.Types.ObjectId(projectID), username },
-      { __v: 0 }
+      { _id: 0, __v: 0 }
     );
-    if (!projectUser) throw new NotFoundError(`No ProjectUser found for projectID ${projectID} and username ${username}`);
+    if (!projectUser) throw new NotFoundError(`No ProjectUser found for Project ID ${projectID} and Username ${username}`);
 
     // respond successfully with ProjectUser data
     res.status(200).json({ success: true, data: projectUser });
@@ -113,15 +113,15 @@ export const acceptProjectUser = async (req: Request, res: Response, next: NextF
 
     // validate projectID is a 24-character hexadecimal string (a valid MongoDB ObjectId)
     const objectIdRegex: RegExp = /^[0-9a-fA-F]{24}$/;
-    if (!objectIdRegex.test(projectID)) throw new BadRequestError("ProjectID is not a valid MongoDB ObjectId");
+    if (!objectIdRegex.test(projectID)) throw new BadRequestError("Project ID is not a valid MongoDB ObjectId");
 
     // update the isAccepted property to True for the ProjectUser in the database, using the "new" flag to retrieve the updated document
     const projectUser: ProjectUser | null = await ProjectUserModel.findOneAndUpdate(
       { projectID: new mongoose.Types.ObjectId(projectID), username, isAccepted: false },
       { $set: { isAccepted: true } },
-      { new: true, projection: { __v: 0 } }
+      { new: true, projection: { _id: 0, __v: 0 } }
     );
-    if (!projectUser) throw new NotFoundError(`No unaccepted ProjectUser found for projectID ${projectID} and username ${username}`);
+    if (!projectUser) throw new NotFoundError(`No unaccepted ProjectUser found for Project ID ${projectID} and Username ${username}`);
 
     // log successful ProjectUser update to the console
     console.log(`User ${req.username} has accepted their invitation to Project ${projectID}`);
@@ -146,7 +146,7 @@ export const addProjectUsers = async (_ws: WebSocket, projectID: string, usernam
   const projectObjectId = new mongoose.Types.ObjectId(projectID);
 
   // get the existing ProjectUsers for the project
-  const existingProjectUsers: ProjectUser[] = await ProjectUserModel.find({ projectID: projectObjectId }, { __v: 0 });
+  const existingProjectUsers: ProjectUser[] = await ProjectUserModel.find({ projectID: projectObjectId }, { _id: 0, __v: 0 });
 
   // check if user is an accepted Project Admin for this project
   const isProjectAdmin: boolean = existingProjectUsers.some((projectUser: ProjectUser) => {
@@ -169,6 +169,8 @@ export const addProjectUsers = async (_ws: WebSocket, projectID: string, usernam
   if (existingProjectUsers.length + newProjectUserCount > MAX_PROJECT_USERS) {
     throw new ForbiddenActionError(`Cannot exceed maximum user amount of ${MAX_PROJECT_USERS} for Project ${projectID}`);
   }
+
+  // TODO: Make sure all ProjectUsers being added are registered Users (medium priority)
 
   // map message data to query object array with all the needed ProjectUser fields
   const addProjectUsersQuery = data.map((projectUserAddition: { username: string; isProjectAdmin?: boolean }) => {
@@ -341,7 +343,7 @@ export const deleteProjectUser = async (ws: WebSocket, projectID: string, userna
   // get all accepted Project Admins for the projectID
   const projectAdmins: ProjectUser[] = await ProjectUserModel.find(
     { projectID: new mongoose.Types.ObjectId(projectID), isProjectAdmin: true, isAccepted: true },
-    { __v: 0 }
+    { _id: 0, __v: 0 }
   );
 
   // check if user is an accepted Project Admin
@@ -357,9 +359,9 @@ export const deleteProjectUser = async (ws: WebSocket, projectID: string, userna
   // delete the ProjectUser from the database
   const projectUser: ProjectUser | null = await ProjectUserModel.findOneAndDelete(
     { projectID: new mongoose.Types.ObjectId(projectID), username },
-    { projection: { __v: 0 } }
+    { projection: { _id: 0, __v: 0 } }
   );
-  if (!projectUser) throw new NotFoundError(`No ProjectUser found for projectID ${projectID} and username ${username}`);
+  if (!projectUser) throw new NotFoundError(`No ProjectUser found for Project ID ${projectID} and Username ${username}`);
 
   // log successful ProjectUser deletion to the console
   console.log(`User ${username} has left Project ${projectID}`);
@@ -388,12 +390,12 @@ export const deleteProjectUserHttp = async (req: Request, res: Response, next: N
 
     // validate projectID is a 24-character hexadecimal string (a valid MongoDB ObjectId)
     const objectIdRegex: RegExp = /^[0-9a-fA-F]{24}$/;
-    if (!objectIdRegex.test(projectID)) throw new BadRequestError("ProjectID is not a valid MongoDB ObjectId");
+    if (!objectIdRegex.test(projectID)) throw new BadRequestError("Project ID is not a valid MongoDB ObjectId");
 
     // get all accepted Project Admins for the projectID
     const projectAdmins: ProjectUser[] = await ProjectUserModel.find(
       { projectID: new mongoose.Types.ObjectId(projectID), isProjectAdmin: true, isAccepted: true },
-      { __v: 0 }
+      { _id: 0, __v: 0 }
     );
 
     // check if user is an accepted Project Admin
@@ -409,9 +411,9 @@ export const deleteProjectUserHttp = async (req: Request, res: Response, next: N
     // delete the ProjectUser from the database
     const projectUser: ProjectUser | null = await ProjectUserModel.findOneAndDelete(
       { projectID: new mongoose.Types.ObjectId(projectID), username },
-      { projection: { __v: 0 } }
+      { projection: { _id: 0, __v: 0 } }
     );
-    if (!projectUser) throw new NotFoundError(`No ProjectUser found for projectID ${projectID} and username ${username}`);
+    if (!projectUser) throw new NotFoundError(`No ProjectUser found for Project ID ${projectID} and Username ${username}`);
 
     // log successful ProjectUser deletion to the console
     console.log(`User ${req.username} has left Project ${projectID}`);

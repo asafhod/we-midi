@@ -46,7 +46,7 @@ export const addNote = async (ws: WebSocket, projectID: string, username: string
     if (!updatedProject) throw new NotFoundError(`No track found for Project ID ${projectID} and Track ID ${trackID}`);
 
     // log successful note addition to the console
-    console.log(`User ${username} added new note ${newNoteID} to track ${trackID} of project ${projectID}`);
+    console.log(`User ${username} added new Note ${newNoteID} to Track ${trackID} of Project ${projectID}`);
 
     // send the new Note ID to the user that added the note
     sendMessage(ws, { action: "addNote", source: username, success: true, data: { trackID, clientNoteID, noteID: newNoteID } });
@@ -112,7 +112,7 @@ export const addNotes = async (ws: WebSocket, projectID: string, username: strin
       session.endSession();
 
       // log successful batch note addition to the console
-      console.log(`User ${username} added new notes to track ${trackID} of project ${projectID}`);
+      console.log(`User ${username} added new notes to Track ${trackID} of Project ${projectID}`);
 
       // map notes array, keeping only the clientNoteID and noteID fields so the new Note IDs can be sent to the user to update
       const newNoteIDs = notes.map(({ clientNoteID, noteID }: { clientNoteID: number; noteID: number }) => ({ clientNoteID, noteID }));
@@ -160,7 +160,7 @@ export const updateNote = async (ws: WebSocket, projectID: string, username: str
 
     if (updatedProject) {
       // log successful note update to the console
-      console.log(`User ${username} updated note ${updatedNote.noteID} on track ${trackID} of project ${projectID}`);
+      console.log(`User ${username} updated Note ${updatedNote.noteID} on Track ${trackID} of Project ${projectID}`);
 
       // broadcast the note update to all connected users for the project
       broadcast(projectID, { action: "updateNote", source: username, success: true, data });
@@ -210,7 +210,7 @@ export const updateNotes = async (ws: WebSocket, projectID: string, username: st
 
       if (result.modifiedCount) {
         // log successful batch note update to the console
-        console.log(`User ${username} updated notes on track ${trackID} of project ${projectID}`);
+        console.log(`User ${username} updated notes on Track ${trackID} of Project ${projectID}`);
 
         // broadcast the batch note update to all connected users for the project
         broadcast(projectID, { action: "updateNotes", source: username, success: true, data });
@@ -250,7 +250,7 @@ export const deleteNote = async (ws: WebSocket, projectID: string, username: str
 
     if (updatedProject) {
       // log successful note deletion to the console
-      console.log(`User ${username} deleted note ${noteID} from track ${trackID} of project ${projectID}`);
+      console.log(`User ${username} deleted Note ${noteID} from Track ${trackID} of Project ${projectID}`);
 
       // broadcast the note deletion to any other connected users for the project
       broadcast(projectID, { action: "deleteNote", source: username, success: true, data }, ws);
@@ -294,7 +294,7 @@ export const deleteNotes = async (ws: WebSocket, projectID: string, username: st
 
       if (updatedProject) {
         // log successful batch note deletion to the console
-        console.log(`User ${username} deleted notes from track ${trackID} of project ${projectID}`);
+        console.log(`User ${username} deleted notes from Track ${trackID} of Project ${projectID}`);
 
         // broadcast the batch note deletion to any other connected users for the project
         broadcast(projectID, { action: "deleteNotes", source: username, success: true, data }, ws);

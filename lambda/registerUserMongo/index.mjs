@@ -5,7 +5,7 @@ const { MONGODB_URI, DATABASE_NAME } = process.env;
 
 // validate environment variables
 if (!MONGODB_URI || !DATABASE_NAME) {
-  const errorMessage = "Environment variables MONGODB_URI and DATABASE_NAME are required.";
+  const errorMessage = "Environment variables MONGODB_URI and DATABASE_NAME are required";
 
   console.error(errorMessage);
   throw new Error(errorMessage);
@@ -21,7 +21,7 @@ export const handler = async (event) => {
     const username = event.userName;
 
     // validate that username exists
-    if (!username) throw new Error("Username on Cognito post-confirmation event is undefined.");
+    if (!username) throw new Error("Username on Cognito post-confirmation event is undefined");
 
     // get database instance from MongoDB client using database name environment variable
     const db = client.db(DATABASE_NAME);
@@ -30,7 +30,7 @@ export const handler = async (event) => {
     const usersCollection = db.collection("users");
 
     // insert new user into Users collection
-    await usersCollection.insertOne({ username, isAdmin: false });
+    await usersCollection.insertOne({ username: username.toLowerCase(), isAdmin: false });
 
     // return the Cognito post-confirmation event
     return event;

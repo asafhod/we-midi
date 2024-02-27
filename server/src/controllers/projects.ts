@@ -43,7 +43,7 @@ export const getProjects = async (req: Request, res: Response, next: NextFunctio
     // throw an error if a match could not be found in the Projects collection for every result in the ProjectUsers collection
     const projectDataMismatch: boolean = projectData.some((projectDataItem) => projectDataItem.name === undefined);
     if (projectDataMismatch) {
-      throw new Error(`Could not get projects for user ${req.username} - Data mismatch between Project and ProjectUser collections`);
+      throw new Error(`Could not get projects for User ${req.username} - Data mismatch between Project and ProjectUser collections`);
     }
 
     // respond successfully with project data
@@ -63,12 +63,12 @@ export const getProject = async (ws: WebSocket, projectID: string) => {
     // get project from database using projectID
     const project = await ProjectModel.findOne(
       { _id: projectObjectId },
-      { _id: 0, lastTrackID: 0, "tracks.lastNoteID": 0, __v: 0 } // use projection to avoid retrieving unnecessary fields
+      { _id: 0, lastTrackID: 0, "tracks.lastNoteID": 0, "tracks._id": 0, "tracks.notes._id": 0, __v: 0 } // use projection to avoid retrieving unnecessary fields
     );
     if (!project) throw new NotFoundError(`No project found for ID: ${projectID}`);
 
     // get ProjectUsers from database using projectID
-    const projectUsers = await ProjectUserModel.find({ projectID: projectObjectId }, { projectID: 0, __v: 0 });
+    const projectUsers = await ProjectUserModel.find({ projectID: projectObjectId }, { _id: 0, projectID: 0, __v: 0 });
     if (!projectUsers.length) throw new Error(`No ProjectUsers found for Project ID: ${projectID}`);
 
     // verify project's connections object exists
@@ -102,16 +102,18 @@ export const addProject = async (req: Request, res: Response, next: NextFunction
 
     try {
       // create new project in the database based on json in request body and destructure its _id
-      const { _id }: Project = (await ProjectModel.create(req.body, { new: true, session }))[0];
+      const { _id }: Project = (await ProjectModel.create([req.body], { new: true, session }))[0];
 
       // create new ProjectUser in the database for the user on the new project, setting them as an accepted Project Admin
       await ProjectUserModel.create(
-        {
-          projectID: _id,
-          username: req.username,
-          isProjectAdmin: true,
-          isAccepted: true,
-        },
+        [
+          {
+            projectID: _id,
+            username: req.username,
+            isProjectAdmin: true,
+            isAccepted: true,
+          },
+        ],
         { session }
       );
 
@@ -120,7 +122,7 @@ export const addProject = async (req: Request, res: Response, next: NextFunction
       session.endSession();
 
       // log successful project creation to the console
-      console.log(`User ${req.username} created project ${_id.toString()}`);
+      console.log(`User ${req.username} created Project ${_id.toString()}`);
 
       // respond successfully with the project's _id
       res.status(201).json({ success: true, data: { _id } });
@@ -182,7 +184,7 @@ export const updateProject = async (_ws: WebSocket, projectID: string, username:
   if (!updatedProject) throw new NotFoundError(`No project found for ID: ${projectID}`);
 
   // log successful project update to the console
-  console.log(`User ${username} updated project ${projectID}`);
+  console.log(`User ${username} updated Project ${projectID}`);
 
   if (data.tracks) {
     // map tracks data to remove unnecessary fields prior to broadcasting
@@ -231,7 +233,7 @@ export const importMidi = async (_ws: WebSocket, projectID: string, username: st
   if (!updatedProject) throw new NotFoundError(`No project found for ID: ${projectID}`);
 
   // log successful MIDI import to the console
-  console.log(`User ${username} imported MIDI data for project ${projectID}`);
+  console.log(`User ${username} imported MIDI data for Project ${projectID}`);
 
   // broadcast MIDI import
   broadcast(projectID, { action: "importMidi", source: username, success: true, data: updatedProject });
@@ -278,7 +280,7 @@ export const addTrack = async (_ws: WebSocket, projectID: string, username: stri
   if (!updatedProject) throw new NotFoundError(`No project found for ID: ${projectID}`);
 
   // log successful track addition to the console
-  console.log(`User ${username} added a new track to project ${projectID}`);
+  console.log(`User ${username} added a new track to Project ${projectID}`);
 
   // broadcast track addition
   broadcast(projectID, { action: "addTrack", source: username, success: true, data: { trackID: newTrackID } });
@@ -321,7 +323,7 @@ export const updateTrack = async (ws: WebSocket, projectID: string, username: st
 
     if (updatedProject) {
       // log successful track update to the console
-      console.log(`User ${username} updated track ${trackID} on project ${projectID}`);
+      console.log(`User ${username} updated track ${trackID} on Project ${projectID}`);
 
       // broadcast track update to all users currently connected to the project
       broadcast(projectID, { action: "updateTrack", source: username, success: true, data });
@@ -358,7 +360,7 @@ export const deleteTrack = async (_ws: WebSocket, projectID: string, username: s
   if (!updatedProject) throw new NotFoundError(`No project found for ID: ${projectID}`);
 
   // log successful track deletion to the console
-  console.log(`User ${username} deleted track ${data.trackID} from project ${projectID}`);
+  console.log(`User ${username} deleted track ${data.trackID} from Project ${projectID}`);
 
   // broadcast track deletion
   broadcast(projectID, { action: "deleteTrack", source: username, success: true, data });
@@ -392,7 +394,7 @@ export const deleteProject = async (_ws: WebSocket, projectID: string, username:
     session.endSession();
 
     // log successful project deletion to the console
-    console.log(`User ${username} deleted project ${projectID}`);
+    console.log(`User ${username} deleted Project ${projectID}`);
 
     // check if project currently has user connections, if so close them
     if (webSocketManager[projectID]) {
@@ -417,7 +419,7 @@ export const deleteProjectHttp = async (req: Request, res: Response, next: NextF
 
     // validate project ID is a 24-character hexadecimal string (a valid MongoDB ObjectId)
     const objectIdRegex: RegExp = /^[0-9a-fA-F]{24}$/;
-    if (!objectIdRegex.test(id)) throw new BadRequestError("ProjectID is not a valid MongoDB ObjectId");
+    if (!objectIdRegex.test(id)) throw new BadRequestError("Project ID is not a valid MongoDB ObjectId");
 
     // convert project ID string to a MongoDB ObjectId
     const projectObjectId = new mongoose.Types.ObjectId(id);
@@ -451,7 +453,7 @@ export const deleteProjectHttp = async (req: Request, res: Response, next: NextF
       session.endSession();
 
       // log successful project deletion to the console
-      console.log(`User ${req.username} deleted project ${id}`);
+      console.log(`User ${req.username} deleted Project ${id}`);
 
       // check if project currently has user connections, if so close them
       if (webSocketManager[id]) {

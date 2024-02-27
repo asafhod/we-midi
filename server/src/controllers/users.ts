@@ -34,7 +34,7 @@ export const getUsers = async (req: Request, res: Response, next: NextFunction) 
     }
 
     // query the database using the query object (an empty object returns all users)
-    const users: User[] = await UserModel.find(query, { __v: 0 }); // use projection to avoid retrieving unnecessary field __v
+    const users: User[] = await UserModel.find(query, { _id: 0, __v: 0 }); // use projection to avoid retrieving unnecessary fields
 
     // respond successfully with user data
     res.status(200).json({ success: true, data: users });
@@ -53,7 +53,7 @@ export const getUser = async (req: Request, res: Response, next: NextFunction) =
     if (username.length > 128) throw new BadRequestError("Username cannot exceed 128 characters");
 
     // query database for user matching username
-    const user: User | null = await UserModel.findOne({ username }, { __v: 0 });
+    const user: User | null = await UserModel.findOne({ username }, { _id: 0, __v: 0 });
     if (!user) throw new NotFoundError(`No user found for username: ${username}`);
 
     // respond successfully with user data
@@ -73,7 +73,7 @@ export const searchUsers = async (ws: WebSocket, username: string, data: any) =>
   // query database for first 25 users whose username begins with the search string, excluding the user making the request
   const users: User[] = await UserModel.find(
     { username: { $regex: new RegExp(`^${data.search}`, "i"), $ne: username } },
-    { __v: 0 }
+    { _id: 0, __v: 0 }
   ).limit(25);
 
   // respond successfully with user data
@@ -102,7 +102,7 @@ export const updateUser = async (req: Request, res: Response, next: NextFunction
       const user: User | null = await UserModel.findOneAndUpdate(
         { username },
         { $set: req.body },
-        { new: true, projection: { __v: 0 }, session }
+        { new: true, projection: { _id: 0, __v: 0 }, session }
       );
       if (!user) throw new NotFoundError(`No user found for username: ${username}`);
 
@@ -151,7 +151,7 @@ export const updateUser = async (req: Request, res: Response, next: NextFunction
 
       // if user lost Admin status, close any open WebSocket connections of theirs for the projects they are not members of
       if (req.body.isAdmin !== undefined && req.body.isAdmin !== null && !req.body.isAdmin) {
-        const memberProjects: ProjectUser[] = await ProjectUserModel.find({ username, isAccepted: true }, { __v: 0 });
+        const memberProjects: ProjectUser[] = await ProjectUserModel.find({ username, isAccepted: true }, { _id: 0, __v: 0 });
         // map to string array
         const memberProjectIDs: string[] = memberProjects.map((memberProject: ProjectUser) => memberProject.projectID.toString());
 
@@ -191,7 +191,7 @@ export const deleteUser = async (req: Request, res: Response, next: NextFunction
     if (req.username === username) throw new ForbiddenError(`User ${username} cannot delete themselves`);
 
     // get all projects where user is a member
-    const memberProjects: ProjectUser[] = await ProjectUserModel.find({ username }, { __v: 0 });
+    const memberProjects: ProjectUser[] = await ProjectUserModel.find({ username }, { _id: 0, __v: 0 });
 
     // get projectIDs for all projects where user is a Project Admin and accepted
     const adminProjectIDs: mongoose.Types.ObjectId[] = memberProjects
@@ -224,7 +224,7 @@ export const deleteUser = async (req: Request, res: Response, next: NextFunction
       const projectUserDeleteResult = await ProjectUserModel.deleteMany({ username }, { session });
 
       // delete the user from the User database
-      const user: User | null = await UserModel.findOneAndDelete({ username }, { projection: { __v: 0 }, session });
+      const user: User | null = await UserModel.findOneAndDelete({ username }, { projection: { _id: 0, __v: 0 }, session });
       if (!user) throw new NotFoundError(`No user found for username: ${username}`);
 
       // set up Cognito Identity Service Provider

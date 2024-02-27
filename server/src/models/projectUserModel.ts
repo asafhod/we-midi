@@ -18,21 +18,18 @@ export interface ProjectUser extends Document {
 }
 
 // database schema for ProjectUser
-const projectUserSchema = new Schema<ProjectUser>(
-  {
-    projectID: {
-      type: Schema.Types.ObjectId,
-      required: [true, "ProjectID is required"],
-    },
-    username: {
-      type: String,
-      required: [true, "Username is required"],
-    },
-    isProjectAdmin: { type: Boolean, default: false },
-    isAccepted: { type: Boolean, default: false },
+const projectUserSchema = new Schema<ProjectUser>({
+  projectID: {
+    type: Schema.Types.ObjectId,
+    required: [true, "ProjectID is required"],
   },
-  { _id: false }
-);
+  username: {
+    type: String,
+    required: [true, "Username is required"],
+  },
+  isProjectAdmin: { type: Boolean, default: false },
+  isAccepted: { type: Boolean, default: false },
+});
 
 // compound unique index for projectID and username
 projectUserSchema.index({ projectID: 1, username: 1 }, { unique: true });
