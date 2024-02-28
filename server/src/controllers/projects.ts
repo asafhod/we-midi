@@ -228,7 +228,10 @@ export const importMidi = async (_ws: WebSocket, projectID: string, username: st
     { _id: projectObjectId },
     { $set: data },
     // using "new" flag to retrieve the updated document and projection to avoid retrieving unnecessary fields
-    { new: true, projection: { _id: 0, name: 0, lastTrackID: 0, "tracks.lastNoteID": 0, __v: 0 } }
+    {
+      new: true,
+      projection: { _id: 0, name: 0, lastTrackID: 0, "tracks.lastNoteID": 0, "tracks._id": 0, "tracks.notes._id": 0, __v: 0 },
+    }
   );
   if (!updatedProject) throw new NotFoundError(`No project found for ID: ${projectID}`);
 
@@ -316,14 +319,14 @@ export const updateTrack = async (ws: WebSocket, projectID: string, username: st
     // update the specified track in the tracks array for the project in the database
     const updatedProject: Project | null = await ProjectModel.findOneAndUpdate(
       { _id: projectObjectId, "tracks.trackID": trackID },
-      { $set: updateFields },
+      { $set: trackUpdate },
       // using "new" flag to retrieve the updated document and projection to avoid retrieving unnecessary fields
       { new: true, __v: 0 }
     );
 
     if (updatedProject) {
       // log successful track update to the console
-      console.log(`User ${username} updated track ${trackID} on Project ${projectID}`);
+      console.log(`User ${username} updated Track ${trackID} on Project ${projectID}`);
 
       // broadcast track update to all users currently connected to the project
       broadcast(projectID, { action: "updateTrack", source: username, success: true, data });
@@ -360,7 +363,7 @@ export const deleteTrack = async (_ws: WebSocket, projectID: string, username: s
   if (!updatedProject) throw new NotFoundError(`No project found for ID: ${projectID}`);
 
   // log successful track deletion to the console
-  console.log(`User ${username} deleted track ${data.trackID} from Project ${projectID}`);
+  console.log(`User ${username} deleted Track ${data.trackID} from Project ${projectID}`);
 
   // broadcast track deletion
   broadcast(projectID, { action: "deleteTrack", source: username, success: true, data });
