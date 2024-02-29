@@ -1,6 +1,9 @@
 import Joi, { ObjectSchema, ArraySchema } from "joi";
 
-// TODO: Change constants and tempo logic when you change note timing to measure-based
+// TODO: Change numberical constants and tempo logic when you change note timing to measure-based
+
+// constants
+const instrumentCodes: string[] = ["p", "g", "e", "b", "d", "c"]; // piano, guitar, electric guitar, bass, drums, chiptune
 
 // validation schema for the Update User request
 export const updateUserSchema: ObjectSchema<any> = Joi.object({
@@ -27,7 +30,9 @@ export const importMidiSchema: ObjectSchema<any> = Joi.object({
     .max(100)
     .items({
       trackName: Joi.string().min(1).max(15).required(),
-      instrument: Joi.string().length(1).required(),
+      instrument: Joi.string()
+        .valid(...instrumentCodes)
+        .required(),
       volume: Joi.number().min(-40).max(8).required(),
       pan: Joi.number().min(-8).max(8).required(),
       solo: Joi.boolean().required(),
@@ -50,7 +55,7 @@ export const importMidiSchema: ObjectSchema<any> = Joi.object({
 export const updateTrackSchema: ObjectSchema<any> = Joi.object({
   trackID: Joi.number().min(1).required(),
   trackName: Joi.string().min(1).max(15),
-  instrument: Joi.string().length(1),
+  instrument: Joi.string().valid(...instrumentCodes),
   volume: Joi.number().min(-40).max(8),
   pan: Joi.number().min(-8).max(8),
   solo: Joi.boolean(),

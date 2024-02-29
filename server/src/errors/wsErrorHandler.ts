@@ -8,8 +8,6 @@ import { BAD_MESSAGE, SERVER_ERROR } from "./errorMessages";
 
 // function which catches any error related to WebSocket messages, logs it and any related data, and sends a response message with the appropriate action and client message
 const wsErrorHandler = (error: unknown, ws: WebSocket, action: unknown, data: any) => {
-  if (!action || typeof action !== "string") action = "invalid";
-
   try {
     if (error instanceof CustomError) {
       // if error is one of the custom errors, send response message containing the corresponding client error message

@@ -85,6 +85,8 @@ export const getProject = async (ws: WebSocket, projectID: string) => {
   } catch (error) {
     // project could not be retrieved for the client, close the WebSocket connection with a Server Error message if it's open
     if (ws.readyState === WebSocket.OPEN) ws.close(1011, SERVER_ERROR);
+
+    // log error to console
     console.error(`Action: getProject\nError: Could not get project - ${error}`);
   }
 };
