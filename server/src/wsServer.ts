@@ -6,6 +6,7 @@ import ProjectUserModel from "./models/projectUserModel";
 import webSocketManager from "./webSocketManager";
 import wsMessageRouter from "./routes/wsMessages";
 import { BAD_REQUEST, UNAUTHORIZED, FORBIDDEN, SERVER_ERROR } from "./errors/errorMessages";
+import { checkAdmin } from "./middleware/checkAdmin";
 import { broadcast } from "./controllers/helpers";
 import { getProject } from "./controllers/projects";
 
@@ -78,9 +79,16 @@ const verifyClient: WebSocket.VerifyClientCallbackAsync = async (info: { req: We
         username,
         isAccepted: true,
       });
+
       if (!projectUserExists) {
-        console.error("WebSocket client verification failed: User is not a member of this project");
-        return cb(false, 403, FORBIDDEN);
+        // check if user is a global admin
+        const isAdmin: boolean = await checkAdmin(username);
+
+        if (!isAdmin) {
+          // User is not an accepted ProjectUser for the project and is not a global admin. Reject the connection attempt.
+          console.error("WebSocket client verification failed: User is not a member of this project");
+          return cb(false, 403, FORBIDDEN);
+        }
       }
     } catch (error) {
       console.error(`WebSocket client verification failed - MongoDB Error: ${error}`);
@@ -132,7 +140,6 @@ export const configureWsServer = (server: http.Server) => {
       if (existingConnection && existingConnection.readyState === WebSocket.OPEN) {
         // close the out-of-date WebSocket connection
         existingConnection.close(1000, "Replaced by a new WebSocket connection");
-        console.log(`Out-of-date WebSocket connection replaced by new connection for User ${username} on Project ${projectID}`);
       } else {
         // broadcast that the user has connected
         broadcast(projectID, { action: "userConnected", success: true, data: { username } }, ws);
@@ -146,7 +153,9 @@ export const configureWsServer = (server: http.Server) => {
     ws.on("close", (code: number, data: Buffer) => {
       const closeReason: string = data.toString() ? ` Reason: ${data.toString()}` : "";
 
-      console.log(`A WebSocket connection has been closed for User ${username} on Project ${projectID}\nCode: ${code}${closeReason}`);
+      console.log(
+        `A WebSocket connection has been closed for User ${username} on Project ${projectID} - Close Code: ${code}${closeReason}`
+      );
 
       const existingConnection: WebSocket | undefined = webSocketManager[projectID] && webSocketManager[projectID][username];
       if (existingConnection === ws) {

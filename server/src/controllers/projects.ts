@@ -87,7 +87,7 @@ export const getProject = async (ws: WebSocket, projectID: string) => {
     if (ws.readyState === WebSocket.OPEN) ws.close(1011, SERVER_ERROR);
 
     // log error to console
-    console.error(`Action: getProject\nError: Could not get project - ${error}`);
+    console.error(`Action: getProject ${error}`);
   }
 };
 
@@ -336,7 +336,7 @@ export const updateTrack = async (ws: WebSocket, projectID: string, username: st
   } catch (error) {
     // track cannot be updated or rolled back due to a database error, close the WebSocket connection with a Server Error message if it's open
     if (ws.readyState === WebSocket.OPEN) ws.close(1011, SERVER_ERROR);
-    console.error(`Action: updateTrack\nError: Could not update track - ${error}`);
+    console.error(`Action: updateTrack ${error}`);
   }
 };
 

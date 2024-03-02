@@ -168,7 +168,7 @@ export const updateNote = async (ws: WebSocket, projectID: string, username: str
   } catch (error) {
     // note cannot be updated or rolled back due to a database error, close the WebSocket connection with a Server Error message if it's open
     if (ws.readyState === WebSocket.OPEN) ws.close(1011, SERVER_ERROR);
-    console.error(`Action: updateNote\nError: Could not update note - ${error}`);
+    console.error(`Action: updateNote ${error}`);
   }
 };
 
@@ -223,7 +223,7 @@ export const updateNotes = async (ws: WebSocket, projectID: string, username: st
   } catch (error) {
     // notes cannot be updated or rolled back due to a database error, close the WebSocket connection with a Server Error message if it's open
     if (ws.readyState === WebSocket.OPEN) ws.close(1011, SERVER_ERROR);
-    console.error(`Action: updateNotes\nError: Could not update notes - ${error}`);
+    console.error(`Action: updateNotes ${error}`);
   }
 };
 
@@ -258,7 +258,7 @@ export const deleteNote = async (ws: WebSocket, projectID: string, username: str
   } catch (error) {
     // note cannot be deleted or rolled back due to a database error, close the WebSocket connection with a Server Error message if it's open
     if (ws.readyState === WebSocket.OPEN) ws.close(1011, SERVER_ERROR);
-    console.error(`Action: deleteNote\nError: Could not delete note - ${error}`);
+    console.error(`Action: deleteNote ${error}`);
   }
 };
 
@@ -307,6 +307,6 @@ export const deleteNotes = async (ws: WebSocket, projectID: string, username: st
   } catch (error) {
     // notes cannot be deleted or rolled back due to a database error, close the WebSocket connection with a Server Error message if it's open
     if (ws.readyState === WebSocket.OPEN) ws.close(1011, SERVER_ERROR);
-    console.error(`Action: deleteNotes\nError: Could not delete notes - ${error}`);
+    console.error(`Action: deleteNotes ${error}`);
   }
 };

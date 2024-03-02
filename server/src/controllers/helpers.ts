@@ -18,7 +18,7 @@ export const sendMessage = (ws: WebSocket, message: Message) => {
       // Message failed to send due to WebSocket connection error. Close the connection.
       ws.close(1011, SERVER_ERROR);
       console.error(
-        `Action: ${message.action || "invalid"}\nMessage failed to send to the WebSocket connection, so it has been closed.`
+        `Action: ${message.action || "invalid"} Error: Message failed to send to the WebSocket connection, so it has been closed.`
       );
     }
   }

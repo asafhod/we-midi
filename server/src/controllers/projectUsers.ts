@@ -159,7 +159,7 @@ export const addProjectUsers = async (_ws: WebSocket, projectID: string, usernam
     if (!isAdmin) {
       // user is not an admin, block the request
       throw new ForbiddenActionError(
-        `Cannot add ProjectUsers - User ${username} does not have admin privileges for Project ${projectID}`
+        `Cannot add ProjectUser(s) - User ${username} does not have admin privileges for Project ${projectID}`
       );
     }
   }
@@ -216,7 +216,7 @@ export const updateProjectUsers = async (_ws: WebSocket, projectID: string, user
   const isAdmin: boolean = (await checkProjectAdmin(username, projectObjectId)) || (await checkAdmin(username));
   if (!isAdmin) {
     throw new ForbiddenActionError(
-      `Cannot update ProjectUsers - User ${username} does not have admin privileges for Project ${projectID}`
+      `Cannot update ProjectUser(s) - User ${username} does not have admin privileges for Project ${projectID}`
     );
   }
 
@@ -244,11 +244,15 @@ export const updateProjectUsers = async (_ws: WebSocket, projectID: string, user
     const result = await ProjectUserModel.bulkWrite(updateProjectUserOperations, { session });
 
     // abort the transaction if the update would cause the project to have no accepted project admins
-    const projectAdminCount: number = await ProjectUserModel.countDocuments({
-      projectID: projectObjectId,
-      isProjectAdmin: true,
-      isAccepted: true,
-    });
+    const projectAdminCount: number = await ProjectUserModel.countDocuments(
+      {
+        projectID: projectObjectId,
+        isProjectAdmin: true,
+        isAccepted: true,
+      },
+      { session }
+    );
+
     if (!projectAdminCount) throw new ForbiddenActionError(`Project ${projectID} must have at least one accepted project admin`);
 
     // if successful, commit and end the transaction
@@ -281,7 +285,7 @@ export const deleteProjectUsers = async (_ws: WebSocket, projectID: string, user
   if (selfDeleteAttempt) {
     // block the user from deleting themselves from the project
     throw new ForbiddenActionError(
-      `Cannot delete ProjectUsers - User ${username} cannot delete themselves from Project ${projectID} with this request`
+      `Cannot delete ProjectUser(s) - User ${username} cannot delete themselves from Project ${projectID} with this request`
     );
   }
 
@@ -292,7 +296,7 @@ export const deleteProjectUsers = async (_ws: WebSocket, projectID: string, user
   const isAdmin: boolean = (await checkProjectAdmin(username, projectObjectId)) || (await checkAdmin(username));
   if (!isAdmin) {
     throw new ForbiddenActionError(
-      `Cannot delete ProjectUsers - User ${username} does not have admin privileges for Project ${projectID}`
+      `Cannot delete ProjectUser(s) - User ${username} does not have admin privileges for Project ${projectID}`
     );
   }
 
@@ -372,7 +376,7 @@ export const deleteProjectUser = async (ws: WebSocket, projectID: string, userna
   }
 
   // broadcast the deletion
-  broadcast(projectID, { action: "deleteProjectUser", success: true, data: { username } });
+  broadcast(projectID, { action: "deleteProjectUser", source: username, success: true, data: { username } });
 };
 
 // delete projectUser - used when a user chooses to leave a project or decline a project invitation from the user dashboard
@@ -426,7 +430,7 @@ export const deleteProjectUserHttp = async (req: Request, res: Response, next: N
     }
 
     // broadcast the deletion
-    broadcast(projectID, { action: "deleteProjectUser", success: true, data: { username } });
+    broadcast(projectID, { action: "deleteProjectUser", source: username, success: true, data: { username } });
 
     // respond successfully
     res.sendStatus(204);

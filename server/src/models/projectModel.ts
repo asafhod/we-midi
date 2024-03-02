@@ -49,7 +49,7 @@ const projectSchema = new Schema<Project>({
   tracks: {
     type: [
       {
-        trackID: { type: Number, required: [true, "TrackID is required"], unique: true }, // Any performance gain by removing unique constraint?
+        trackID: { type: Number, required: [true, "TrackID is required"] },
         trackName: { type: String, required: [true, "TrackName is required"] },
         instrument: { type: String, required: [true, "Instrument is required"] },
         volume: { type: Number, required: [true, "Volume is required"] },
@@ -60,7 +60,7 @@ const projectSchema = new Schema<Project>({
         notes: {
           type: [
             {
-              noteID: { type: Number, required: [true, "NoteID is required"], unique: true }, // Any performance gain by removing unique constraint?
+              noteID: { type: Number, required: [true, "NoteID is required"] },
               midiNum: { type: Number, required: [true, "MidiNum is required"] },
               duration: { type: Number, required: [true, "Duration is required"] },
               noteTime: { type: Number, required: [true, "NoteTime is required"] },
