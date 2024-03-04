@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import WebSocket from "ws";
 import webSocketManager from "../webSocketManager";
 import ProjectUserModel, { ProjectUser } from "../models/projectUserModel";
+import UserModel from "../models/userModel";
 import {
   addProjectUsersSchema,
   updateProjectUsersSchema,
@@ -170,13 +171,17 @@ export const addProjectUsers = async (_ws: WebSocket, projectID: string, usernam
     throw new ForbiddenActionError(`Cannot exceed maximum user amount of ${MAX_PROJECT_USERS} for Project ${projectID}`);
   }
 
-  // TODO: Make sure all ProjectUsers being added are registered Users (medium priority)
+  // block the request if any of the ProjectUsers it is attempting to add are not registered Users
+  const registeredUserCount: number = await UserModel.countDocuments({
+    username: { $in: data.map(({ username }: { username: string }) => username) },
+  });
+  if (newProjectUserCount !== registeredUserCount) {
+    throw new ForbiddenActionError("Cannot add ProjectUser that does not correspond to a registered User");
+  }
 
   // map message data to query object array with all the needed ProjectUser fields
-  const addProjectUsersQuery = data.map((projectUserAddition: { username: string; isProjectAdmin?: boolean }) => {
-    const isProjectAdmin: boolean = !!projectUserAddition.isProjectAdmin; // using double negation to convert to boolean in case it's undefined
-
-    return { projectID: projectObjectId, username: projectUserAddition.username, isProjectAdmin, isAccepted: false };
+  const addProjectUsersQuery = data.map(({ username, isProjectAdmin }: { username: string; isProjectAdmin?: boolean }) => {
+    return { projectID: projectObjectId, username, isProjectAdmin: !!isProjectAdmin, isAccepted: false };
   });
 
   // set up transaction for batch ProjectUser insert operation

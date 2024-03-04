@@ -156,7 +156,11 @@ export const updateProject = async (_ws: WebSocket, projectID: string, username:
 
   if (data.tempo) {
     // get current project tempo and tracks from the database using projectID
-    const projectData = await ProjectModel.findOne({ _id: projectObjectId }, { tempo: 1, tracks: 1 });
+    const projectData = await ProjectModel.findOne(
+      { _id: projectObjectId },
+      { _id: 0, __v: 0, name: 0, ppq: 0, lastTrackID: 0, "tracks._id": 0, "tracks.notes._id": 0 }
+    ).lean();
+
     if (!projectData) throw new NotFoundError(`No project found for ID: ${projectID}`);
 
     if (data.tempo !== projectData.tempo && projectData.tracks.length) {
@@ -164,7 +168,7 @@ export const updateProject = async (_ws: WebSocket, projectID: string, username:
       const tempoConversionFactor: number = projectData.tempo / data.tempo;
 
       data.tracks = projectData.tracks.map((track: Track) => {
-        const newNotes = track.notes.map((note: Note) => {
+        const newNotes: Note[] = track.notes.map((note: Note) => {
           const newDuration: number = note.duration * tempoConversionFactor;
           const newNoteTime: number = note.noteTime * tempoConversionFactor;
 
