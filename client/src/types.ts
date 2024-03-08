@@ -41,3 +41,11 @@ export type SongData = {
   lastTrackID: number;
   trackIDs: number[];
 };
+
+export type Message = {
+  action: string;
+  source?: string;
+  success: boolean;
+  data: any;
+  msg?: string;
+};

@@ -31,18 +31,18 @@ interface WebSocketConnectionRequest extends IncomingMessage {
 
 // WebSocket connection handshake authentication function
 const verifyClient: WebSocket.VerifyClientCallbackAsync = async (info: { req: WebSocketConnectionRequest }, cb) => {
-  // get authorization header
-  const authHeader: string | undefined = info.req.headers.authorization;
+  // get protocol header
+  const protocolHeader: string | undefined = info.req.headers["sec-websocket-protocol"];
 
-  // validate authorization header
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    // reject WebSocket connection if authorization header is invalid
-    console.error("WebSocket client verification failed: Authorization header is missing or invalid");
+  // validate protocol header
+  if (!protocolHeader || !protocolHeader.startsWith("json")) {
+    // reject WebSocket connection if protocol header is invalid
+    console.error("WebSocket client verification failed: Protocol header is missing or invalid");
     return cb(false, 401, UNAUTHORIZED);
   }
 
-  // get Cognito token from authorization header
-  const token: string = authHeader.split(" ")[1];
+  // get Cognito token from protocol header
+  const token: string = protocolHeader.split(" ")[1];
 
   try {
     // verify and decode Cognito token

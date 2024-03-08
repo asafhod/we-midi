@@ -3,6 +3,7 @@ import { useState, useLayoutEffect, useCallback, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import TracksContext from "./TracksContext";
 import { TrackType, NoteType } from "./types";
+import useMessageRouter from "./useMessageRouter";
 import useLoadSong from "./useLoadSong";
 import Player from "./Player";
 import EditorLayout from "./EditorLayout";
@@ -30,6 +31,8 @@ const Workspace = (): JSX.Element => {
   // TODO: Get track reordering working with songData's trackIDs or whichever way is best. Index Map? Map instead of tracks Array? Re-order tracks directly?
   const { loading, setLoading, songData, setSongData, tracks, setTracks, trackControls, setTrackControls, tempo, setTempo } =
     useLoadSong(id, midiFile, setMidiFile);
+
+  useMessageRouter("65e2bcc93f8b87250ec5328f", setLoading, setSongData, setTracks, setTrackControls, setTempo, setMidiFile);
 
   const zoomFactor: number = 1.21; // Fine-tune the Min, Max, and thresholds?
   const zoomMin: number = 0.104; // TODO: Limit so can't be smaller than screen size
