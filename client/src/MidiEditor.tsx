@@ -32,7 +32,7 @@ const MidiEditor = ({ track, setTracks, widthFactor, startPosition, setAutoscrol
       track.instrument.triggerAttackRelease(name, duration, time, velocity);
     }, noteTime);
 
-    const newNotes: NoteType[] = [...track.notes, { id: noteID, name, midiNum, duration, noteTime, velocity }];
+    const newNotes: NoteType[] = [...track.notes, { id: noteID, noteID: 0, name, midiNum, duration, noteTime, velocity }];
 
     const minNote: number = Math.min(track.minNote, midiNum);
     const maxNote: number = Math.max(track.maxNote, midiNum);

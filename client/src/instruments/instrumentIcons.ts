@@ -3,15 +3,15 @@ import guitarDistIcon from "../assets/icons/guitar-dist.svg";
 import bassIcon from "../assets/icons/bass.svg";
 import pianoIcon from "../assets/icons/piano.svg";
 import drumsIcon from "../assets/icons/drums.svg";
-import gameIcon from "../assets/icons/8-bit.svg";
+import gameIcon from "../assets/icons/chiptune.svg";
 
 const instrumentIcons: { [key: string]: string } = {
-  guitar: guitarCleanIcon,
-  guitarDist: guitarDistIcon,
-  bass: bassIcon,
-  piano: pianoIcon,
-  drums: drumsIcon,
-  "8-bit": gameIcon,
+  g: guitarCleanIcon,
+  e: guitarDistIcon,
+  b: bassIcon,
+  p: pianoIcon,
+  d: drumsIcon,
+  c: gameIcon,
 };
 
 export default instrumentIcons;

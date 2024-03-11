@@ -2,9 +2,9 @@ import * as Tone from "tone";
 import { useState, useLayoutEffect, useCallback, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import TracksContext from "./TracksContext";
-import { TrackType, NoteType } from "./types";
+import { TrackType, NoteType, SongData, TrackControlType } from "./types";
 import useMessageRouter from "./useMessageRouter";
-import useLoadSong from "./useLoadSong";
+// import useLoadSong from "./useLoadSong";
 import Player from "./Player";
 import EditorLayout from "./EditorLayout";
 import Ruler from "./Ruler";
@@ -28,11 +28,21 @@ const Workspace = (): JSX.Element => {
   const [zoom, setZoom] = useState(1);
   const [trackHeight, setTrackHeight] = useState(78);
   const [midiFile, setMidiFile] = useState<File | null>(null);
-  // TODO: Get track reordering working with songData's trackIDs or whichever way is best. Index Map? Map instead of tracks Array? Re-order tracks directly?
-  const { loading, setLoading, songData, setSongData, tracks, setTracks, trackControls, setTrackControls, tempo, setTempo } =
-    useLoadSong(id, midiFile, setMidiFile);
+  // Get rid of this when you implement midiFile logic
+  console.log(midiFile);
 
-  useMessageRouter("65e2bcc93f8b87250ec5328f", setLoading, setSongData, setTracks, setTrackControls, setTempo, setMidiFile);
+  // TODO: Get track reordering working with songData's trackIDs or whichever way is best. Index Map? Map instead of tracks Array? Re-order tracks directly?
+
+  // const { loading, setLoading, songData, setSongData, tracks, setTracks, trackControls, setTrackControls, tempo, setTempo } =
+  //   useLoadSong(id, midiFile, setMidiFile);
+
+  const [loading, setLoading] = useState(true);
+  // TODO: If you keep trackIDs and trackControls account for them when adding/removing tracks
+  const [songData, setSongData] = useState<SongData>({ name: "", tempo: -1, trackIDs: [] }); // TODO: Split into Global and Local
+  const [tracks, setTracks] = useState<TrackType[]>([]); // TODO: make sure you're getting tracks consistently across components
+  const [trackControls, setTrackControls] = useState<TrackControlType[]>([]);
+  const [tempo, setTempo] = useState(String(songData.tempo));
+  useMessageRouter(id, setLoading, setSongData, setTracks, setTrackControls, setTempo, setMidiFile);
 
   const zoomFactor: number = 1.21; // Fine-tune the Min, Max, and thresholds?
   const zoomMin: number = 0.104; // TODO: Limit so can't be smaller than screen size
@@ -196,18 +206,18 @@ const Workspace = (): JSX.Element => {
         const newNotes: NoteType[] = [];
 
         for (const note of track.notes) {
-          const { id: noteID, name, midiNum, duration, noteTime, velocity } = note;
+          const { id, noteID, name, midiNum, duration, noteTime, velocity } = note;
 
           const newDuration: number = Number(duration) * tempoConversionFactor;
           const newNoteTime: number = noteTime * tempoConversionFactor;
 
-          Tone.Transport.clear(noteID);
+          Tone.Transport.clear(id);
 
-          const newNoteID: number = Tone.Transport.schedule((time) => {
+          const newID: number = Tone.Transport.schedule((time) => {
             track.instrument.triggerAttackRelease(name, newDuration, time, velocity);
           }, newNoteTime);
 
-          const newNote: NoteType = { id: newNoteID, name, midiNum, duration: newDuration, noteTime: newNoteTime, velocity };
+          const newNote: NoteType = { id: newID, noteID, name, midiNum, duration: newDuration, noteTime: newNoteTime, velocity };
           newNotes.push(newNote);
         }
 
@@ -307,13 +317,7 @@ const Workspace = (): JSX.Element => {
               setMidiEditorTrackID={setMidiEditorTrackID}
               nextMidiEditorTrackID={nextMidiEditorTrackID}
             >
-              <EditorControlsHeader
-                tracks={tracks}
-                setTracks={setTracks}
-                midiEditorTrack={midiEditorTrack}
-                songData={songData}
-                setSongData={setSongData}
-              />
+              <EditorControlsHeader tracks={tracks} setTracks={setTracks} midiEditorTrack={midiEditorTrack} />
               <EditorControls
                 tracks={tracks}
                 setTracks={setTracks}

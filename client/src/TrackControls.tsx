@@ -151,7 +151,7 @@ const TrackControl = ({
       if (track.instrumentName !== instrument) {
         track.instrument.dispose();
 
-        const { instrument: newInstrument } = createInstrument(instrument);
+        const newInstrument: Tone.Sampler = createInstrument(instrument);
         newInstrument.chain(track.panVol);
 
         await Tone.loaded();
@@ -159,14 +159,14 @@ const TrackControl = ({
         const newNotes: NoteType[] = [];
 
         for (const note of track.notes) {
-          const { id: noteID, name, midiNum, duration, noteTime, velocity } = note;
-          Tone.Transport.clear(noteID);
+          const { id, noteID, name, midiNum, duration, noteTime, velocity } = note;
+          Tone.Transport.clear(id);
 
-          const newNoteID: number = Tone.Transport.schedule((time) => {
+          const newID: number = Tone.Transport.schedule((time) => {
             newInstrument.triggerAttackRelease(name, duration, time, velocity);
           }, noteTime);
 
-          const newNote: NoteType = { id: newNoteID, name, midiNum, duration, noteTime, velocity };
+          const newNote: NoteType = { id: newID, noteID, name, midiNum, duration, noteTime, velocity };
           newNotes.push(newNote);
         }
 
@@ -346,55 +346,55 @@ const InstrumentSelect = ({ instrument, setInstrument, trackID, isPlaying }: Ins
         <div className="instrument-select">
           <img
             className="instrument-option"
-            data-instrument="guitar"
+            data-instrument="g"
             data-trackid={trackID}
-            src={instrumentIcons["guitar"]}
+            src={instrumentIcons["g"]}
             alt={"Clean Guitar"}
             height="20px"
             width="20px"
           />
           <img
             className="instrument-option"
-            data-instrument="guitarDist"
+            data-instrument="e"
             data-trackid={trackID}
-            src={instrumentIcons["guitarDist"]}
+            src={instrumentIcons["e"]}
             alt={"Distorted Guitar"}
             height="20px"
             width="20px"
           />
           <img
             className="instrument-option"
-            data-instrument="bass"
+            data-instrument="b"
             data-trackid={trackID}
-            src={instrumentIcons["bass"]}
+            src={instrumentIcons["b"]}
             alt={"Bass"}
             height="20px"
             width="20px"
           />
           <img
             className="instrument-option"
-            data-instrument="piano"
+            data-instrument="p"
             data-trackid={trackID}
-            src={instrumentIcons["piano"]}
+            src={instrumentIcons["p"]}
             alt={"Piano"}
             height="20px"
             width="20px"
           />
           <img
             className="instrument-option"
-            data-instrument="drums"
+            data-instrument="d"
             data-trackid={trackID}
-            src={instrumentIcons["drums"]}
+            src={instrumentIcons["d"]}
             alt={"Drums"}
             height="20px"
             width="20px"
           />
           <img
             className="instrument-option"
-            data-instrument="8-bit"
+            data-instrument="c"
             data-trackid={trackID}
-            src={instrumentIcons["8-bit"]}
-            alt={"8-bit"}
+            src={instrumentIcons["c"]}
+            alt={"Chiptune"}
             height="20px"
             width="20px"
           />

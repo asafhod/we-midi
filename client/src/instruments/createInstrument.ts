@@ -5,33 +5,30 @@ import guitarClean from "./guitarClean";
 import guitarDistorted from "./guitarDistorted";
 import piano from "./piano";
 
-const createInstrument = (instrumentType: string, instrumentNum?: number): { instrument: Tone.Sampler; instrumentName: string } => {
+const createInstrument = (instrumentCode: string): Tone.Sampler => {
+  // TODO: Use this code when importing MIDI - Differentiate distorted guitar from clean guitar
+  // if (instrumentNum === 30 || instrumentNum === 31) {
+  //   instrumentName = "e";
+  // }
+
   // TODO: implement 8-bit and synth
-  const instruments: { [key: string]: Partial<Tone.SamplerOptions> } = {
-    piano: piano,
-    guitar: guitarClean,
-    guitarDist: guitarDistorted,
-    bass: bass,
-    drums: drums,
+
+  // set up instrument dictionary
+  const instruments: Record<string, Partial<Tone.SamplerOptions>> = {
+    p: piano,
+    g: guitarClean,
+    e: guitarDistorted,
+    b: bass,
+    d: drums,
   };
 
-  let instrumentName: string = instrumentType;
+  // use code to get instrument
+  let instrument: Partial<Tone.SamplerOptions> | undefined = instruments[instrumentCode];
 
-  // differentiate distorted guitar from clean guitar
-  if (instrumentNum === 30 || instrumentNum === 31) {
-    instrumentName = "guitarDist";
-  }
+  // if instrument code is unaccounted for, default to acoustic grand piano
+  if (!instrument) instrument = piano;
 
-  let instrument: Partial<Tone.SamplerOptions> | undefined = instruments[instrumentName];
-
-  // if instrument name is not accounted for, default to acoustic grand piano
-  if (!instrument) {
-    instrumentName = "piano";
-    instrument = piano;
-  }
-
-  const instrumentSampler: Tone.Sampler = new Tone.Sampler(instrument);
-  return { instrument: instrumentSampler, instrumentName };
+  return new Tone.Sampler(instrument);
 };
 
 export default createInstrument;

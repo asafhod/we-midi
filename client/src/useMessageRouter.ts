@@ -1,10 +1,11 @@
 import { useEffect } from "react";
+import * as Tone from "tone";
 import { Message, SongData, TrackType, TrackControlType } from "./types";
 import { fetchAuthSession } from "aws-amplify/auth";
 import { loadProject } from "./message-handlers/projects";
 
 const useMessageRouter = (
-  projectID: string,
+  projectID: string | undefined,
   setLoading: React.Dispatch<React.SetStateAction<boolean>>,
   setSongData: React.Dispatch<React.SetStateAction<SongData>>,
   setTracks: React.Dispatch<React.SetStateAction<TrackType[]>>,
@@ -19,7 +20,7 @@ const useMessageRouter = (
     const handleMessage = (message: Message) => {
       switch (message.action) {
         case "getProject":
-          loadProject(message, setLoading, setSongData, setTracks, setTrackControls, setTempo, setMidiFile);
+          loadProject(message, setLoading, setSongData, setTracks, setTrackControls, setTempo);
           break;
         case "updateProject":
           console.log(message);
@@ -91,46 +92,62 @@ const useMessageRouter = (
     };
 
     const setupWebSocket = async () => {
-      // get Cognito access token
-      const { accessToken } = (await fetchAuthSession()).tokens ?? {};
-      if (!accessToken) throw new Error("Invalid Cognito access token");
+      try {
+        if (projectID) {
+          // get Cognito access token
+          const { accessToken } = (await fetchAuthSession()).tokens ?? {};
+          if (!accessToken) throw new Error("Invalid Cognito access token");
 
-      // create the WebSocket
-      const newSocket = new WebSocket(`${baseWsServerURL}${projectID}`, ["json", accessToken.toString()]);
+          // create the WebSocket
+          const newSocket = new WebSocket(`${baseWsServerURL}${projectID}`, ["json", accessToken.toString()]);
 
-      // set up OPEN event handler
-      newSocket.onopen = () => {
-        console.log("Connection established");
-      };
+          // set up OPEN event handler
+          newSocket.onopen = () => {
+            console.log("Connection established");
+          };
 
-      // set up message router
-      newSocket.onmessage = (event: MessageEvent<any>) => {
-        try {
-          console.log("Message received");
-          const message: any = JSON.parse(event.data);
+          // set up message router
+          newSocket.onmessage = (event: MessageEvent<any>) => {
+            try {
+              console.log("Message received");
+              const message: any = JSON.parse(event.data);
 
-          handleMessage(message);
-        } catch (error) {
-          console.error(`WebSocket message JSON parse error: ${error}`);
+              handleMessage(message);
+            } catch (error) {
+              console.error(`WebSocket message JSON parse error: ${error}`);
+            }
+          };
+
+          // set up CLOSE event handler
+          newSocket.onclose = () => {
+            console.log("Connection closed");
+          };
+
+          // set up ERROR event handler
+          newSocket.onerror = (error) => {
+            console.error(`WebSocket error: ${error}`);
+          };
         }
-      };
-
-      // set up CLOSE event handler
-      newSocket.onclose = () => {
-        console.log("Connection closed");
-      };
-
-      // set up ERROR event handler
-      newSocket.onerror = (error) => {
-        console.error(`WebSocket error: ${error}`);
-      };
+      } catch (error) {
+        console.error(`Could not set up WebSocket connection - Error: ${error}`);
+      }
     };
 
-    try {
-      setupWebSocket();
-    } catch (error) {
-      console.error(`Could not set up WebSocket connection - Error: ${error}`);
-    }
+    setupWebSocket();
+
+    return () => {
+      Tone.Transport.stop();
+      Tone.Transport.cancel();
+
+      setTracks((currTracks: TrackType[]) => {
+        for (const track of currTracks) {
+          track.panVol.dispose();
+          track.instrument.dispose();
+        }
+
+        return [];
+      });
+    };
   }, [projectID, setLoading, setSongData, setTracks, setTrackControls, setTempo, setMidiFile]);
 };
 

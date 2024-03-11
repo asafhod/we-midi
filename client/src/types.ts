@@ -2,6 +2,7 @@ import * as Tone from "tone";
 
 export type NoteType = {
   id: number;
+  noteID: number;
   name: string;
   midiNum: number;
   duration: string | number;
@@ -36,9 +37,8 @@ export type TrackControlType = {
 
 export type SongData = {
   // id: number;
-  // name: string;
+  name: string;
   tempo: number;
-  lastTrackID: number;
   trackIDs: number[];
 };
 

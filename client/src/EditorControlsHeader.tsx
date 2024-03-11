@@ -1,22 +1,14 @@
 import * as Tone from "tone";
-import { SongData, TrackType } from "./types";
+import { TrackType } from "./types";
 import createInstrument from "./instruments/createInstrument";
 
 type EditorControlsHeaderProps = {
   tracks: TrackType[];
   setTracks: React.Dispatch<React.SetStateAction<TrackType[]>>;
   midiEditorTrack: TrackType | null | undefined;
-  songData: SongData;
-  setSongData: React.Dispatch<React.SetStateAction<SongData>>;
 };
 
-const EditorControlsHeader = ({
-  tracks,
-  setTracks,
-  midiEditorTrack,
-  songData,
-  setSongData,
-}: EditorControlsHeaderProps): JSX.Element => {
+const EditorControlsHeader = ({ tracks, setTracks, midiEditorTrack }: EditorControlsHeaderProps): JSX.Element => {
   const maxTracks: number = 100;
 
   const addTrack = async () => {
@@ -25,17 +17,16 @@ const EditorControlsHeader = ({
       if (tracks.length >= maxTracks) {
         alert(`The maximum amount of tracks is ${maxTracks}.`);
       } else {
-        const { instrument, instrumentName } = createInstrument("piano");
+        const instrument = createInstrument("p");
         const panVol: Tone.PanVol = new Tone.PanVol(0, instrument.volume.value); //later, change vol to -16 and have track vols/pans saved for each song
         // chain
         await Tone.loaded();
 
-        const newTrackID: number = songData.lastTrackID + 1;
-
+        // TODO: Fix trackID logic. Should come from the server.
         const newTrack: TrackType = {
-          id: newTrackID,
-          name: `Track ${newTrackID}`,
-          instrumentName,
+          id: 999,
+          name: `Track ${999}`,
+          instrumentName: "p",
           instrument,
           panVol,
           notes: [],
@@ -44,7 +35,6 @@ const EditorControlsHeader = ({
         };
 
         setTracks([...tracks, newTrack]);
-        setSongData({ ...songData, lastTrackID: newTrackID });
 
         // TODO: Logic somewhere to scroll to the end after the new track is added
       }
