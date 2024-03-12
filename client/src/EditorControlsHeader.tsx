@@ -1,46 +1,27 @@
-import * as Tone from "tone";
+import { useContext } from "react";
 import { TrackType } from "./types";
-import createInstrument from "./instruments/createInstrument";
+import TracksContext from "./TracksContext";
 
 type EditorControlsHeaderProps = {
   tracks: TrackType[];
-  setTracks: React.Dispatch<React.SetStateAction<TrackType[]>>;
   midiEditorTrack: TrackType | null | undefined;
 };
 
-const EditorControlsHeader = ({ tracks, setTracks, midiEditorTrack }: EditorControlsHeaderProps): JSX.Element => {
+const EditorControlsHeader = ({ tracks, midiEditorTrack }: EditorControlsHeaderProps): JSX.Element => {
+  // get WebSocket from context
+  const { ws } = useContext(TracksContext)!;
+
   const maxTracks: number = 100;
 
-  const addTrack = async () => {
-    try {
-      // TODO: Also chain the instrument to the panVol and add it to the other tracks list(s)
-      if (tracks.length >= maxTracks) {
-        alert(`The maximum amount of tracks is ${maxTracks}.`);
-      } else {
-        const instrument = createInstrument("p");
-        const panVol: Tone.PanVol = new Tone.PanVol(0, instrument.volume.value); //later, change vol to -16 and have track vols/pans saved for each song
-        // chain
-        await Tone.loaded();
-
-        // TODO: Fix trackID logic. Should come from the server.
-        const newTrack: TrackType = {
-          id: 999,
-          name: `Track ${999}`,
-          instrumentName: "p",
-          instrument,
-          panVol,
-          notes: [],
-          minNote: 128,
-          maxNote: -1,
-        };
-
-        setTracks([...tracks, newTrack]);
-
-        // TODO: Logic somewhere to scroll to the end after the new track is added
+  const addTrack = () => {
+    if (tracks.length >= maxTracks) {
+      alert(`The maximum amount of tracks is ${maxTracks}.`);
+    } else if (ws && ws.readyState === WebSocket.OPEN) {
+      try {
+        ws.send(JSON.stringify({ action: "addTrack" }));
+      } catch (error) {
+        console.error(`Error adding track: ${error}`);
       }
-    } catch (error) {
-      console.log(error);
-      // TODO: Dispose of instrument and panVol?
     }
   };
 

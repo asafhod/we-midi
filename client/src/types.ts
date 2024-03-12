@@ -36,10 +36,15 @@ export type TrackControlType = {
 };
 
 export type SongData = {
-  // id: number;
   name: string;
   tempo: number;
   trackIDs: number[];
+};
+
+export type ProjectUser = {
+  username: string;
+  isProjectAdmin: boolean;
+  isAccepted: boolean;
 };
 
 export type Message = {

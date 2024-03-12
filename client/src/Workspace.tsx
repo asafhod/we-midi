@@ -2,7 +2,7 @@ import * as Tone from "tone";
 import { useState, useLayoutEffect, useCallback, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import TracksContext from "./TracksContext";
-import { TrackType, NoteType, SongData, TrackControlType } from "./types";
+import { TrackType, NoteType, SongData, TrackControlType, ProjectUser } from "./types";
 import useMessageRouter from "./useMessageRouter";
 // import useLoadSong from "./useLoadSong";
 import Player from "./Player";
@@ -14,6 +14,7 @@ import EditorControlsHeader from "./EditorControlsHeader";
 import EditorControls from "./EditorControls";
 import MidiEditor from "./MidiEditor";
 import MidiUploader from "./MidiUploader";
+import NewProject from "./NewProject";
 
 // TODO: Make sure you're using map() where necessary throughout the app instead of pushing to an array
 //       Control+F for "= []" and if it should be map() instead, change it. Tempo change logic and list components need this, likely others.
@@ -28,21 +29,38 @@ const Workspace = (): JSX.Element => {
   const [zoom, setZoom] = useState(1);
   const [trackHeight, setTrackHeight] = useState(78);
   const [midiFile, setMidiFile] = useState<File | null>(null);
-  // Get rid of this when you implement midiFile logic
-  console.log(midiFile);
 
   // TODO: Get track reordering working with songData's trackIDs or whichever way is best. Index Map? Map instead of tracks Array? Re-order tracks directly?
 
   // const { loading, setLoading, songData, setSongData, tracks, setTracks, trackControls, setTrackControls, tempo, setTempo } =
   //   useLoadSong(id, midiFile, setMidiFile);
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // TODO: Move inside useMessageRouter (once you fix MIDI import logic to not have setLoading passed to it)?
+  const [disconnected, setDisconnected] = useState(false); // TODO: Move inside useMessageRouter?
+  const [ws, setWs] = useState<WebSocket>(); // TODO: Move inside useMessageRouter?
   // TODO: If you keep trackIDs and trackControls account for them when adding/removing tracks
   const [songData, setSongData] = useState<SongData>({ name: "", tempo: -1, trackIDs: [] }); // TODO: Split into Global and Local
   const [tracks, setTracks] = useState<TrackType[]>([]); // TODO: make sure you're getting tracks consistently across components
   const [trackControls, setTrackControls] = useState<TrackControlType[]>([]);
   const [tempo, setTempo] = useState(String(songData.tempo));
-  useMessageRouter(id, setLoading, setSongData, setTracks, setTrackControls, setTempo, setMidiFile);
+  const [projectUsers, setProjectUsers] = useState<ProjectUser[]>([]);
+  const [connectedUsers, setConnectedUsers] = useState<string[]>([]);
+  useMessageRouter(
+    id,
+    setLoading,
+    setDisconnected,
+    setWs,
+    setSongData,
+    setTracks,
+    setTrackControls,
+    setTempo,
+    setProjectUsers,
+    setConnectedUsers,
+    setMidiFile
+  );
+
+  // Get rid of this when you implement associated logic
+  console.log(midiFile, projectUsers, connectedUsers);
 
   const zoomFactor: number = 1.21; // Fine-tune the Min, Max, and thresholds?
   const zoomMin: number = 0.104; // TODO: Limit so can't be smaller than screen size
@@ -168,24 +186,27 @@ const Workspace = (): JSX.Element => {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    // Is any of this triggerable before the workspace finishes loading?
-    const target = e.target as HTMLElement;
+    if (!loading) {
+      const target = e.target as HTMLElement;
 
-    if (!target.classList.contains("track-name") && !target.classList.contains("tempo-input")) {
-      e.preventDefault();
+      if (!target.classList.contains("track-name") && !target.classList.contains("tempo-input")) {
+        e.preventDefault();
 
-      // TODO: Clean up and add min/max constraints, scrolling, and blockAuto scroll. Move elsewhere, if needed for consistent focusing.
-      //       Probably just change to a document listener and have those wherever needed, like in Player
-      if (e.code === "ArrowRight") {
-        setStartPosition((prevStartPos) => prevStartPos + 0.077);
-      } else if (e.code === "ArrowLeft") {
-        setStartPosition((prevStartPos) => prevStartPos - 0.077);
-      } else if (e.code === "ArrowUp" && zoom < zoomMax) {
-        zoomIn();
-      } else if (e.code === "ArrowDown" && zoom > zoomMin) {
-        zoomOut();
-      } else if (e.code === "Space") {
-        // toggle play
+        // TODO: Clean up and add min/max constraints, scrolling, and blockAuto scroll. Move elsewhere, if needed for consistent focusing.
+        //       Probably just change to a document listener and have those wherever needed, like in Player
+        if (e.code === "ArrowRight") {
+          setStartPosition((prevStartPos) => prevStartPos + 0.077);
+        } else if (e.code === "ArrowLeft") {
+          setStartPosition((prevStartPos) => prevStartPos - 0.077);
+        } else if (e.code === "ArrowUp" && zoom < zoomMax) {
+          zoomIn();
+        } else if (e.code === "ArrowDown" && zoom > zoomMin) {
+          zoomOut();
+        } else if (e.code === "Home") {
+          toBeginning();
+        } else if (e.code === "Space") {
+          // toggle play
+        }
       }
     }
   };
@@ -232,15 +253,22 @@ const Workspace = (): JSX.Element => {
   }, [songData, playerPosition, changePlayerPosition, startPosition, changeStartPosition, tracks, setTracks]);
 
   return (
-    <TracksContext.Provider value={{ tracks, setTracks }}>
+    <TracksContext.Provider value={{ ws, tracks, setTracks }}>
       <div className="workspace" tabIndex={0} onKeyDown={(e) => handleKeyDown(e)}>
-        {loading ? (
+        {disconnected ? (
+          <div>
+            <span>Your session has been disconnected</span>
+            <br />
+            <a href="/dashboard">Back to Dashboard</a>
+          </div>
+        ) : loading ? (
           <p>Loading...</p>
-        ) : (
+        ) : id ? (
           <>
             <a className="dashboard-link" href="/dashboard">
               Back to Dashboard
             </a>
+            <span className="project-name">{songData.name}</span>
             <div className="controls-bar">
               <button type="button" className="beginning-button" onClick={toBeginning}>
                 {"<<"}
@@ -317,7 +345,7 @@ const Workspace = (): JSX.Element => {
               setMidiEditorTrackID={setMidiEditorTrackID}
               nextMidiEditorTrackID={nextMidiEditorTrackID}
             >
-              <EditorControlsHeader tracks={tracks} setTracks={setTracks} midiEditorTrack={midiEditorTrack} />
+              <EditorControlsHeader tracks={tracks} midiEditorTrack={midiEditorTrack} />
               <EditorControls
                 tracks={tracks}
                 setTracks={setTracks}
@@ -372,6 +400,8 @@ const Workspace = (): JSX.Element => {
               )}
             </EditorLayout>
           </>
+        ) : (
+          <NewProject />
         )}
       </div>
     </TracksContext.Provider>
