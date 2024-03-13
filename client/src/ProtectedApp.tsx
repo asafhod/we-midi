@@ -18,16 +18,16 @@ const ProtectedApp = ({ signOut, user }: WithAuthenticatorProps) => {
   return (
     <>
       <div className="user-panel">
-        {/* TODO: Make the username/logout button look nice. Maybe a dropdown? How do I make Cognito save username case formatting while remaining case insensitive? */}
+        {/* TODO: Make the username/logout button look nice. Maybe a dropdown? */}
         {user?.username || "User"}
         <button className="logout-btn" type="button" onClick={logout}>
           Logout
         </button>
       </div>
       <Routes>
-        <Route path="/dashboard" element={<ProjectsList />} />
-        <Route path="/project" element={<Workspace />} />
-        <Route path="/project/:id" element={<Workspace />} />
+        <Route path="/dashboard" element={<ProjectsList username={user?.username} />} />
+        <Route path="/project" element={<Workspace username={user?.username} />} />
+        <Route path="/project/:id" element={<Workspace username={user?.username} />} />
       </Routes>
     </>
   );

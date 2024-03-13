@@ -1,5 +1,5 @@
-import { useRef } from "react";
-import * as Tone from "tone";
+import { useContext } from "react";
+import TracksContext from "./TracksContext";
 import { TrackType, TrackControlType } from "./types";
 import TrackControls from "./TrackControls";
 import InstrumentControls from "./InstrumentControls";
@@ -24,71 +24,26 @@ const EditorControls = ({
   trackHeight,
   isPlaying,
 }: EditorControlsProps): JSX.Element => {
-  const soloChangedRef = useRef(true);
-
+  const { ws } = useContext(TracksContext)!;
   //   useCallback?
-  const removeTrack = (trackID: number) => {
-    // TODO: If last remaining track is removed and ppq is not default (480), reset it to 480.
-    const track: TrackType | undefined = tracks.find((track) => track.id === trackID);
-
-    if (track) {
-      for (const note of track.notes) {
-        Tone.Transport.clear(note.id);
+  const deleteTrack = (trackID: number) => {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      try {
+        ws.send(JSON.stringify({ action: "deleteTrack", data: { trackID } }));
+      } catch (error) {
+        console.error(`Error deleting track: ${error}`);
       }
-
-      track.panVol.dispose();
-      track.instrument.dispose();
-
-      const newTracks: TrackType[] = tracks.filter((track) => track.id !== trackID);
-
-      soloChangedRef.current = true; // TODO: Add condition here to only set it to true if removed track was the only soloed track
-      setTracks(newTracks);
-      //   TODO: Also remove it from the other tracks array(s)
-    } else {
-      throw new Error(`Cannot remove track ${trackID}: Not Found`);
     }
   };
 
   //   TODO: Needed? ref needed? useCallback?
   const toggleTrackSolo = (trackID: number) => {
-    soloChangedRef.current = true;
     setTrackControls((prevTrackControls) => {
       return prevTrackControls.map((trackControl) =>
         trackControl.id === trackID ? { ...trackControl, solo: !trackControl.solo } : trackControl
       );
     });
   };
-
-  //   useEffect(() => {
-  //     if (soloChangedRef.current) {
-  //       // a track has been soloed/unsoloed
-
-  //       // true if one or more of the tracks are soloed
-  //       const soloExists: boolean = soloTracks.some((track) => track.solo);
-
-  //       for (const track of tracks) {
-  //         // use trackVols instead?
-  //         const panVolNode: Tone.PanVol | undefined = track.panVol;
-
-  //         if (panVolNode) {
-  //           const trackVol: TrackVol | undefined = trackVols.find((tr) => tr.id === track.id);
-  //           const soloTrack: SoloTrack | undefined = soloTracks.find((tr) => tr.id === track.id);
-
-  //           if (!trackVol || !soloTrack) throw new Error("Invalid Track Control settings");
-
-  //           if (soloExists) {
-  //             // Unmute track's panVol if the track is soloed, mute it if it is not
-  //             panVolNode.volume.value = soloTrack.solo ? trackVol.volume : -Infinity;
-  //           } else {
-  //             // No track is soloed. Unmute the track's panVol, unless the track has been manually muted in the UI.
-  //             panVolNode.volume.value = trackVol.muted ? -Infinity : trackVol.volume;
-  //           }
-  //         }
-  //       }
-
-  //       soloChangedRef.current = false;
-  //     }
-  //   }, [soloTracks, trackVols, tracks]);
 
   return (
     <>
@@ -101,7 +56,7 @@ const EditorControls = ({
           trackControls={trackControls}
           setTrackControls={setTrackControls}
           toggleTrackSolo={toggleTrackSolo}
-          removeTrack={removeTrack}
+          deleteTrack={deleteTrack}
           trackHeight={trackHeight}
           isPlaying={isPlaying}
         />

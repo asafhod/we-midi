@@ -15,7 +15,7 @@ type TrackControlsProps = {
   trackControls: TrackControlType[];
   setTrackControls: React.Dispatch<React.SetStateAction<TrackControlType[]>>;
   toggleTrackSolo: (trackID: number) => void;
-  removeTrack: (trackID: number) => void;
+  deleteTrack: (trackID: number) => void;
   trackHeight: number;
   isPlaying: boolean;
 };
@@ -26,7 +26,7 @@ const TrackControls = ({
   trackControls,
   setTrackControls,
   toggleTrackSolo,
-  removeTrack,
+  deleteTrack,
   trackHeight,
   isPlaying,
 }: TrackControlsProps): JSX.Element => {
@@ -48,10 +48,10 @@ const TrackControls = ({
       }
     }
 
-    removeTrack(trackID);
+    deleteTrack(trackID);
   };
 
-  // TODO: Narrow down so only re-calcs specifically if a solo change occurs?
+  // TODO: Narrow down so only re-calcs specifically if a solo change occurs? Such as soloing/unsoloing, or deleting the only solo'd track, maybe even more specific.
   const soloExists: boolean = useMemo(() => trackControls.some((trackControl) => trackControl.solo), [trackControls]);
 
   const trackControlComponents: JSX.Element[] = [];
@@ -159,14 +159,14 @@ const TrackControl = ({
         const newNotes: NoteType[] = [];
 
         for (const note of track.notes) {
-          const { id, noteID, name, midiNum, duration, noteTime, velocity } = note;
+          const { clientNoteID: id, noteID, name, midiNum, duration, noteTime, velocity } = note;
           Tone.Transport.clear(id);
 
           const newID: number = Tone.Transport.schedule((time) => {
             newInstrument.triggerAttackRelease(name, duration, time, velocity);
           }, noteTime);
 
-          const newNote: NoteType = { id: newID, noteID, name, midiNum, duration, noteTime, velocity };
+          const newNote: NoteType = { clientNoteID: newID, noteID, name, midiNum, duration, noteTime, velocity };
           newNotes.push(newNote);
         }
 

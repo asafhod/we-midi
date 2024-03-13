@@ -38,7 +38,7 @@ const Track = ({ track, width, height, widthFactor, setNextMidiEditorTrackID }: 
       const normalizedNotePosition: number = noteRange === 0 ? 0.5 : 1 - (note.midiNum - minNote) / noteRange;
       const noteTop: number = Math.round(normalizedNotePosition * availableTrackHeight) + heightOffset;
 
-      notes.push(<TrackNote key={note.id} left={noteLeft} top={noteTop} width={noteWidth} height={noteHeight} />);
+      notes.push(<TrackNote key={note.clientNoteID} left={noteLeft} top={noteTop} width={noteWidth} height={noteHeight} />);
     }
   }
 

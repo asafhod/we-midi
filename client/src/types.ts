@@ -1,7 +1,7 @@
 import * as Tone from "tone";
 
 export type NoteType = {
-  id: number;
+  clientNoteID: number;
   noteID: number;
   name: string;
   midiNum: number;

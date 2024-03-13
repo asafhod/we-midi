@@ -18,7 +18,12 @@ import NewProject from "./NewProject";
 
 // TODO: Make sure you're using map() where necessary throughout the app instead of pushing to an array
 //       Control+F for "= []" and if it should be map() instead, change it. Tempo change logic and list components need this, likely others.
-const Workspace = (): JSX.Element => {
+
+type WorkspaceProps = {
+  username: string | undefined;
+};
+
+const Workspace = ({ username }: WorkspaceProps): JSX.Element => {
   const { id } = useParams();
   const [isPlaying, setIsPlaying] = useState(false);
   const [startPosition, setStartPosition] = useState(0);
@@ -47,6 +52,7 @@ const Workspace = (): JSX.Element => {
   const [connectedUsers, setConnectedUsers] = useState<string[]>([]);
   useMessageRouter(
     id,
+    username,
     setLoading,
     setDisconnected,
     setWs,
@@ -227,7 +233,7 @@ const Workspace = (): JSX.Element => {
         const newNotes: NoteType[] = [];
 
         for (const note of track.notes) {
-          const { id, noteID, name, midiNum, duration, noteTime, velocity } = note;
+          const { clientNoteID: id, noteID, name, midiNum, duration, noteTime, velocity } = note;
 
           const newDuration: number = Number(duration) * tempoConversionFactor;
           const newNoteTime: number = noteTime * tempoConversionFactor;
@@ -238,7 +244,15 @@ const Workspace = (): JSX.Element => {
             track.instrument.triggerAttackRelease(name, newDuration, time, velocity);
           }, newNoteTime);
 
-          const newNote: NoteType = { id: newID, noteID, name, midiNum, duration: newDuration, noteTime: newNoteTime, velocity };
+          const newNote: NoteType = {
+            clientNoteID: newID,
+            noteID,
+            name,
+            midiNum,
+            duration: newDuration,
+            noteTime: newNoteTime,
+            velocity,
+          };
           newNotes.push(newNote);
         }
 

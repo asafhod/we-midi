@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import mongoose from "mongoose";
 import WebSocket from "ws";
 import webSocketManager from "../webSocketManager";
-import ProjectModel, { Project, Track, Note, DEFAULT_VOLUME } from "../models/projectModel";
+import ProjectModel, { Project, Track, Note, DEFAULT_PPQ, DEFAULT_VOLUME } from "../models/projectModel";
 import ProjectUserModel from "../models/projectUserModel";
 import { addProjectSchema, updateProjectSchema, importMidiSchema, updateTrackSchema, deleteTrackSchema } from "../validation/schemas";
 import { BadRequestError, BadMessageError, ForbiddenError, ForbiddenActionError, NotFoundError } from "../errors";
@@ -359,20 +359,40 @@ export const deleteTrack = async (_ws: WebSocket, projectID: string, username: s
     throw new ForbiddenActionError(`Cannot delete track - User ${username} does not have admin privileges for Project ${projectID}`);
   }
 
-  // delete the specified track from the tracks array for the project in the database
-  const updatedProject: Project | null = await ProjectModel.findOneAndUpdate(
-    { _id: projectObjectId },
-    { $pull: { tracks: { trackID: data.trackID } } },
-    // using "new" flag to retrieve the updated document and projection to avoid retrieving unnecessary fields
-    { new: true, __v: 0 }
-  );
-  if (!updatedProject) throw new NotFoundError(`No project found for ID: ${projectID}`);
+  // set up transaction for track deletion operation
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
-  // log successful track deletion to the console
-  console.log(`User ${username} deleted Track ${data.trackID} from Project ${projectID}`);
+  try {
+    // delete the specified track from the tracks array for the project in the database
+    const updatedProject: Project | null = await ProjectModel.findOneAndUpdate(
+      { _id: projectObjectId },
+      { $pull: { tracks: { trackID: data.trackID } } },
+      // using "new" flag to retrieve the updated document and projection to avoid retrieving unnecessary fields
+      { new: true, __v: 0, session }
+    );
+    if (!updatedProject) throw new NotFoundError(`No project found for ID: ${projectID}`);
 
-  // broadcast track deletion
-  broadcast(projectID, { action: "deleteTrack", source: username, success: true, data });
+    // if last remaining track was deleted and PPQ is not the default value, reset it to the default value (in case a MIDI import changed it)
+    if (!updatedProject.tracks.length && updatedProject.ppq !== DEFAULT_PPQ) {
+      updatedProject.ppq = DEFAULT_PPQ;
+      await updatedProject.save({ session });
+    }
+
+    // if successful, commit and end the transaction
+    await session.commitTransaction();
+    session.endSession();
+
+    // log successful track deletion to the console
+    console.log(`User ${username} deleted Track ${data.trackID} from Project ${projectID}`);
+
+    // broadcast track deletion
+    broadcast(projectID, { action: "deleteTrack", source: username, success: true, data });
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    throw error;
+  }
 };
 
 // delete project - used when deleting a project from the project's workspace (WebSocket)

@@ -45,9 +45,9 @@ const httpErrorHandler = (error: unknown, _req: Request, res: Response, _next: N
   } else if (isMongooseCastError(error)) {
     // if error is a MongoDB Cast Error (such as attempting to set an array as a value for a non-array field)
     console.error(
-      `Code: ${400} MongoDB Cast Error: Cannot cast ${error.valueType} value to ${error.kind} for field: ${error.path}\nFor Value: ${
-        error.value
-      }`
+      `Code: ${400} MongoDB Cast Error: Cannot cast ${error.valueType} value to ${error.kind} for field: ${
+        error.path
+      }\nFor Value: ${JSON.stringify(error.value)}`
     );
     res.status(400).json({ success: false, msg: BAD_REQUEST });
   } else if (error instanceof Error) {

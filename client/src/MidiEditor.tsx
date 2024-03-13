@@ -1,4 +1,6 @@
 import { useLayoutEffect } from "react";
+import { useContext } from "react";
+import TracksContext from "./TracksContext";
 import * as Tone from "tone";
 import { TrackType, NoteType } from "./types";
 import { noteNames } from "./noteNames";
@@ -12,6 +14,8 @@ type MidiEditorProps = {
 };
 
 const MidiEditor = ({ track, setTracks, widthFactor, startPosition, setAutoscrollBlocked }: MidiEditorProps): JSX.Element => {
+  const { ws } = useContext(TracksContext)!;
+
   const notes: JSX.Element[] = [];
 
   if (track.notes.length) {
@@ -23,33 +27,61 @@ const MidiEditor = ({ track, setTracks, widthFactor, startPosition, setAutoscrol
       const noteWidth: number = Math.max(Math.round(Number(note.duration) * widthFactor), 1);
       const noteTop: number = (108 - note.midiNum) * noteHeight;
 
-      notes.push(<EditorNote key={note.id} noteID={note.id} left={noteLeft} top={noteTop} width={noteWidth} height={noteHeight} />);
+      notes.push(
+        <EditorNote
+          key={note.clientNoteID}
+          noteID={note.clientNoteID}
+          left={noteLeft}
+          top={noteTop}
+          width={noteWidth}
+          height={noteHeight}
+        />
+      );
     }
   }
 
   const addNote = (name: string, midiNum: number, duration: string | number, noteTime: number, velocity: number) => {
-    const noteID: number = Tone.Transport.schedule((time: number) => {
-      track.instrument.triggerAttackRelease(name, duration, time, velocity);
-    }, noteTime);
+    if (ws) {
+      const clientNoteID: number = Tone.Transport.schedule((time: number) => {
+        track.instrument.triggerAttackRelease(name, duration, time, velocity);
+      }, noteTime);
 
-    const newNotes: NoteType[] = [...track.notes, { id: noteID, noteID: 0, name, midiNum, duration, noteTime, velocity }];
+      const newNotes: NoteType[] = [...track.notes, { clientNoteID, noteID: 0, name, midiNum, duration, noteTime, velocity }];
 
-    const minNote: number = Math.min(track.minNote, midiNum);
-    const maxNote: number = Math.max(track.maxNote, midiNum);
+      const minNote: number = Math.min(track.minNote, midiNum);
+      const maxNote: number = Math.max(track.maxNote, midiNum);
 
-    const newTrack = { ...track, notes: newNotes, minNote, maxNote };
+      const newTrack: TrackType = { ...track, notes: newNotes, minNote, maxNote };
 
-    setTracks((prevTracks) => {
-      const newTracks: TrackType[] = prevTracks.map((tr) => (tr.id === track.id ? newTrack : tr));
-      return newTracks;
-    });
+      setTracks((currTracks: TrackType[]) => {
+        return currTracks.map((tr: TrackType) => (tr.id === track.id ? newTrack : tr));
+      });
+
+      try {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(
+            JSON.stringify({
+              action: "addNote",
+              data: { trackID: track.id, clientNoteID, midiNum, duration, noteTime, velocity },
+            })
+          );
+        } else {
+          throw new Error("WebSocket is not open");
+        }
+      } catch (error) {
+        console.error(`Error adding note: ${error}`);
+
+        // close the connection with Close Code 4400 for generic client-side error
+        ws.close(4400);
+      }
+    }
   };
 
   const removeNote = (noteID: number) => {
     // add handling for if note doesn't exist
     Tone.Transport.clear(noteID);
 
-    const newNotes: NoteType[] = track.notes.filter((note) => note.id !== noteID);
+    const newNotes: NoteType[] = track.notes.filter((note) => note.clientNoteID !== noteID);
 
     const newNoteRange: { minNote: number; maxNote: number } = newNotes.reduce(
       (range, note) => {

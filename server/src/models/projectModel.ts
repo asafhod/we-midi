@@ -2,7 +2,7 @@ import mongoose, { Document, Schema, Types } from "mongoose";
 
 // constants
 const DEFAULT_TEMPO: number = 120;
-const DEFAULT_PPQ: number = 480;
+export const DEFAULT_PPQ: number = 480;
 export const DEFAULT_VOLUME: number = -16;
 
 // define Note interface

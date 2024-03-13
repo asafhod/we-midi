@@ -6,7 +6,11 @@ type Projects = {
   invited: JSX.Element[];
 };
 
-const ProjectsList = (): JSX.Element => {
+type ProjectsListProps = {
+  username: string | undefined;
+};
+
+const ProjectsList = ({ username }: ProjectsListProps): JSX.Element => {
   const [loading, setLoading] = useState(true);
   const [projects, setProjects] = useState<Projects>({ member: [], invited: [] });
 
@@ -16,9 +20,6 @@ const ProjectsList = (): JSX.Element => {
         // get Cognito access token
         const { accessToken } = (await fetchAuthSession()).tokens ?? {};
         if (!accessToken) throw new Error("Invalid Cognito access token");
-
-        const username: string = String(accessToken.payload["username"] ?? "");
-        if (!username) throw new Error("Could not get Cognito username");
 
         // TODO: Change to Production URL once deployed
         const response: Response = await fetch(`http://localhost:5000/projectUsers/${_id}/${username}`, {
@@ -60,9 +61,6 @@ const ProjectsList = (): JSX.Element => {
         // get Cognito access token
         const { accessToken } = (await fetchAuthSession()).tokens ?? {};
         if (!accessToken) throw new Error("Invalid Cognito access token");
-
-        const username: string = String(accessToken.payload["username"] ?? "");
-        if (!username) throw new Error("Could not get Cognito username");
 
         // TODO: Change to Production URL once deployed
         const response: Response = await fetch(`http://localhost:5000/projectUsers/${_id}/${username}`, {
@@ -166,7 +164,7 @@ const ProjectsList = (): JSX.Element => {
     };
 
     fetchProjects();
-  }, []);
+  }, [username]);
 
   return loading ? (
     <p>Loading...</p>

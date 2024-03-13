@@ -43,7 +43,9 @@ const wsErrorHandler = (error: unknown, ws: WebSocket, action: unknown, data: an
     } else if (isMongooseCastError(error)) {
       // if error is a MongoDB Cast Error (such as attempting to set an array as a value for a non-array field)
       console.error(
-        `Action: ${action} MongoDB Cast Error: Cannot cast ${error.valueType} value to ${error.kind} for field: ${error.path}\nFor Value: ${error.value}`
+        `Action: ${action} MongoDB Cast Error: Cannot cast ${error.valueType} value to ${error.kind} for field: ${
+          error.path
+        }\nFor Value: ${JSON.stringify(error.value)}`
       );
       if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ action, success: false, msg: BAD_MESSAGE, data }));
     } else if (error instanceof Error) {

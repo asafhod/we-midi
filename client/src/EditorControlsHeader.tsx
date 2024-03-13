@@ -1,6 +1,6 @@
 import { useContext } from "react";
-import { TrackType } from "./types";
 import TracksContext from "./TracksContext";
+import { TrackType } from "./types";
 
 type EditorControlsHeaderProps = {
   tracks: TrackType[];

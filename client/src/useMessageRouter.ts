@@ -2,10 +2,12 @@ import { useEffect } from "react";
 import * as Tone from "tone";
 import { Message, SongData, TrackType, TrackControlType, ProjectUser } from "./types";
 import { fetchAuthSession } from "aws-amplify/auth";
-import { loadProject, addTrack } from "./message-handlers/projects";
+import { loadProject, addTrack, deleteTrack } from "./message-handlers/projects";
+import { addNote } from "./message-handlers/notes";
 
 const useMessageRouter = (
   projectID: string | undefined,
+  username: string | undefined,
   setLoading: React.Dispatch<React.SetStateAction<boolean>>,
   setDisconnected: React.Dispatch<React.SetStateAction<boolean>>,
   setWs: React.Dispatch<React.SetStateAction<WebSocket | undefined>>,
@@ -42,10 +44,10 @@ const useMessageRouter = (
           console.log(message);
           break;
         case "deleteTrack":
-          console.log(message);
+          deleteTrack(ws, message, setTracks, setTrackControls);
           break;
         case "addNote":
-          console.log(message);
+          addNote(ws, message, username, setTracks);
           break;
         case "addNotes":
           console.log(message);
@@ -96,8 +98,7 @@ const useMessageRouter = (
           console.log(message);
           break;
         default:
-          console.error(`Invalid message action: ${message.action}`);
-          console.error(message);
+          console.error(`Invalid message action: ${message.action}\n${message}`);
       }
     };
 
@@ -171,6 +172,7 @@ const useMessageRouter = (
     };
   }, [
     projectID,
+    username,
     setLoading,
     setDisconnected,
     setWs,
