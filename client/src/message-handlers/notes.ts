@@ -2,7 +2,6 @@ import * as Tone from "tone";
 import { Message, NoteType, TrackType } from "../types";
 import { noteNames } from "../noteNames";
 
-// TODO: Test all three scenarios. Fix the "no buffers available for note # bug".
 export const addNote = (
   ws: WebSocket,
   message: Message,
@@ -17,33 +16,31 @@ export const addNote = (
         const { trackID, clientNoteID, noteID } = data;
 
         setTracks((currTracks: TrackType[]) => {
-          const newTracks: TrackType[] = currTracks.map((track: TrackType) => {
+          return currTracks.map((track: TrackType) => {
             if (track.id === trackID) {
-              const newNotes: NoteType[] = track.notes.map((note: NoteType) => {
-                if (note.clientNoteID === clientNoteID) {
-                  return { ...note, noteID };
-                }
-                return note;
-              });
+              const newNotes: NoteType[] = track.notes.map((note: NoteType) =>
+                note.clientNoteID === clientNoteID ? { ...note, noteID } : note
+              );
 
               return { ...track, notes: newNotes };
             }
             return track;
           });
-
-          return newTracks;
         });
       } else {
         const { trackID, noteID, midiNum, duration, noteTime, velocity } = data;
+        let clientNoteID: number = -1;
 
         setTracks((currTracks: TrackType[]) => {
-          const newTracks: TrackType[] = currTracks.map((track: TrackType) => {
+          return currTracks.map((track: TrackType) => {
             if (track.id === trackID) {
               const noteName: string = noteNames[midiNum - 21];
 
-              const clientNoteID: number = Tone.Transport.schedule((time: number) => {
-                track.instrument.triggerAttackRelease(noteName, duration, time, velocity);
-              }, noteTime);
+              if (clientNoteID === -1) {
+                clientNoteID = Tone.Transport.schedule((time: number) => {
+                  track.instrument.triggerAttackRelease(noteName, duration, time, velocity);
+                }, noteTime);
+              }
 
               const newNotes: NoteType[] = [
                 ...track.notes,
@@ -57,15 +54,13 @@ export const addNote = (
             }
             return track;
           });
-
-          return newTracks;
         });
       }
     } else {
       const { trackID, clientNoteID } = message.data;
 
       setTracks((currTracks: TrackType[]) => {
-        const newTracks: TrackType[] = currTracks.map((track: TrackType) => {
+        return currTracks.map((track: TrackType) => {
           if (track.id === trackID) {
             const newNoteRange: { minNote: number; maxNote: number } = { minNote: 128, maxNote: -1 };
 
@@ -78,6 +73,7 @@ export const addNote = (
 
               newNoteRange.minNote = Math.min(newNoteRange.minNote, note.midiNum);
               newNoteRange.maxNote = Math.max(newNoteRange.maxNote, note.midiNum);
+
               return true;
             });
 
@@ -85,8 +81,6 @@ export const addNote = (
           }
           return track;
         });
-
-        return newTracks;
       });
 
       console.error(`Server could not add note: ${message.msg}\nOperation rolled back`);

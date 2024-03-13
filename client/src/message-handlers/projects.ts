@@ -167,7 +167,6 @@ export const deleteTrack = (
             track.instrument.dispose();
 
             if (currTracks.length === 1 && Tone.Transport.PPQ !== DEFAULT_PPQ) {
-              console.log("TEST");
               // if last remaining track is being deleted and PPQ is not the default value, reset it to the default value (in case a MIDI import changed it)
               Tone.Transport.PPQ = DEFAULT_PPQ;
             }

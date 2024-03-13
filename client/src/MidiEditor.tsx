@@ -95,8 +95,8 @@ const MidiEditor = ({ track, setTracks, widthFactor, startPosition, setAutoscrol
 
     const newTrack = { ...track, notes: newNotes, minNote: newNoteRange.minNote, maxNote: newNoteRange.maxNote };
 
-    setTracks((prevTracks) => {
-      const newTracks: TrackType[] = prevTracks.map((tr) => (tr.id === track.id ? newTrack : tr));
+    setTracks((currTracks: TrackType[]) => {
+      const newTracks: TrackType[] = currTracks.map((tr: TrackType) => (tr.id === track.id ? newTrack : tr));
       return newTracks;
     });
   };
