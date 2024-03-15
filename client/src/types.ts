@@ -45,6 +45,8 @@ export type ProjectUser = {
   username: string;
   isProjectAdmin: boolean;
   isAccepted: boolean;
+  isOnline?: boolean;
+  isNotMember?: boolean;
 };
 
 export type Message = {

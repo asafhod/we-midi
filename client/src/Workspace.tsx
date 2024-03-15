@@ -50,7 +50,6 @@ const Workspace = ({ username }: WorkspaceProps): JSX.Element => {
   const [trackControls, setTrackControls] = useState<TrackControlType[]>([]);
   const [tempo, setTempo] = useState(String(songData.tempo));
   const [projectUsers, setProjectUsers] = useState<ProjectUser[]>([]);
-  const [connectedUsers, setConnectedUsers] = useState<string[]>([]);
   useMessageRouter(
     id,
     username,
@@ -62,12 +61,11 @@ const Workspace = ({ username }: WorkspaceProps): JSX.Element => {
     setTrackControls,
     setTempo,
     setProjectUsers,
-    setConnectedUsers,
     setMidiFile
   );
 
   // Get rid of this when you implement associated logic
-  console.log(midiFile, projectUsers, connectedUsers);
+  console.log(midiFile, projectUsers);
 
   const zoomFactor: number = 1.21; // Fine-tune the Min, Max, and thresholds?
   const zoomMin: number = 0.104; // TODO: Limit so can't be smaller than screen size

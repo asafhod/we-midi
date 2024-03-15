@@ -16,7 +16,6 @@ const useMessageRouter = (
   setTrackControls: React.Dispatch<React.SetStateAction<TrackControlType[]>>,
   setTempo: React.Dispatch<React.SetStateAction<string>>,
   setProjectUsers: React.Dispatch<React.SetStateAction<ProjectUser[]>>,
-  setConnectedUsers: React.Dispatch<React.SetStateAction<string[]>>,
   setMidiFile: React.Dispatch<React.SetStateAction<File | null>>
 ) => {
   // TODO: Update to real server URL when deploying
@@ -31,17 +30,7 @@ const useMessageRouter = (
       const handleMessage = (message: Message, ws: WebSocket) => {
         switch (message.action) {
           case "getProject":
-            loadProject(
-              ws,
-              message,
-              setLoading,
-              setSongData,
-              setTracks,
-              setTrackControls,
-              setTempo,
-              setProjectUsers,
-              setConnectedUsers
-            );
+            loadProject(ws, message, setLoading, setSongData, setTracks, setTrackControls, setTempo, setProjectUsers);
             break;
           case "updateProject":
             console.log(message);
@@ -194,7 +183,6 @@ const useMessageRouter = (
     setTrackControls,
     setTempo,
     setProjectUsers,
-    setConnectedUsers,
     setMidiFile,
   ]);
 };

@@ -11,8 +11,7 @@ export const loadProject = async (
   setTracks: React.Dispatch<React.SetStateAction<TrackType[]>>,
   setTrackControls: React.Dispatch<React.SetStateAction<TrackControlType[]>>,
   setTempo: React.Dispatch<React.SetStateAction<string>>,
-  setProjectUsers: React.Dispatch<React.SetStateAction<ProjectUser[]>>,
-  setConnectedUsers: React.Dispatch<React.SetStateAction<string[]>>
+  setProjectUsers: React.Dispatch<React.SetStateAction<ProjectUser[]>>
 ) => {
   try {
     const { data } = message;
@@ -72,7 +71,6 @@ export const loadProject = async (
     setTempo(String(Tone.Transport.bpm.value));
     setSongData({ name: data.project.name, tempo: Tone.Transport.bpm.value, trackIDs });
     setProjectUsers(data.projectUsers);
-    setConnectedUsers(data.connectedUsers);
     setLoading(false);
   } catch (error) {
     console.error(`Error loading project: ${error}`);
@@ -83,6 +81,10 @@ export const loadProject = async (
 };
 
 export const updateProject = () => {};
+
+export const deleteProject = () => {
+  // TODO: Implement
+};
 
 export const importMIDI = () => {};
 

@@ -10,9 +10,13 @@ export const deleteProjectUsers = () => {};
 
 export const deleteProjectUser = () => {};
 
-export const userConnected = () => {};
+export const userConnected = () => {
+  // TODO: Implement
+};
 
-export const userDisconnected = () => {};
+export const userDisconnected = () => {
+  // TODO: Implement
+};
 
 export const userCurrentView = () => {};
 

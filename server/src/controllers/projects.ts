@@ -68,7 +68,7 @@ export const getProject = async (ws: WebSocket, projectID: string) => {
     if (!project) throw new NotFoundError(`No project found for ID: ${projectID}`);
 
     // get ProjectUsers from database using projectID
-    const projectUsers = await ProjectUserModel.find({ projectID: projectObjectId }, { _id: 0, projectID: 0, __v: 0 });
+    const projectUsers: any[] = await ProjectUserModel.find({ projectID: projectObjectId }, { _id: 0, projectID: 0, __v: 0 }).lean();
     if (!projectUsers.length) throw new Error(`No ProjectUsers found for Project ID: ${projectID}`);
 
     // verify project's connections object exists
@@ -80,8 +80,21 @@ export const getProject = async (ws: WebSocket, projectID: string) => {
     // verify that connected users exists for the project (at least one should, because a connected user is making this request)
     if (!connectedUsers.length) throw new Error(`No connections found for Project ID: ${projectID}`);
 
+    for (const connectedUser of connectedUsers) {
+      // iterate over the connected users for the project and find their associated ProjectUser
+      const projectUser = projectUsers.find((projectUser) => projectUser.username === connectedUser);
+
+      if (projectUser) {
+        // mark the ProjectUser as online
+        projectUser.isOnline = true;
+      } else {
+        // if a connected user does not have an associated ProjectUser, mark them as online but not a member (can happen with global admins, or possibly with timing edge cases)
+        projectUsers.push({ username: connectedUser, isProjectAdmin: false, isAccepted: false, isOnline: true, isNotMember: true });
+      }
+    }
+
     // respond successfully with project data
-    sendMessage(ws, { action: "getProject", success: true, data: { project, projectUsers, connectedUsers } });
+    sendMessage(ws, { action: "getProject", success: true, data: { project, projectUsers } });
   } catch (error) {
     // project could not be retrieved for the client, close the WebSocket connection with a Server Error message if it's open
     if (ws.readyState === WebSocket.OPEN) ws.close(1011, SERVER_ERROR);
