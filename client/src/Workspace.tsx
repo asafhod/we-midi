@@ -11,7 +11,8 @@ import Ruler from "./Ruler";
 import Grid from "./Grid";
 import TrackEditor from "./TrackEditor";
 import EditorControlsHeader from "./EditorControlsHeader";
-import EditorControls from "./EditorControls";
+import TrackControls from "./TrackControls";
+import InstrumentControls from "./InstrumentControls";
 import MidiEditor from "./MidiEditor";
 import MidiUploader from "./MidiUploader";
 import NewProject from "./NewProject";
@@ -360,15 +361,18 @@ const Workspace = ({ username }: WorkspaceProps): JSX.Element => {
               nextMidiEditorTrackID={nextMidiEditorTrackID}
             >
               <EditorControlsHeader tracks={tracks} midiEditorTrack={midiEditorTrack} />
-              <EditorControls
-                tracks={tracks}
-                setTracks={setTracks}
-                midiEditorTrack={midiEditorTrack}
-                trackControls={trackControls}
-                setTrackControls={setTrackControls}
-                trackHeight={trackHeight}
-                isPlaying={isPlaying}
-              />
+              {midiEditorTrack ? (
+                <InstrumentControls track={midiEditorTrack} />
+              ) : (
+                <TrackControls
+                  tracks={tracks}
+                  setTracks={setTracks}
+                  trackControls={trackControls}
+                  setTrackControls={setTrackControls}
+                  trackHeight={trackHeight}
+                  isPlaying={isPlaying}
+                />
+              )}
               <Ruler
                 numSegments={numSegments}
                 segmentWidth={segmentWidth}

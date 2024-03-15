@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useContext } from "react";
+import TracksContext from "./TracksContext";
 import * as Tone from "tone";
 import { TrackControlType, TrackType, NoteType } from "./types";
 import createInstrument from "./instruments/createInstrument";
@@ -14,8 +15,6 @@ type TrackControlsProps = {
   setTracks: React.Dispatch<React.SetStateAction<TrackType[]>>;
   trackControls: TrackControlType[];
   setTrackControls: React.Dispatch<React.SetStateAction<TrackControlType[]>>;
-  toggleTrackSolo: (trackID: number) => void;
-  deleteTrack: (trackID: number) => void;
   trackHeight: number;
   isPlaying: boolean;
 };
@@ -25,11 +24,25 @@ const TrackControls = ({
   setTracks,
   trackControls,
   setTrackControls,
-  toggleTrackSolo,
-  deleteTrack,
   trackHeight,
   isPlaying,
 }: TrackControlsProps): JSX.Element => {
+  const { ws } = useContext(TracksContext)!;
+
+  // TODO: Narrow down so only re-calcs specifically if a solo change occurs? Such as soloing/unsoloing, or deleting the only solo'd track, maybe even more specific.
+  const soloExists: boolean = useMemo(() => trackControls.some((trackControl) => trackControl.solo), [trackControls]);
+
+  //   useCallback?
+  const deleteTrack = (trackID: number) => {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      try {
+        ws.send(JSON.stringify({ action: "deleteTrack", data: { trackID } }));
+      } catch (error) {
+        console.error(`Error deleting track: ${error}`);
+      }
+    }
+  };
+
   const handleRightClick = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
     e.preventDefault();
 
@@ -51,8 +64,14 @@ const TrackControls = ({
     deleteTrack(trackID);
   };
 
-  // TODO: Narrow down so only re-calcs specifically if a solo change occurs? Such as soloing/unsoloing, or deleting the only solo'd track, maybe even more specific.
-  const soloExists: boolean = useMemo(() => trackControls.some((trackControl) => trackControl.solo), [trackControls]);
+  //   TODO: Needed? ref needed? useCallback?
+  const toggleTrackSolo = (trackID: number) => {
+    setTrackControls((prevTrackControls) => {
+      return prevTrackControls.map((trackControl) =>
+        trackControl.id === trackID ? { ...trackControl, solo: !trackControl.solo } : trackControl
+      );
+    });
+  };
 
   const trackControlComponents: JSX.Element[] = [];
 

@@ -2,8 +2,8 @@ import { useEffect, useRef } from "react";
 import * as Tone from "tone";
 import { Message, SongData, TrackType, TrackControlType, ProjectUser } from "./types";
 import { fetchAuthSession } from "aws-amplify/auth";
-import { loadProject, addTrack, deleteTrack } from "./message-handlers/projects";
-import { addNote } from "./message-handlers/notes";
+import { loadProject, addTrack, deleteTrack } from "./controllers/projects";
+import { addNote, deleteNote } from "./controllers/notes";
 
 const useMessageRouter = (
   projectID: string | undefined,
@@ -74,7 +74,7 @@ const useMessageRouter = (
             console.log(message);
             break;
           case "deleteNote":
-            console.log(message);
+            deleteNote(ws, message, setTracks);
             break;
           case "deleteNotes":
             console.log(message);
@@ -148,10 +148,7 @@ const useMessageRouter = (
             newSocket.onclose = () => {
               console.log("Connection closed");
 
-              // TODO: Remove this condition in Production, just keep setDisconnected(true). This is only here because of the Strict Mode re-render.
-              // if (ev.reason !== "Replaced by a new WebSocket connection") {
               setDisconnected(true);
-              // }
             };
 
             // set up ERROR event handler
