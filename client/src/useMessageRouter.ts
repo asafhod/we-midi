@@ -4,6 +4,7 @@ import { Message, SongData, TrackType, TrackControlType, ProjectUser } from "./t
 import { fetchAuthSession } from "aws-amplify/auth";
 import { loadProject, addTrack, deleteTrack } from "./controllers/projects";
 import { addNote, deleteNote } from "./controllers/notes";
+import { userConnected, userDisconnected } from "./controllers/projectUsers";
 
 const useMessageRouter = (
   projectID: string | undefined,
@@ -36,6 +37,8 @@ const useMessageRouter = (
             console.log(message);
             break;
           case "deleteProject":
+            // TODO: Implement this as a button somewhere that deletes the project
+            //       Then delete this case. No message handler is necessary since it just disconnects all users. This is just here as a reminder.
             console.log(message);
             break;
           case "importMIDI":
@@ -87,10 +90,10 @@ const useMessageRouter = (
             console.log(message);
             break;
           case "userConnected":
-            console.log(message);
+            userConnected(ws, message, setProjectUsers);
             break;
           case "userDisconnected":
-            console.log(message);
+            userDisconnected(ws, message, setProjectUsers);
             break;
           case "userCurrentView":
             console.log(message);

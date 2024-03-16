@@ -9,6 +9,7 @@ const ProtectedApp = ({ signOut, user }: WithAuthenticatorProps) => {
   const navigate = useNavigate();
 
   const logout = () => {
+    // TODO: Why doesn't it close the ws on signOut? Only after navigating away, post-signOut.
     if (signOut) {
       navigate("./");
       signOut();

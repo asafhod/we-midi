@@ -2,6 +2,7 @@ import * as Tone from "tone";
 import { Message, SongData, TrackType, NoteType, TrackControlType, ProjectUser } from "../types";
 import { noteNames } from "../noteNames";
 import createInstrument from "../instruments/createInstrument";
+import { sortProjectUsers } from "./projectUsers";
 
 export const loadProject = async (
   ws: WebSocket,
@@ -70,7 +71,7 @@ export const loadProject = async (
     });
     setTempo(String(Tone.Transport.bpm.value));
     setSongData({ name: data.project.name, tempo: Tone.Transport.bpm.value, trackIDs });
-    setProjectUsers(data.projectUsers);
+    setProjectUsers(sortProjectUsers(data.projectUsers));
     setLoading(false);
   } catch (error) {
     console.error(`Error loading project: ${error}`);
@@ -81,10 +82,6 @@ export const loadProject = async (
 };
 
 export const updateProject = () => {};
-
-export const deleteProject = () => {
-  // TODO: Implement
-};
 
 export const importMIDI = () => {};
 
