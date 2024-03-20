@@ -2,7 +2,8 @@ import { Request, Response, NextFunction } from "express";
 import mongoose from "mongoose";
 import WebSocket from "ws";
 import webSocketManager from "../webSocketManager";
-import ProjectUserModel, { ProjectUser } from "../models/projectUserModel";
+import ProjectUserModel, { ProjectUser, MAX_PROJECT_USERS } from "../models/projectUserModel";
+import ProjectModel, { Project } from "../models/projectModel";
 import UserModel from "../models/userModel";
 import {
   addProjectUsersSchema,
@@ -16,11 +17,8 @@ import { BadRequestError, BadMessageError, ForbiddenError, ForbiddenActionError,
 import { checkProjectAdmin, checkAdmin } from "../middleware/checkAdmin";
 import { broadcast, formatQueryArray, sendMessage } from "./helpers";
 
-// TODO: Move often-used code to helper functions
+// TODO: Move often-used code to helper functions (like objectIdRegex logic that's used in wsServer, or ws/http counterparts reqs with similar code, or just generally repeated code)
 //       Update the delete controllers to not kick global admins when their ProjectUser is deleted (low priority)
-
-// constants
-const MAX_PROJECT_USERS: number = 10;
 
 // get ProjectUsers based on url query arguments (admin only)
 export const getProjectUsers = async (req: Request, res: Response, next: NextFunction) => {
@@ -120,7 +118,7 @@ export const acceptProjectUser = async (req: Request, res: Response, next: NextF
     const projectUser: ProjectUser | null = await ProjectUserModel.findOneAndUpdate(
       { projectID: new mongoose.Types.ObjectId(projectID), username, isAccepted: false },
       { $set: { isAccepted: true } },
-      { new: true, projection: { _id: 0, __v: 0 } }
+      { new: true, projection: { _id: 0, color: 0, __v: 0 } }
     );
     if (!projectUser) throw new NotFoundError(`No unaccepted ProjectUser found for Project ID ${projectID} and Username ${username}`);
 
@@ -179,18 +177,31 @@ export const addProjectUsers = async (_ws: WebSocket, projectID: string, usernam
     throw new ForbiddenActionError("Cannot add ProjectUser that does not correspond to a registered User");
   }
 
-  // map message data to query object array with all the needed ProjectUser fields
-  const addProjectUsersQuery = data.map(({ username, isProjectAdmin }: { username: string; isProjectAdmin?: boolean }) => {
-    return { projectID: projectObjectId, username, isProjectAdmin: !!isProjectAdmin, isAccepted: false };
-  });
-
   // set up transaction for batch ProjectUser insert operation
   const session = await mongoose.startSession();
   session.startTransaction();
 
   try {
+    // retrieve project from the database
+    const project: Project | null = await ProjectModel.findOne({ _id: projectObjectId }, { __v: 0 }, { session });
+    if (!project) throw new NotFoundError(`No project found for ID: ${projectID}`);
+
+    // iterate over the message data and set the rest of the needed ProjectUser fields
+    for (const newProjectUser of data) {
+      // get next available color for the ProjectUser
+      const color: number | undefined = project.colors.shift();
+      if (color === undefined) throw new Error(`Ran out of available colors for Project ${projectID}`);
+
+      newProjectUser.color = color;
+      newProjectUser.isAccepted = false; // default the new ProjectUsers to unaccepted, since they have not yet responded to their project invite
+      newProjectUser.projectID = projectObjectId;
+    }
+
     // insert new ProjectUsers into database based on query object array
-    const result = await ProjectUserModel.insertMany(addProjectUsersQuery, { session });
+    const result = await ProjectUserModel.insertMany(data, { session });
+
+    // update project's available color array in the database
+    await project.save({ session });
 
     // if successful, commit and end the transaction
     await session.commitTransaction();
@@ -310,6 +321,7 @@ export const deleteProjectUsers = async (_ws: WebSocket, projectID: string, user
   session.startTransaction();
 
   try {
+    // TODO: Colors
     // delete ProjectUsers from database based on query object array
     const result = await ProjectUserModel.deleteMany({ projectID: projectObjectId, $or: data }, { session });
 
@@ -365,6 +377,7 @@ export const deleteProjectUser = async (ws: WebSocket, projectID: string, userna
     );
   }
 
+  // TODO: Colors
   // delete the ProjectUser from the database
   const projectUser: ProjectUser | null = await ProjectUserModel.findOneAndDelete(
     { projectID: new mongoose.Types.ObjectId(projectID), username },
@@ -417,6 +430,7 @@ export const deleteProjectUserHttp = async (req: Request, res: Response, next: N
       );
     }
 
+    // TODO: Colors
     // delete the ProjectUser from the database
     const projectUser: ProjectUser | null = await ProjectUserModel.findOneAndDelete(
       { projectID: new mongoose.Types.ObjectId(projectID), username },

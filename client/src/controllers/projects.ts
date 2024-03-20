@@ -2,11 +2,12 @@ import * as Tone from "tone";
 import { Message, SongData, TrackType, NoteType, TrackControlType, ProjectUser } from "../types";
 import { noteNames } from "../noteNames";
 import createInstrument from "../instruments/createInstrument";
-import { sortProjectUsers } from "./projectUsers";
+import { sortProjectUsers, colors } from "./projectUsers";
 
 export const loadProject = async (
   ws: WebSocket,
   message: Message,
+  username: string | undefined,
   setLoading: React.Dispatch<React.SetStateAction<boolean>>,
   setSongData: React.Dispatch<React.SetStateAction<SongData>>,
   setTracks: React.Dispatch<React.SetStateAction<TrackType[]>>,
@@ -71,7 +72,31 @@ export const loadProject = async (
     });
     setTempo(String(Tone.Transport.bpm.value));
     setSongData({ name: data.project.name, tempo: Tone.Transport.bpm.value, trackIDs });
-    setProjectUsers(sortProjectUsers(data.projectUsers));
+    setProjectUsers((currProjectUsers: ProjectUser[]) => {
+      // TODO: Test, then get rid of this commented code
+      // for (const existingProjectUser of currProjectUsers) {
+      //   const projectUser: ProjectUser | undefined = data.projectUsers.find(
+      //     (pu: ProjectUser) => pu.isOnline && pu.username === existingProjectUser.username
+      //   );
+
+      //   if (projectUser) projectUser.currentView = existingProjectUser.currentView;
+      // }
+
+      for (const projectUser of data.projectUsers) {
+        if (projectUser.isOnline) {
+          const existingProjectUser: ProjectUser | undefined = currProjectUsers.find(
+            (pu: ProjectUser) => pu.username === projectUser.username
+          );
+
+          if (existingProjectUser) projectUser.currentView = existingProjectUser.currentView;
+          if (projectUser.username === username) projectUser.currentView = 0;
+        }
+
+        if (typeof projectUser.color === "number") projectUser.color = colors[projectUser.color];
+      }
+
+      return sortProjectUsers(data.projectUsers);
+    });
     setLoading(false);
   } catch (error) {
     console.error(`Error loading project: ${error}`);

@@ -63,7 +63,7 @@ export const getProject = async (ws: WebSocket, projectID: string) => {
     // get project from database using projectID
     const project = await ProjectModel.findOne(
       { _id: projectObjectId },
-      { _id: 0, lastTrackID: 0, "tracks.lastNoteID": 0, "tracks._id": 0, "tracks.notes._id": 0, __v: 0 } // use projection to avoid retrieving unnecessary fields
+      { _id: 0, colors: 0, lastTrackID: 0, "tracks.lastNoteID": 0, "tracks._id": 0, "tracks.notes._id": 0, __v: 0 } // use projection to avoid retrieving unnecessary fields
     );
     if (!project) throw new NotFoundError(`No project found for ID: ${projectID}`);
 
@@ -82,14 +82,22 @@ export const getProject = async (ws: WebSocket, projectID: string) => {
 
     for (const connectedUser of connectedUsers) {
       // iterate over the connected users for the project and find their associated ProjectUser
-      const projectUser = projectUsers.find((projectUser) => projectUser.username === connectedUser);
+      let projectUser = projectUsers.find((projectUser) => projectUser.username === connectedUser);
 
       if (projectUser) {
         // mark the ProjectUser as online
         projectUser.isOnline = true;
       } else {
-        // if a connected user does not have an associated ProjectUser, mark them as online but not a member (can happen with global admins, or possibly with timing edge cases)
-        projectUsers.push({ username: connectedUser, isProjectAdmin: false, isAccepted: false, isOnline: true, isNotMember: true });
+        // if a connected user does not have an associated ProjectUser, mark them as online but not a member (can happen with global admins, or possibly with deleteProjectUser timing edge cases)
+        projectUser = {
+          username: connectedUser,
+          isProjectAdmin: false,
+          isAccepted: false,
+          color: 10,
+          isOnline: true,
+          isNotMember: true,
+        };
+        projectUsers.push(projectUser);
       }
     }
 
@@ -127,6 +135,7 @@ export const addProject = async (req: Request, res: Response, next: NextFunction
             username: req.username,
             isProjectAdmin: true,
             isAccepted: true,
+            color: 0,
           },
         ],
         { session }
@@ -171,7 +180,7 @@ export const updateProject = async (_ws: WebSocket, projectID: string, username:
     // get current project tempo and tracks from the database using projectID
     const projectData = await ProjectModel.findOne(
       { _id: projectObjectId },
-      { _id: 0, __v: 0, name: 0, ppq: 0, lastTrackID: 0, "tracks._id": 0, "tracks.notes._id": 0 }
+      { _id: 0, __v: 0, name: 0, ppq: 0, colors: 0, lastTrackID: 0, "tracks._id": 0, "tracks.notes._id": 0 }
     ).lean();
 
     if (!projectData) throw new NotFoundError(`No project found for ID: ${projectID}`);
@@ -249,7 +258,16 @@ export const importMidi = async (_ws: WebSocket, projectID: string, username: st
     // using "new" flag to retrieve the updated document and projection to avoid retrieving unnecessary fields
     {
       new: true,
-      projection: { _id: 0, name: 0, lastTrackID: 0, "tracks.lastNoteID": 0, "tracks._id": 0, "tracks.notes._id": 0, __v: 0 },
+      projection: {
+        _id: 0,
+        name: 0,
+        colors: 0,
+        lastTrackID: 0,
+        "tracks.lastNoteID": 0,
+        "tracks._id": 0,
+        "tracks.notes._id": 0,
+        __v: 0,
+      },
     }
   );
   if (!updatedProject) throw new NotFoundError(`No project found for ID: ${projectID}`);

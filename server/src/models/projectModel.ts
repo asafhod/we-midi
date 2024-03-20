@@ -33,6 +33,7 @@ export interface Project extends Document {
   name: string;
   tempo: number;
   ppq: number;
+  colors: number[];
   lastTrackID: number;
   tracks: Track[];
 }
@@ -45,6 +46,7 @@ const projectSchema = new Schema<Project>({
   },
   tempo: { type: Number, default: DEFAULT_TEMPO },
   ppq: { type: Number, default: DEFAULT_PPQ },
+  colors: { type: [Number], default: [1, 2, 3, 4, 5, 6, 7, 8, 9] },
   lastTrackID: { type: Number, default: 0 },
   tracks: {
     type: [

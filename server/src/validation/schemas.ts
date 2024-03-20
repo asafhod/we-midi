@@ -142,7 +142,7 @@ export const addProjectUsersSchema: ArraySchema<any[]> = Joi.array()
   .max(9)
   .items({
     username: Joi.string().min(1).max(128).required(),
-    isProjectAdmin: Joi.boolean(),
+    isProjectAdmin: Joi.boolean().required(),
   });
 
 // validation schema for the Update Project Users request

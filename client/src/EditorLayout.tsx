@@ -1,6 +1,7 @@
-import { PropsWithChildren, Children, useState, useEffect, useLayoutEffect, useRef, useCallback } from "react";
+import { PropsWithChildren, Children, useState, useEffect, useLayoutEffect, useRef, useCallback, useContext } from "react";
+import TracksContext from "./TracksContext";
 import useResizeObserver from "use-resize-observer";
-import { TrackType } from "./types";
+import { TrackType, ProjectUser } from "./types";
 
 type EditorLayoutProps = {
   contentFullSizeH: number;
@@ -16,8 +17,9 @@ type EditorLayoutProps = {
   blockAutoscroll: () => void;
   tracks: TrackType[];
   midiEditorTrackID: number;
-  setMidiEditorTrackID: React.Dispatch<React.SetStateAction<number>>;
+  setProjectUsers: React.Dispatch<React.SetStateAction<ProjectUser[]>>;
   nextMidiEditorTrackID: number;
+  setDisconnected: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
 type TrackViewSetting = {
@@ -40,11 +42,13 @@ const EditorLayout = ({
   blockAutoscroll,
   tracks,
   midiEditorTrackID,
-  setMidiEditorTrackID,
+  setProjectUsers,
   nextMidiEditorTrackID,
+  setDisconnected,
   children,
 }: PropsWithChildren<EditorLayoutProps>) => {
-  // TODO: TrackViewSettings needs to adjust when adding and removing tracks. Likely move it to a custom hook (useTrackViewSettings).
+  // TODO: TrackViewSettings needs to adjust when adding and removing tracks. Likely move it to a custom hook (useTrackViewSettings). Already fixed?
+  const { ws, username } = useContext(TracksContext)!;
   const [trackViewSettings, setTrackViewSettings] = useState<TrackViewSetting[]>([{ trackID: 0, scrollPos: 0, zoom: 1 }]);
   const contentVRef = useRef<HTMLDivElement>(null);
   const contentHRef = useRef<HTMLDivElement>(null);
@@ -372,21 +376,43 @@ const EditorLayout = ({
 
   useEffect(() => {
     if (contentVRef.current && midiEditorTrackID !== nextMidiEditorTrackID) {
-      const currScrollPos: number = contentVRef.current.scrollTop;
+      if (ws) {
+        try {
+          const currScrollPos: number = contentVRef.current.scrollTop;
 
-      const newTrackViewSettings: TrackViewSetting[] = trackViewSettings.map((trackViewSetting) => {
-        if (trackViewSetting.trackID === midiEditorTrackID) {
-          return { trackID: midiEditorTrackID, scrollPos: currScrollPos, zoom };
-        } else {
-          // TODO: Does using original object reference like this cause a memory leak? Need deep copy instead? Or does garbage collector handle it?
-          return trackViewSetting;
+          const newTrackViewSettings: TrackViewSetting[] = trackViewSettings.map((trackViewSetting) => {
+            if (trackViewSetting.trackID === midiEditorTrackID) {
+              return { trackID: midiEditorTrackID, scrollPos: currScrollPos, zoom };
+            } else {
+              // TODO: Does using original object reference like this cause a memory leak? Need deep copy instead? Or does garbage collector handle it?
+              return trackViewSetting;
+            }
+          });
+
+          setProjectUsers((currProjectUsers: ProjectUser[]) => {
+            return currProjectUsers.map((pu: ProjectUser) =>
+              pu.username === username ? { ...pu, currentView: nextMidiEditorTrackID } : pu
+            );
+          });
+          setTrackViewSettings(newTrackViewSettings);
+
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ action: "userCurrentView", data: { trackID: nextMidiEditorTrackID } }));
+          } else {
+            throw new Error("WebSocket is not open");
+          }
+        } catch (error) {
+          console.error(`Error changing view: ${error}`);
+
+          // close the connection with Close Code 4400 for generic client-side error
+          ws.close(4400);
         }
-      });
-
-      setMidiEditorTrackID(nextMidiEditorTrackID);
-      setTrackViewSettings(newTrackViewSettings);
+      } else {
+        // If ws is undefined, view change data cannot be sent. Set the UI to show session as disconnected.
+        setDisconnected(true);
+      }
     }
-  }, [nextMidiEditorTrackID, setMidiEditorTrackID, midiEditorTrackID, trackViewSettings, zoom]);
+  }, [nextMidiEditorTrackID, setProjectUsers, midiEditorTrackID, trackViewSettings, zoom, username, ws, setDisconnected]);
 
   useLayoutEffect(() => {
     if (midiEditorTrackID !== prevMidiEditorTrackIDRef.current && contentVRef.current) {

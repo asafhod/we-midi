@@ -1,7 +1,7 @@
 import * as Tone from "tone";
-import { useState, useEffect, useContext } from "react";
+import { useState, useEffect, useMemo, useContext } from "react";
 import TracksContext from "./TracksContext";
-import { TrackType, NoteType, RegionType } from "./types";
+import { TrackType, NoteType, RegionType, ProjectUser } from "./types";
 
 type TrackProps = {
   track: TrackType;
@@ -12,9 +12,16 @@ type TrackProps = {
 };
 
 const Track = ({ track, width, height, widthFactor, setNextMidiEditorTrackID }: TrackProps): JSX.Element => {
-  // TODO: change to use Redux state instead of context API
-  const { tracks } = useContext(TracksContext)!;
+  // TODO: Stop getting tracks from context?
+  const { projectUsers, tracks } = useContext(TracksContext)!;
   const [regions, setRegions] = useState<RegionType[]>([]);
+
+  const { id } = track;
+
+  // TODO: "Multiple"
+  const editingUser: string | undefined = useMemo(() => {
+    return projectUsers.find((pu: ProjectUser) => pu.currentView === id)?.username;
+  }, [projectUsers, id]);
 
   const notes: JSX.Element[] = [];
 
@@ -173,7 +180,9 @@ const Track = ({ track, width, height, widthFactor, setNextMidiEditorTrackID }: 
   }, [tracks]);
 
   return (
-    <div className="track" style={{ width, height }} onDoubleClick={() => setNextMidiEditorTrackID(track.id)}>
+    <div className="track" style={{ width, height }} onDoubleClick={() => setNextMidiEditorTrackID(id)}>
+      {/* TODO: Formatting, move to css sheet, etc. */}
+      {editingUser && <span style={{ position: "absolute" }}>{editingUser} editing...</span>}
       {regions.map((region, i) => {
         return (
           <div

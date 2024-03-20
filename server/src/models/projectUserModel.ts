@@ -1,11 +1,15 @@
 import mongoose, { Document, Schema, Types } from "mongoose";
 
+// constants
+export const MAX_PROJECT_USERS: number = 10;
+
 // define ProjectUser interface
 export interface ProjectUser extends Document {
   projectID: Types.ObjectId;
   username: string;
   isProjectAdmin: boolean;
   isAccepted: boolean;
+  color: number;
   //  TODO: Implement these in localStorage
   // trackControls: {
   //   trackID: number;
@@ -29,6 +33,7 @@ const projectUserSchema = new Schema<ProjectUser>({
   },
   isProjectAdmin: { type: Boolean, default: false },
   isAccepted: { type: Boolean, default: false },
+  color: { type: Number, required: [true, "Color is required"] },
 });
 
 // compound unique index for projectID and username

@@ -223,6 +223,8 @@ export const deleteUser = async (req: Request, res: Response, next: NextFunction
       // delete the user's entries from the ProjectUser database
       const projectUserDeleteResult = await ProjectUserModel.deleteMany({ username }, { session });
 
+      // TODO: Return their colors to all of the Projects they were deleted from
+
       // delete the user from the User database
       const user: User | null = await UserModel.findOneAndDelete({ username }, { projection: { _id: 0, __v: 0 }, session });
       if (!user) throw new NotFoundError(`No user found for username: ${username}`);
@@ -250,6 +252,7 @@ export const deleteUser = async (req: Request, res: Response, next: NextFunction
       }
 
       // close any open WebSocket connection for the user
+      // TODO: Update this logic so if the user was not a global admin, only close their connections matching memberProjects (low priority)
       for (const projectConnections of Object.values(webSocketManager)) {
         const existingConnection: WebSocket | undefined = projectConnections[username];
         if (existingConnection && existingConnection.readyState === WebSocket.OPEN) {

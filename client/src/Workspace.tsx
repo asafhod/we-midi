@@ -2,7 +2,8 @@ import * as Tone from "tone";
 import { useState, useLayoutEffect, useCallback, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import TracksContext from "./TracksContext";
-import { TrackType, NoteType, SongData, TrackControlType, ProjectUser } from "./types";
+// TODO: Syntax: import type?
+import { TrackType, NoteType, SongData, TrackControlType, ProjectUser, Message } from "./types";
 import useMessageRouter from "./useMessageRouter";
 // import useLoadSong from "./useLoadSong";
 import Player from "./Player";
@@ -30,7 +31,6 @@ const Workspace = ({ username }: WorkspaceProps): JSX.Element => {
   const [startPosition, setStartPosition] = useState(0);
   const [playerPosition, setPlayerPosition] = useState(0);
   const [autoscrollBlocked, setAutoscrollBlocked] = useState(false);
-  const [midiEditorTrackID, setMidiEditorTrackID] = useState(0);
   const [nextMidiEditorTrackID, setNextMidiEditorTrackID] = useState(0);
   const [zoom, setZoom] = useState(1);
   const [trackHeight, setTrackHeight] = useState(78);
@@ -50,9 +50,11 @@ const Workspace = ({ username }: WorkspaceProps): JSX.Element => {
   const [trackControls, setTrackControls] = useState<TrackControlType[]>([]);
   const [tempo, setTempo] = useState(String(songData.tempo));
   const [projectUsers, setProjectUsers] = useState<ProjectUser[]>([]);
+  const [childMessage, setChildMessage] = useState<Message>(); // TODO: Move inside context? Other states too?
   useMessageRouter(
     id,
     username,
+    setChildMessage,
     setLoading,
     setDisconnected,
     setWs,
@@ -104,8 +106,14 @@ const Workspace = ({ username }: WorkspaceProps): JSX.Element => {
 
   const gridPatternWidth: number = segmentIsBeat ? segmentWidth * 4 : segmentWidth;
 
+  const midiEditorTrackID: number = useMemo(() => {
+    const projectUser: ProjectUser | undefined = projectUsers.find((pu: ProjectUser) => pu.username === username);
+    return projectUser?.currentView ?? 0;
+  }, [projectUsers, username]);
+
   const midiEditorTrack: TrackType | null | undefined = useMemo(() => {
     // Also re-calcs every time tracks changes. Any way to limit that so its only if the current track is removed from tracks?
+    // TODO: If track is deleted, need to update the midiEditorTrackID (in projectUsers) to 0?
     return midiEditorTrackID !== 0 ? tracks.find((track) => track.id === midiEditorTrackID) : null;
   }, [midiEditorTrackID, tracks]);
 
@@ -266,7 +274,7 @@ const Workspace = ({ username }: WorkspaceProps): JSX.Element => {
   }, [songData, playerPosition, changePlayerPosition, startPosition, changeStartPosition, tracks, setTracks]);
 
   return (
-    <TracksContext.Provider value={{ ws, tracks, setTracks }}>
+    <TracksContext.Provider value={{ username, ws, childMessage, projectUsers, tracks, setTracks }}>
       <div className="workspace" tabIndex={0} onKeyDown={(e) => handleKeyDown(e)}>
         {disconnected ? (
           <div>
@@ -355,8 +363,9 @@ const Workspace = ({ username }: WorkspaceProps): JSX.Element => {
               blockAutoscroll={blockAutoscroll}
               tracks={tracks}
               midiEditorTrackID={midiEditorTrackID}
-              setMidiEditorTrackID={setMidiEditorTrackID}
+              setProjectUsers={setProjectUsers}
               nextMidiEditorTrackID={nextMidiEditorTrackID}
+              setDisconnected={setDisconnected}
             >
               <EditorControlsHeader tracks={tracks} midiEditorTrack={midiEditorTrack} />
               {midiEditorTrack ? (

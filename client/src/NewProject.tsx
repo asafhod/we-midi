@@ -25,6 +25,7 @@ const NewProject = () => {
         const { success, data, msg } = await response.json();
 
         if (success) {
+          // TODO: Why is this now starting tempo at -1, when it was working before?
           navigate(`./${data._id}`);
         } else {
           throw new Error(msg || "Invalid response");

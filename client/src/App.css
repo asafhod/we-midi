@@ -384,6 +384,13 @@
   position: absolute;
 }
 
+.mouse-cursor {
+  display: inline-block;
+  position: absolute;
+  width: 13px;
+  height: 20px;
+}
+
 .midi-editor {
   position: absolute;
   top: 0px;

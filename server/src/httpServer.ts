@@ -13,7 +13,7 @@ import rateLimit from "express-rate-limit";
 export const configureHttpServer = (app: express.Application) => {
   // middleware
   app.set("trust proxy", 1); // use reverse proxy's settings
-  app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 1000 })); // limit each IP to 1000 requests per 15 minutes
+  app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 100 })); // limit each IP to 100 HTTP requests per 15 minutes
 
   app.use(express.static("public"));
   app.use(express.json());

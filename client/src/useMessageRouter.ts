@@ -4,11 +4,12 @@ import { Message, SongData, TrackType, TrackControlType, ProjectUser } from "./t
 import { fetchAuthSession } from "aws-amplify/auth";
 import { loadProject, addTrack, deleteTrack } from "./controllers/projects";
 import { addNote, deleteNote } from "./controllers/notes";
-import { userConnected, userDisconnected } from "./controllers/projectUsers";
+import { userConnected, userDisconnected, userCurrentView } from "./controllers/projectUsers";
 
 const useMessageRouter = (
   projectID: string | undefined,
   username: string | undefined,
+  setChildMessage: React.Dispatch<React.SetStateAction<Message | undefined>>,
   setLoading: React.Dispatch<React.SetStateAction<boolean>>,
   setDisconnected: React.Dispatch<React.SetStateAction<boolean>>,
   setWs: React.Dispatch<React.SetStateAction<WebSocket | undefined>>,
@@ -31,7 +32,7 @@ const useMessageRouter = (
       const handleMessage = (message: Message, ws: WebSocket) => {
         switch (message.action) {
           case "getProject":
-            loadProject(ws, message, setLoading, setSongData, setTracks, setTrackControls, setTempo, setProjectUsers);
+            loadProject(ws, message, username, setLoading, setSongData, setTracks, setTrackControls, setTempo, setProjectUsers);
             break;
           case "updateProject":
             console.log(message);
@@ -75,6 +76,7 @@ const useMessageRouter = (
             console.log(message);
             break;
           case "addProjectUsers":
+            // TODO: Don't forget to map transform the colors
             console.log(message);
             break;
           case "acceptProjectUser":
@@ -90,16 +92,20 @@ const useMessageRouter = (
             console.log(message);
             break;
           case "userConnected":
-            userConnected(ws, message, setProjectUsers);
+            userConnected(ws, message, username, setProjectUsers);
             break;
           case "userDisconnected":
             userDisconnected(ws, message, setProjectUsers);
             break;
           case "userCurrentView":
-            console.log(message);
+            userCurrentView(ws, message, setProjectUsers);
             break;
           case "userMouse":
-            console.log(message);
+            if (message.success) {
+              setChildMessage(message);
+            } else {
+              console.error(`Server could not forward User Mouse message: ${message.msg}`);
+            }
             break;
           case "chatMessage":
             console.log(message);
@@ -178,6 +184,7 @@ const useMessageRouter = (
   }, [
     projectID,
     username,
+    setChildMessage,
     setLoading,
     setDisconnected,
     setWs,
