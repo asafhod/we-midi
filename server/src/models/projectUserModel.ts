@@ -1,8 +1,5 @@
 import mongoose, { Document, Schema, Types } from "mongoose";
 
-// constants
-export const MAX_PROJECT_USERS: number = 10;
-
 // define ProjectUser interface
 export interface ProjectUser extends Document {
   projectID: Types.ObjectId;

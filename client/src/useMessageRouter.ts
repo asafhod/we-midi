@@ -1,8 +1,8 @@
 import { useEffect, useRef } from "react";
 import * as Tone from "tone";
-import { Message, SongData, TrackType, TrackControlType, ProjectUser } from "./types";
+import { Message, SongData, TrackType, TrackControlType, ProjectUser, Loading } from "./types";
 import { fetchAuthSession } from "aws-amplify/auth";
-import { loadProject, addTrack, deleteTrack } from "./controllers/projects";
+import { loadProject, updateProject, addTrack, deleteTrack } from "./controllers/projects";
 import { addNote, deleteNote } from "./controllers/notes";
 import { userConnected, userDisconnected, userCurrentView } from "./controllers/projectUsers";
 
@@ -10,9 +10,8 @@ const useMessageRouter = (
   projectID: string | undefined,
   username: string | undefined,
   setChildMessage: React.Dispatch<React.SetStateAction<Message | undefined>>,
-  setLoading: React.Dispatch<React.SetStateAction<boolean>>,
+  setLoading: React.Dispatch<React.SetStateAction<Loading>>,
   setDisconnected: React.Dispatch<React.SetStateAction<boolean>>,
-  setWs: React.Dispatch<React.SetStateAction<WebSocket | undefined>>,
   setSongData: React.Dispatch<React.SetStateAction<SongData>>,
   setTracks: React.Dispatch<React.SetStateAction<TrackType[]>>,
   setTrackControls: React.Dispatch<React.SetStateAction<TrackControlType[]>>,
@@ -24,6 +23,7 @@ const useMessageRouter = (
   const baseWsServerURL: string = "ws://localhost:5000?projectID=";
 
   const readyRef = useRef(false);
+  const ws = useRef<WebSocket | null>(null);
 
   useEffect(() => {
     if (!readyRef.current) {
@@ -35,7 +35,7 @@ const useMessageRouter = (
             loadProject(ws, message, username, setLoading, setSongData, setTracks, setTrackControls, setTempo, setProjectUsers);
             break;
           case "updateProject":
-            console.log(message);
+            updateProject(ws, message, username, setLoading, setSongData);
             break;
           case "deleteProject":
             // TODO: Implement this as a button somewhere that deletes the project
@@ -155,9 +155,9 @@ const useMessageRouter = (
               console.error(`WebSocket error: ${error}`);
             };
 
-            setWs(newSocket);
+            ws.current = newSocket;
           } else {
-            setLoading(false);
+            setLoading((currLoading) => ({ ...currLoading, workspace: false }));
           }
         } catch (error) {
           console.error(`Could not set up WebSocket connection - Error: ${error}`);
@@ -180,6 +180,8 @@ const useMessageRouter = (
 
         return [];
       });
+
+      // TODO: Close WS? Or it's handled by the page close? May fix the logout non-disconnect? Make sure it plays nice with Strict mode.
     };
   }, [
     projectID,
@@ -187,7 +189,6 @@ const useMessageRouter = (
     setChildMessage,
     setLoading,
     setDisconnected,
-    setWs,
     setSongData,
     setTracks,
     setTrackControls,
@@ -195,6 +196,8 @@ const useMessageRouter = (
     setProjectUsers,
     setMidiFile,
   ]);
+
+  return ws.current;
 };
 
 export default useMessageRouter;

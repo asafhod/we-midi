@@ -2,6 +2,8 @@ import mongoose, { Document, Schema, Types } from "mongoose";
 
 // constants
 const DEFAULT_TEMPO: number = 120;
+const DEFAULT_COLORS: number[] = [9, 8, 7, 6, 5, 4, 3, 2, 1]; // also defaults maximum ProjectUsers per project to DEFAULT_COLORS + 1 (currently 10)
+export const ADMIN_COLOR: number = DEFAULT_COLORS.length + 1;
 export const DEFAULT_PPQ: number = 480;
 export const DEFAULT_VOLUME: number = -16;
 
@@ -46,7 +48,7 @@ const projectSchema = new Schema<Project>({
   },
   tempo: { type: Number, default: DEFAULT_TEMPO },
   ppq: { type: Number, default: DEFAULT_PPQ },
-  colors: { type: [Number], default: [1, 2, 3, 4, 5, 6, 7, 8, 9] },
+  colors: { type: [Number], default: DEFAULT_COLORS },
   lastTrackID: { type: Number, default: 0 },
   tracks: {
     type: [

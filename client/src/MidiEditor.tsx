@@ -2,7 +2,7 @@ import { useState, useEffect, useLayoutEffect, useRef, useContext, useMemo } fro
 import TracksContext from "./TracksContext";
 import { TrackType, ProjectUser } from "./types";
 import { insertNote, removeNote } from "./controllers/notes";
-import { ReactComponent as CursorSVG } from "./assets/icons/cursor.svg";
+import { ReactComponent as CursorIcon } from "./assets/icons/cursor.svg";
 
 type MouseDataItem = { top: number; time: number; leftClick: Boolean; rightClick: Boolean };
 type MouseData = Record<string, MouseDataItem>;
@@ -168,10 +168,9 @@ const MidiEditor = ({ track, setTracks, widthFactor, startPosition, setAutoscrol
       try {
         if (ws.readyState === WebSocket.OPEN) {
           const currentTime: number = Date.now();
-          // TODO: Interpolation logic. See how low of a message rate you can get away with. 77 ms is a safe number.
           // TODO: Logic to send mouse data after scrolling page with left/right wheel or after zooming (calculation is mathy because can't use mouseMove, especially so for zoom - low priority)
-          // only send userMouse message if at least 25 ms have passed since the last one was sent
-          // if (currentTime - lastMouseSendRef.current >= 25) {
+
+          // only send userMouse message if at least 77 ms have passed since the last one was sent (throttles to about 13 message per second)
           if (currentTime - lastMouseSendRef.current >= 77) {
             const target = e.currentTarget as HTMLDivElement;
 
@@ -208,7 +207,7 @@ const MidiEditor = ({ track, setTracks, widthFactor, startPosition, setAutoscrol
     }
   };
 
-  // TODO: Test if this plays nice with Strict Mode
+  // TODO: Test if this plays nice with Strict Mode and the ready flag
   useEffect(() => {
     if (readyRef.current) {
       if (childMessage && childMessage.action === "userMouse") {
@@ -217,12 +216,22 @@ const MidiEditor = ({ track, setTracks, widthFactor, startPosition, setAutoscrol
           return source ? { ...currMouseData, [source]: data } : currMouseData;
         });
       }
-    } else {
-      readyRef.current = true;
     }
   }, [childMessage]);
 
   // TODO: Logic to update the mouseData times if the tempo changes (after you switch to measure-based, this part will no longer be necessary)
+  // useEffect(() => {
+  //   if (readyRef.current) {
+  //       setMouseData((currMouseData: MouseData) => {
+  //         return currMouseData;
+  //       });
+  //   }
+  // }, [TEMPO-DEP]);
+
+  // TODO: Test if this plays nice with Strict Mode and the ready flag
+  useEffect(() => {
+    readyRef.current = true;
+  }, []);
 
   useLayoutEffect(() => {
     setAutoscrollBlocked(false);
@@ -266,7 +275,7 @@ type MouseCursorProps = {
 const MouseCursor = ({ top, left, leftClick, rightClick, color }: MouseCursorProps): JSX.Element => {
   const fill: string = leftClick && rightClick ? "purple" : leftClick ? "green" : rightClick ? "red" : color;
 
-  return <CursorSVG className="mouse-cursor" fill={fill} style={{ top, left }} />;
+  return <CursorIcon className="mouse-cursor" aria-label="User Cursor" fill={fill} style={{ top, left }} />;
 };
 
 export default MidiEditor;

@@ -25,7 +25,7 @@ const NewProject = () => {
         const { success, data, msg } = await response.json();
 
         if (success) {
-          // TODO: Why is this now starting tempo at -1, when it was working before?
+          // TODO: Why is this not sending the url request after setting it in the browser bar? Or is it, but not connecting the socket for some reason? Or something with the username prop? Test
           navigate(`./${data._id}`);
         } else {
           throw new Error(msg || "Invalid response");

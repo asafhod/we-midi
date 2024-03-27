@@ -1,5 +1,5 @@
 import * as Tone from "tone";
-import { Message, SongData, TrackType, NoteType, TrackControlType, ProjectUser } from "../types";
+import { Message, SongData, TrackType, NoteType, TrackControlType, ProjectUser, Loading } from "../types";
 import { noteNames } from "../noteNames";
 import createInstrument from "../instruments/createInstrument";
 import { sortProjectUsers, colors } from "./projectUsers";
@@ -8,7 +8,7 @@ export const loadProject = async (
   ws: WebSocket,
   message: Message,
   username: string | undefined,
-  setLoading: React.Dispatch<React.SetStateAction<boolean>>,
+  setLoading: React.Dispatch<React.SetStateAction<Loading>>,
   setSongData: React.Dispatch<React.SetStateAction<SongData>>,
   setTracks: React.Dispatch<React.SetStateAction<TrackType[]>>,
   setTrackControls: React.Dispatch<React.SetStateAction<TrackControlType[]>>,
@@ -97,7 +97,7 @@ export const loadProject = async (
 
       return sortProjectUsers(data.projectUsers);
     });
-    setLoading(false);
+    setLoading((currLoading) => ({ ...currLoading, workspace: false }));
   } catch (error) {
     console.error(`Error loading project: ${error}`);
 
@@ -106,7 +106,40 @@ export const loadProject = async (
   }
 };
 
-export const updateProject = () => {};
+export const updateProject = (
+  ws: WebSocket,
+  message: Message,
+  username: string | undefined,
+  setLoading: React.Dispatch<React.SetStateAction<Loading>>,
+  setSongData: React.Dispatch<React.SetStateAction<SongData>>
+) => {
+  try {
+    if (message.success) {
+      // const { source, data: {name, tempo, tracks} } = message; // TODO: Implement tempo change logic
+      const {
+        source,
+        data: { name },
+      } = message;
+
+      setSongData((currSongData) => ({ ...currSongData, name }));
+
+      if (source === username) setLoading((currLoading) => ({ ...currLoading, projectName: false }));
+
+      console.log(`User ${source} renamed the project to ${name}`);
+    } else {
+      // TODO: Implement tempo change logic. May need to separate it into another request type to differentiate it, due to the loading screen disabling.
+      //       Or check which fields it's trying to change on the server and return error data. Though if it errors and can't detect that? Disconnect?
+      //         Having separate requests may be the best option for this reason
+      setLoading((currLoading) => ({ ...currLoading, projectName: false }));
+      console.error(`Server could not update project: ${message.msg}`);
+    }
+  } catch (error) {
+    console.error(`Error updating project: ${error}`);
+
+    // close the connection with Close Code 4400 for generic client-side error
+    ws.close(4400);
+  }
+};
 
 export const importMIDI = () => {};
 
@@ -162,7 +195,21 @@ export const addTrack = async (
   }
 };
 
-export const updateTrack = () => {};
+// TODO: Implement
+// export const updateTrack = (
+//   ws: WebSocket,
+//   message: Message,
+//   setTrackControls: React.Dispatch<React.SetStateAction<TrackControlType[]>>
+// ) => {
+//   try {
+
+//   } catch (error) {
+//     console.error(`Error updating track: ${error}`);
+
+//     // close the connection with Close Code 4400 for generic client-side error
+//     ws.close(4400);
+//   }
+// };
 
 export const deleteTrack = (
   ws: WebSocket,

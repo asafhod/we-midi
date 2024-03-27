@@ -3,7 +3,7 @@ import { useState, useLayoutEffect, useCallback, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import TracksContext from "./TracksContext";
 // TODO: Syntax: import type?
-import { TrackType, NoteType, SongData, TrackControlType, ProjectUser, Message } from "./types";
+import { TrackType, NoteType, SongData, TrackControlType, ProjectUser, Message, Loading } from "./types";
 import useMessageRouter from "./useMessageRouter";
 // import useLoadSong from "./useLoadSong";
 import Player from "./Player";
@@ -17,6 +17,7 @@ import InstrumentControls from "./InstrumentControls";
 import MidiEditor from "./MidiEditor";
 import MidiUploader from "./MidiUploader";
 import NewProject from "./NewProject";
+import ProjectName from "./ProjectName";
 
 // TODO: Make sure you're using map() where necessary throughout the app instead of pushing to an array
 //       Control+F for "= []" and if it should be map() instead, change it. Tempo change logic and list components need this, likely others.
@@ -41,9 +42,9 @@ const Workspace = ({ username }: WorkspaceProps): JSX.Element => {
   // const { loading, setLoading, songData, setSongData, tracks, setTracks, trackControls, setTrackControls, tempo, setTempo } =
   //   useLoadSong(id, midiFile, setMidiFile);
 
-  const [loading, setLoading] = useState(true); // TODO: Move inside useMessageRouter (once you fix MIDI import logic to not have setLoading passed to it)?
-  const [disconnected, setDisconnected] = useState(false); // TODO: Move inside useMessageRouter?
-  const [ws, setWs] = useState<WebSocket>(); // TODO: Move inside useMessageRouter?
+  // TODO: Change loading type back
+  const [loading, setLoading] = useState<Loading>({ workspace: true, projectName: false }); // TODO: Move inside useMessageRouter (once you fix MIDI import logic to not have setLoading passed to it)?
+  const [disconnected, setDisconnected] = useState(false); // TODO: Move elsewhere?
   // TODO: If you keep trackIDs and trackControls account for them when adding/removing tracks
   const [songData, setSongData] = useState<SongData>({ name: "", tempo: -1, trackIDs: [] }); // TODO: Split into Global and Local
   const [tracks, setTracks] = useState<TrackType[]>([]); // TODO: make sure you're getting tracks consistently across components
@@ -51,13 +52,12 @@ const Workspace = ({ username }: WorkspaceProps): JSX.Element => {
   const [tempo, setTempo] = useState(String(songData.tempo));
   const [projectUsers, setProjectUsers] = useState<ProjectUser[]>([]);
   const [childMessage, setChildMessage] = useState<Message>(); // TODO: Move inside context? Other states too?
-  useMessageRouter(
+  const ws = useMessageRouter(
     id,
     username,
     setChildMessage,
     setLoading,
     setDisconnected,
-    setWs,
     setSongData,
     setTracks,
     setTrackControls,
@@ -198,34 +198,34 @@ const Workspace = ({ username }: WorkspaceProps): JSX.Element => {
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    if (!loading) {
-      const target = e.target as HTMLElement;
+  // const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+  //   if (!loading.workspace) {
+  //     const target = e.target as HTMLElement;
 
-      if (!target.classList.contains("track-name") && !target.classList.contains("tempo-input")) {
-        e.preventDefault();
+  //     if (!target.classList.contains("track-name") && !target.classList.contains("tempo-input")) {
+  //       e.preventDefault();
 
-        // TODO: Clean up and add min/max constraints, scrolling, and blockAuto scroll. Move elsewhere, if needed for consistent focusing.
-        //       Probably just change to a document listener and have those wherever needed, like in Player
-        if (e.code === "ArrowRight") {
-          setStartPosition((prevStartPos) => prevStartPos + 0.077);
-        } else if (e.code === "ArrowLeft") {
-          setStartPosition((prevStartPos) => prevStartPos - 0.077);
-        } else if (e.code === "ArrowUp" && zoom < zoomMax) {
-          zoomIn();
-        } else if (e.code === "ArrowDown" && zoom > zoomMin) {
-          zoomOut();
-        } else if (e.code === "Home") {
-          toBeginning();
-        } else if (e.code === "Space") {
-          // toggle play
-        }
-      }
-    }
-  };
+  //       // TODO: Clean up and add min/max constraints, scrolling, and blockAuto scroll. Move elsewhere, if needed for consistent focusing.
+  //       //       Probably just change to a document listener and have those wherever needed, like in Player
+  //       if (e.code === "ArrowRight") {
+  //         setStartPosition((prevStartPos) => prevStartPos + 0.077);
+  //       } else if (e.code === "ArrowLeft") {
+  //         setStartPosition((prevStartPos) => prevStartPos - 0.077);
+  //       } else if (e.code === "ArrowUp" && zoom < zoomMax) {
+  //         zoomIn();
+  //       } else if (e.code === "ArrowDown" && zoom > zoomMin) {
+  //         zoomOut();
+  //       } else if (e.code === "Home") {
+  //         toBeginning();
+  //       } else if (e.code === "Space") {
+  //         // toggle play
+  //       }
+  //     }
+  //   }
+  // };
 
   useLayoutEffect(() => {
-    // TODO: Correct zoom settings for other tempos
+    // TODO: Correct zoom settings for other tempos (account for this in TrackViewSettings as well)
 
     // prevents from running unnecessarily
     if (songData.tempo !== -1 && songData.tempo !== Tone.Transport.bpm.value) {
@@ -275,21 +275,22 @@ const Workspace = ({ username }: WorkspaceProps): JSX.Element => {
 
   return (
     <TracksContext.Provider value={{ username, ws, childMessage, projectUsers, tracks, setTracks }}>
-      <div className="workspace" tabIndex={0} onKeyDown={(e) => handleKeyDown(e)}>
+      {/* <div className="workspace" tabIndex={0} onKeyDown={(e) => handleKeyDown(e)}> */}
+      <div className="workspace" tabIndex={0}>
         {disconnected ? (
           <div>
             <span>Your session has been disconnected</span>
             <br />
             <a href="/dashboard">Back to Dashboard</a>
           </div>
-        ) : loading ? (
+        ) : loading.workspace ? (
           <p>Loading...</p>
         ) : id ? (
           <>
             <a className="dashboard-link" href="/dashboard">
               Back to Dashboard
             </a>
-            <span className="project-name">{songData.name}</span>
+            <ProjectName projectName={songData.name} loading={loading.projectName} setLoading={setLoading} />
             <div className="controls-bar">
               <button type="button" className="beginning-button" onClick={toBeginning}>
                 {"<<"}

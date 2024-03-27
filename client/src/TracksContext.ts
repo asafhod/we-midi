@@ -3,7 +3,7 @@ import { Message, ProjectUser, TrackType } from "./types";
 
 type TracksContextType = {
   username: string | undefined;
-  ws: WebSocket | undefined;
+  ws: WebSocket | null;
   childMessage: Message | undefined;
   projectUsers: ProjectUser[];
   tracks: TrackType[];

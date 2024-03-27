@@ -155,12 +155,7 @@ export const updateProjectUsersSchema: ArraySchema<any[]> = Joi.array()
   });
 
 // validation schema for the Delete Project Users request
-export const deleteProjectUsersSchema: ArraySchema<any[]> = Joi.array()
-  .min(1)
-  .max(9)
-  .items({
-    username: Joi.string().min(1).max(128).required(),
-  });
+export const deleteProjectUsersSchema: ArraySchema<any[]> = Joi.array().min(1).max(9).items(Joi.string().min(1).max(128));
 
 // validation for the User Current View request
 export const userCurrentViewSchema: ObjectSchema<any> = Joi.object({

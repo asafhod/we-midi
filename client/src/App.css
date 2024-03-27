@@ -389,6 +389,7 @@
   position: absolute;
   width: 13px;
   height: 20px;
+  transition: left 0.025s linear, top 0.025s linear;
 }
 
 .midi-editor {
@@ -441,6 +442,81 @@
 
 .plus-minus-button {
   width: 25px;
+}
+
+.project-name-container,
+.project-name-editor-container {
+  position: absolute;
+  left: 160px;
+  top: 9px;
+  width: 275px;
+  height: 21px;
+  display: inline-block;
+  text-align: left;
+}
+
+.project-name {
+  position: absolute;
+  left: 23px;
+  top: 2px;
+}
+
+.project-name-edit-btn {
+  display: none;
+  position: absolute;
+  left: 0px;
+  top: 4px;
+  cursor: pointer;
+}
+
+.project-name-edit-btn:hover {
+  display: none;
+  top: 2px;
+}
+
+.project-name-container:hover .project-name-edit-btn {
+  display: inline-block;
+}
+
+.project-name-input {
+  position: absolute;
+  padding-left: 5px;
+  width: 260px;
+  left: 15px;
+  top: -1px;
+  border-radius: 14.6px;
+  outline: none;
+}
+
+.project-name-input:disabled {
+  background-color: red;
+}
+
+.project-name-submit-btn {
+  position: absolute;
+  left: 245px;
+  top: 4px;
+  height: 20px;
+  width: 20px;
+  cursor: pointer;
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.project-name-waiting-icon {
+  animation: rotate 1.5s linear infinite;
+  position: absolute;
+  left: 245px;
+  top: 4px;
+  height: 20px;
+  width: 20px;
 }
 
 .tempo-input {

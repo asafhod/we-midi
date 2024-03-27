@@ -58,3 +58,8 @@ export type Message = {
   data: any;
   msg?: string;
 };
+
+export type Loading = {
+  workspace: boolean;
+  projectName: boolean;
+};

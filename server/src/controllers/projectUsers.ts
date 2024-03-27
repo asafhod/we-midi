@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import mongoose from "mongoose";
 import WebSocket from "ws";
 import webSocketManager from "../webSocketManager";
-import ProjectUserModel, { ProjectUser, MAX_PROJECT_USERS } from "../models/projectUserModel";
+import ProjectUserModel, { ProjectUser } from "../models/projectUserModel";
 import ProjectModel, { Project } from "../models/projectModel";
 import UserModel from "../models/userModel";
 import {
@@ -144,36 +144,19 @@ export const addProjectUsers = async (_ws: WebSocket, projectID: string, usernam
   // convert projectID string to a MongoDB ObjectId
   const projectObjectId = new mongoose.Types.ObjectId(projectID);
 
-  // get the existing ProjectUsers for the project
-  const existingProjectUsers: ProjectUser[] = await ProjectUserModel.find({ projectID: projectObjectId }, { _id: 0, __v: 0 });
-
-  // check if user is an accepted Project Admin for this project
-  const isProjectAdmin: boolean = existingProjectUsers.some((projectUser: ProjectUser) => {
-    return projectUser.username === username && projectUser.isProjectAdmin && projectUser.isAccepted;
-  });
-
-  if (!isProjectAdmin) {
-    // check if user is a global admin
-    const isAdmin: boolean = await checkAdmin(username);
-    if (!isAdmin) {
-      // user is not an admin, block the request
-      throw new ForbiddenActionError(
-        `Cannot add ProjectUser(s) - User ${username} does not have admin privileges for Project ${projectID}`
-      );
-    }
-  }
-
-  // block the request if adding the new ProjectUsers will increase the total ProjectUser count for the project past the cap
-  const newProjectUserCount: number = data.length;
-  if (existingProjectUsers.length + newProjectUserCount > MAX_PROJECT_USERS) {
-    throw new ForbiddenActionError(`Cannot exceed maximum user amount of ${MAX_PROJECT_USERS} for Project ${projectID}`);
+  // block request if user is not an admin
+  const isAdmin: boolean = (await checkProjectAdmin(username, projectObjectId)) || (await checkAdmin(username));
+  if (!isAdmin) {
+    throw new ForbiddenActionError(
+      `Cannot add ProjectUser(s) - User ${username} does not have admin privileges for Project ${projectID}`
+    );
   }
 
   // block the request if any of the ProjectUsers it is attempting to add are not registered Users
   const registeredUserCount: number = await UserModel.countDocuments({
     username: { $in: data.map(({ username }: { username: string }) => username) },
   });
-  if (newProjectUserCount !== registeredUserCount) {
+  if (data.length !== registeredUserCount) {
     throw new ForbiddenActionError("Cannot add ProjectUser that does not correspond to a registered User");
   }
 
@@ -186,22 +169,23 @@ export const addProjectUsers = async (_ws: WebSocket, projectID: string, usernam
     const project: Project | null = await ProjectModel.findOne({ _id: projectObjectId }, { __v: 0 }, { session });
     if (!project) throw new NotFoundError(`No project found for ID: ${projectID}`);
 
+    // block the request if it is attempting to add more ProjectUsers than the amount of available colors
+    if (data.length > project.colors.length) {
+      throw new ForbiddenActionError(`Cannot exceed maximum user amount for Project ${projectID}`);
+    }
+
     // iterate over the message data and set the rest of the needed ProjectUser fields
     for (const newProjectUser of data) {
-      // get next available color for the ProjectUser
-      const color: number | undefined = project.colors.shift();
-      if (color === undefined) throw new Error(`Ran out of available colors for Project ${projectID}`);
-
-      newProjectUser.color = color;
-      newProjectUser.isAccepted = false; // default the new ProjectUsers to unaccepted, since they have not yet responded to their project invite
+      newProjectUser.color = project.colors.pop(); // set ProjectUser's color to the next available color
+      newProjectUser.isAccepted = false; // default ProjectUser to unaccepted, since they have not yet responded to their project invitation
       newProjectUser.projectID = projectObjectId;
     }
 
-    // insert new ProjectUsers into database based on query object array
-    const result = await ProjectUserModel.insertMany(data, { session });
-
     // update project's available color array in the database
     await project.save({ session });
+
+    // insert new ProjectUsers into database based on query object array
+    const result = await ProjectUserModel.insertMany(data, { session });
 
     // if successful, commit and end the transaction
     await session.commitTransaction();
@@ -294,11 +278,7 @@ export const deleteProjectUsers = async (_ws: WebSocket, projectID: string, user
   if (error) throw new BadMessageError(String(error));
 
   // check if user is attempting to delete themselves from the project as part of the batch deletion
-  const selfDeleteAttempt: boolean = data.some(
-    (projectUserDeletion: { username: string }) => projectUserDeletion.username === username
-  );
-
-  if (selfDeleteAttempt) {
+  if (data.includes(username)) {
     // block the user from deleting themselves from the project
     throw new ForbiddenActionError(
       `Cannot delete ProjectUser(s) - User ${username} cannot delete themselves from Project ${projectID} with this request`
@@ -321,13 +301,28 @@ export const deleteProjectUsers = async (_ws: WebSocket, projectID: string, user
   session.startTransaction();
 
   try {
-    // TODO: Colors
-    // delete ProjectUsers from database based on query object array
-    const result = await ProjectUserModel.deleteMany({ projectID: projectObjectId, $or: data }, { session });
+    // get the ProjectUsers that will be deleted
+    const projectUsers: ProjectUser[] = await ProjectUserModel.find(
+      { projectID: projectObjectId, username: { $in: data } },
+      { _id: 0, __v: 0 },
+      { session }
+    );
 
-    // abort and rollback the deletion if the amount of ProjectUsers deleted did not match the amount requested
-    if (result.deletedCount !== data.length) {
-      throw new Error(`Delete ProjectUsers operation aborted for Project ${projectID} - Count mismatch`);
+    if (projectUsers.length) {
+      // get the colors that will be freed up when the ProjectUsers are deleted
+      const colors: number[] = projectUsers.map((projectUser: ProjectUser) => projectUser.color);
+
+      // push the freed colors to the available colors array for the project in the database
+      const updatedProject: Project | null = await ProjectModel.findOneAndUpdate(
+        { _id: projectObjectId },
+        { $push: { colors: { $each: colors } } },
+        // using "new" flag to retrieve the updated document and projection to avoid retrieving unnecessary fields
+        { new: true, __v: 0, session }
+      );
+      if (!updatedProject) throw new NotFoundError(`No project found for ID: ${projectID}`);
+
+      // delete the ProjectUsers from the database
+      await ProjectUserModel.deleteMany({ projectID: projectObjectId, username: { $in: data } }, { session });
     }
 
     // if successful, commit and end the transaction
@@ -335,12 +330,12 @@ export const deleteProjectUsers = async (_ws: WebSocket, projectID: string, user
     session.endSession();
 
     // log successful batch ProjectUser(s) deletion to the console
-    console.log(`User ${username} deleted ${result.deletedCount} ProjectUser(s) from Project ${projectID}`);
+    console.log(`User ${username} deleted ${projectUsers.length} ProjectUser(s) from Project ${projectID}`);
 
     // close any open WebSocket connections to the project for the deleted ProjectUsers
     // then broadcast the successful deletion to any remaining connected ProjectUsers for the project
     if (webSocketManager[projectID]) {
-      for (const { username } of data) {
+      for (const username of data) {
         // check if WebSocket connection exists on the project for the user
         const existingConnection: WebSocket | undefined = webSocketManager[projectID][username];
         if (existingConnection && existingConnection.readyState === WebSocket.OPEN) {
@@ -360,10 +355,14 @@ export const deleteProjectUsers = async (_ws: WebSocket, projectID: string, user
 };
 
 // delete projectUser - used when a user chooses to leave a project from the project's workspace (WebSocket)
+// TODO: See if any queries need to be brought down into the transaction. Also, see if you can remove the not found errors since it's a deletion.
 export const deleteProjectUser = async (ws: WebSocket, projectID: string, username: string) => {
+  // convert projectID string to a MongoDB ObjectId
+  const projectObjectId = new mongoose.Types.ObjectId(projectID);
+
   // get all accepted Project Admins for the projectID
   const projectAdmins: ProjectUser[] = await ProjectUserModel.find(
-    { projectID: new mongoose.Types.ObjectId(projectID), isProjectAdmin: true, isAccepted: true },
+    { projectID: projectObjectId, isProjectAdmin: true, isAccepted: true },
     { _id: 0, __v: 0 }
   );
 
@@ -377,24 +376,46 @@ export const deleteProjectUser = async (ws: WebSocket, projectID: string, userna
     );
   }
 
-  // TODO: Colors
-  // delete the ProjectUser from the database
-  const projectUser: ProjectUser | null = await ProjectUserModel.findOneAndDelete(
-    { projectID: new mongoose.Types.ObjectId(projectID), username },
-    { projection: { _id: 0, __v: 0 } }
-  );
-  if (!projectUser) throw new NotFoundError(`No ProjectUser found for Project ID ${projectID} and Username ${username}`);
+  // set up transaction for ProjectUser deletion
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
-  // log successful ProjectUser deletion to the console
-  console.log(`User ${username} has left Project ${projectID}`);
+  try {
+    // delete the ProjectUser from the database
+    const projectUser: ProjectUser | null = await ProjectUserModel.findOneAndDelete(
+      { projectID: projectObjectId, username },
+      { projection: { _id: 0, __v: 0 }, session }
+    );
+    if (!projectUser) throw new NotFoundError(`No ProjectUser found for Project ID ${projectID} and Username ${username}`);
 
-  if (ws.readyState === WebSocket.OPEN) {
-    // close the WebSocket connection to the project for the user with code 4204 for ProjectUser deletion
-    ws.close(4204, "User has left the project");
+    // push the deleted ProjectUser's freed color to the available colors array for the project in the database
+    const updatedProject: Project | null = await ProjectModel.findOneAndUpdate(
+      { _id: projectObjectId },
+      { $push: { colors: projectUser.color } },
+      // using "new" flag to retrieve the updated document and projection to avoid retrieving unnecessary fields
+      { new: true, __v: 0, session }
+    );
+    if (!updatedProject) throw new NotFoundError(`No project found for ID: ${projectID}`);
+
+    // if successful, commit and end the transaction
+    await session.commitTransaction();
+    session.endSession();
+
+    // log successful ProjectUser deletion to the console
+    console.log(`User ${username} has left Project ${projectID}`);
+
+    if (ws.readyState === WebSocket.OPEN) {
+      // close the WebSocket connection to the project for the user with code 4204 for ProjectUser deletion
+      ws.close(4204, "User has left the project");
+    }
+
+    // broadcast the deletion
+    broadcast(projectID, { action: "deleteProjectUser", source: username, success: true, data: { username } });
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    throw error;
   }
-
-  // broadcast the deletion
-  broadcast(projectID, { action: "deleteProjectUser", source: username, success: true, data: { username } });
 };
 
 // delete projectUser - used when a user chooses to leave a project or decline a project invitation from the user dashboard

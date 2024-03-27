@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import mongoose from "mongoose";
 import WebSocket from "ws";
 import webSocketManager from "../webSocketManager";
-import ProjectModel, { Project, Track, Note, DEFAULT_PPQ, DEFAULT_VOLUME } from "../models/projectModel";
+import ProjectModel, { Project, Track, Note, DEFAULT_PPQ, DEFAULT_VOLUME, ADMIN_COLOR } from "../models/projectModel";
 import ProjectUserModel from "../models/projectUserModel";
 import { addProjectSchema, updateProjectSchema, importMidiSchema, updateTrackSchema, deleteTrackSchema } from "../validation/schemas";
 import { BadRequestError, BadMessageError, ForbiddenError, ForbiddenActionError, NotFoundError } from "../errors";
@@ -93,7 +93,7 @@ export const getProject = async (ws: WebSocket, projectID: string) => {
           username: connectedUser,
           isProjectAdmin: false,
           isAccepted: false,
-          color: 10,
+          color: ADMIN_COLOR,
           isOnline: true,
           isNotMember: true,
         };
