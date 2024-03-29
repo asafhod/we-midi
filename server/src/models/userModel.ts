@@ -1,5 +1,8 @@
 import mongoose, { Document, Schema } from "mongoose";
 
+// constants
+export const MAX_USERNAME_LENGTH: number = 25;
+
 // define User interface
 export interface User extends Document {
   username: string;

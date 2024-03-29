@@ -207,7 +207,7 @@ const MidiEditor = ({ track, setTracks, widthFactor, startPosition, setAutoscrol
     }
   };
 
-  // TODO: Test if this plays nice with Strict Mode and the ready flag
+  // TODO: Test if this plays nice with Strict Mode and the ready flag (that it fires the expected number of times)
   useEffect(() => {
     if (readyRef.current) {
       if (childMessage && childMessage.action === "userMouse") {

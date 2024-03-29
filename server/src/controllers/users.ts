@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 import WebSocket from "ws";
 import webSocketManager from "../webSocketManager";
 import { CognitoIdentityServiceProvider } from "aws-sdk";
-import UserModel, { User } from "../models/userModel";
+import UserModel, { User, MAX_USERNAME_LENGTH } from "../models/userModel";
 import ProjectUserModel, { ProjectUser } from "../models/projectUserModel";
 import { updateUserSchema, searchUsersSchema } from "../validation/schemas";
 import { BadRequestError, BadMessageError, ForbiddenError, NotFoundError } from "../errors";
@@ -50,7 +50,7 @@ export const getUser = async (req: Request, res: Response, next: NextFunction) =
     const username: string = req.params.username.toLowerCase(); // to lower case for case-insensitivity
 
     // validate username
-    if (username.length > 128) throw new BadRequestError("Username cannot exceed 128 characters");
+    if (username.length > MAX_USERNAME_LENGTH) throw new BadRequestError(`Username cannot exceed ${MAX_USERNAME_LENGTH} characters`);
 
     // query database for user matching username
     const user: User | null = await UserModel.findOne({ username }, { _id: 0, __v: 0 });
@@ -91,7 +91,7 @@ export const updateUser = async (req: Request, res: Response, next: NextFunction
     const username: string = req.params.username.toLowerCase(); // to lower case for case-insensitivity
 
     // validate username
-    if (username.length > 128) throw new BadRequestError("Username cannot exceed 128 characters");
+    if (username.length > MAX_USERNAME_LENGTH) throw new BadRequestError(`Username cannot exceed ${MAX_USERNAME_LENGTH} characters`);
 
     // set up transaction for update operation
     const session = await mongoose.startSession();
@@ -185,7 +185,7 @@ export const deleteUser = async (req: Request, res: Response, next: NextFunction
     const username: string = req.params.username.toLowerCase(); // to lower case for case-insensitivity
 
     // validate username
-    if (username.length > 128) throw new BadRequestError("Username cannot exceed 128 characters");
+    if (username.length > MAX_USERNAME_LENGTH) throw new BadRequestError(`Username cannot exceed ${MAX_USERNAME_LENGTH} characters`);
 
     // prevent user from deleting themselves
     if (req.username === username) throw new ForbiddenError(`User ${username} cannot delete themselves`);

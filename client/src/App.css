@@ -23,14 +23,17 @@
 
 .user-panel {
   position: absolute;
-  top: 7px;
+  top: 3px;
   right: 0px;
   z-index: 1;
   user-select: none;
 }
 
 .logout-btn {
-  margin-left: 7px;
+  margin-top: -2px;
+  margin-left: 6px;
+  margin-right: 3px;
+  cursor: pointer;
 }
 
 .projects-list {
@@ -46,6 +49,10 @@
   user-select: none;
 }
 
+.header-bar {
+  padding-top: 2px;
+}
+
 .dashboard-link {
   display: inline-block;
   position: absolute;
@@ -54,7 +61,7 @@
 }
 
 .controls-bar {
-  display: inline-block;
+  /* display: inline-block; */
   margin-top: 7px;
   margin-bottom: 8px;
 }
@@ -446,20 +453,23 @@
 
 .project-name-container,
 .project-name-editor-container {
-  position: absolute;
-  left: 160px;
-  top: 9px;
-  width: 275px;
-  height: 21px;
+  position: relative;
+  max-width: 100vw;
+
+  overflow: hidden;
+  /* left: 160px;
+  top: 9px; */
+  /* width: 275px; */
+  /* height: 21px; */
   display: inline-block;
-  text-align: left;
+  text-align: center;
 }
 
-.project-name {
+/* .project-name {
   position: absolute;
   left: 23px;
   top: 2px;
-}
+} */
 
 .project-name-edit-btn {
   display: none;
@@ -486,6 +496,7 @@
   top: -1px;
   border-radius: 14.6px;
   outline: none;
+  text-align: center;
 }
 
 .project-name-input:disabled {

@@ -4,7 +4,7 @@ import WebSocket from "ws";
 import webSocketManager from "../webSocketManager";
 import ProjectUserModel, { ProjectUser } from "../models/projectUserModel";
 import ProjectModel, { Project } from "../models/projectModel";
-import UserModel from "../models/userModel";
+import UserModel, { MAX_USERNAME_LENGTH } from "../models/userModel";
 import {
   addProjectUsersSchema,
   updateProjectUsersSchema,
@@ -79,7 +79,7 @@ export const getProjectUser = async (req: Request, res: Response, next: NextFunc
     if (!objectIdRegex.test(projectID)) throw new BadRequestError("Project ID is not a valid MongoDB ObjectId");
 
     // validate username
-    if (username.length > 128) throw new BadRequestError("Username cannot exceed 128 characters");
+    if (username.length > MAX_USERNAME_LENGTH) throw new BadRequestError(`Username cannot exceed ${MAX_USERNAME_LENGTH} characters`);
 
     // query database for ProjectUser matching the projectID and username
     const projectUser: ProjectUser | null = await ProjectUserModel.findOne(
@@ -103,7 +103,7 @@ export const acceptProjectUser = async (req: Request, res: Response, next: NextF
     const username: string = req.params.username.toLowerCase(); // to lower case for case-insensitivity
 
     // validate username
-    if (username.length > 128) throw new BadRequestError("Username cannot exceed 128 characters");
+    if (username.length > MAX_USERNAME_LENGTH) throw new BadRequestError(`Username cannot exceed ${MAX_USERNAME_LENGTH} characters`);
 
     // ensure users can only accept project invitations meant for them
     if (req.username !== username) {
@@ -426,7 +426,7 @@ export const deleteProjectUserHttp = async (req: Request, res: Response, next: N
     const username: string = req.params.username.toLowerCase(); // to lower case for case-insensitivity
 
     // validate username
-    if (username.length > 128) throw new BadRequestError("Username cannot exceed 128 characters");
+    if (username.length > MAX_USERNAME_LENGTH) throw new BadRequestError(`Username cannot exceed ${MAX_USERNAME_LENGTH} characters`);
 
     // ensure users can only delete their own ProjectUser entry
     if (req.username !== username) throw new ForbiddenError("User cannot delete the ProjectUser entry of another user");

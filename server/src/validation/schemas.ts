@@ -1,4 +1,6 @@
 import Joi, { ObjectSchema, ArraySchema } from "joi";
+import { MAX_USERNAME_LENGTH } from "../models/userModel";
+import { MAX_PROJECT_NAME_LENGTH } from "../models/projectModel";
 
 // TODO: Change numberical constants and tempo logic when you change note timing to measure-based
 
@@ -13,12 +15,12 @@ export const updateUserSchema: ObjectSchema<any> = Joi.object({
 
 // validation schema for the Add Project request
 export const addProjectSchema: ObjectSchema<any> = Joi.object({
-  name: Joi.string().min(1).max(100).required(),
+  name: Joi.string().min(1).max(MAX_PROJECT_NAME_LENGTH).required(),
 });
 
 // validation schema for the Update Project request
 export const updateProjectSchema: ObjectSchema<any> = Joi.object({
-  name: Joi.string().min(1).max(100),
+  name: Joi.string().min(1).max(MAX_PROJECT_NAME_LENGTH),
   tempo: Joi.number().min(1).max(300),
 });
 
@@ -133,7 +135,7 @@ export const deleteNotesSchema: ObjectSchema<any> = Joi.object({
 
 // validation schema for the Search Users request
 export const searchUsersSchema: ObjectSchema<any> = Joi.object({
-  search: Joi.string().min(1).max(128).required(),
+  search: Joi.string().min(1).max(MAX_USERNAME_LENGTH).required(),
 });
 
 // validation schema for the Add Project Users request
@@ -141,7 +143,7 @@ export const addProjectUsersSchema: ArraySchema<any[]> = Joi.array()
   .min(1)
   .max(9)
   .items({
-    username: Joi.string().min(1).max(128).required(),
+    username: Joi.string().min(1).max(MAX_USERNAME_LENGTH).required(),
     isProjectAdmin: Joi.boolean().required(),
   });
 
@@ -150,19 +152,22 @@ export const updateProjectUsersSchema: ArraySchema<any[]> = Joi.array()
   .min(1)
   .max(10)
   .items({
-    username: Joi.string().min(1).max(128).required(),
+    username: Joi.string().min(1).max(MAX_USERNAME_LENGTH).required(),
     isProjectAdmin: Joi.boolean(),
   });
 
 // validation schema for the Delete Project Users request
-export const deleteProjectUsersSchema: ArraySchema<any[]> = Joi.array().min(1).max(9).items(Joi.string().min(1).max(128));
+export const deleteProjectUsersSchema: ArraySchema<any[]> = Joi.array()
+  .min(1)
+  .max(9)
+  .items(Joi.string().min(1).max(MAX_USERNAME_LENGTH));
 
 // validation for the User Current View request
 export const userCurrentViewSchema: ObjectSchema<any> = Joi.object({
   // trackID of 1 or higher corresponds to the track being edited in the MidiEditor view
   // trackID of 0 corresponds to the TrackEditor view
   trackID: Joi.number().min(0).required(),
-  targetUser: Joi.string().min(1).max(128),
+  targetUser: Joi.string().min(1).max(MAX_USERNAME_LENGTH),
 });
 
 // validation for the User Mouse request
@@ -171,7 +176,7 @@ export const userMouseSchema: ObjectSchema<any> = Joi.object({
   time: Joi.number().min(0).max(60000).required(),
   leftClick: Joi.boolean().required(),
   rightClick: Joi.boolean().required(),
-  targetUsers: Joi.array().min(1).items(Joi.string().min(1).max(128)).required(),
+  targetUsers: Joi.array().min(1).items(Joi.string().min(1).max(MAX_USERNAME_LENGTH)).required(),
 });
 
 // validation for the Chat Message request

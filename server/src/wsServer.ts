@@ -143,7 +143,7 @@ export const configureWsServer = (server: http.Server) => {
         existingConnection.close(1000, "Replaced by a new WebSocket connection");
         // TODO: Send a userConnected message regardless, so new connection's client can receive the other users' view data (medium-high priority)
         //       Would also need to make sure the userDisconnected message from the close connection doesn't arrive after the userConnected message
-        //         Can just not send the userDisconnected message by using a condition in the close event handler below, with a new code, similar to how 4204 works
+        //         Can just not send the userDisconnected message at all by using a condition in the close event handler below, with a new code, similar to how 4204 works
       } else {
         // broadcast that the user has connected
         broadcast(projectID, { action: "userConnected", success: true, data: { username } }, ws);

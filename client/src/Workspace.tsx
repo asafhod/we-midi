@@ -51,7 +51,7 @@ const Workspace = ({ username }: WorkspaceProps): JSX.Element => {
   const [trackControls, setTrackControls] = useState<TrackControlType[]>([]);
   const [tempo, setTempo] = useState(String(songData.tempo));
   const [projectUsers, setProjectUsers] = useState<ProjectUser[]>([]);
-  const [childMessage, setChildMessage] = useState<Message>(); // TODO: Move inside context? Other states too?
+  const [childMessage, setChildMessage] = useState<Message>(); // TODO: Change to mouseMessage
   const ws = useMessageRouter(
     id,
     username,
@@ -287,10 +287,12 @@ const Workspace = ({ username }: WorkspaceProps): JSX.Element => {
           <p>Loading...</p>
         ) : id ? (
           <>
-            <a className="dashboard-link" href="/dashboard">
-              Back to Dashboard
-            </a>
-            <ProjectName projectName={songData.name} loading={loading.projectName} setLoading={setLoading} />
+            <div className="header-bar">
+              <a className="dashboard-link" href="/dashboard">
+                Back to Dashboard
+              </a>
+              <ProjectName projectName={songData.name} loading={loading.projectName} setLoading={setLoading} />
+            </div>
             <div className="controls-bar">
               <button type="button" className="beginning-button" onClick={toBeginning}>
                 {"<<"}

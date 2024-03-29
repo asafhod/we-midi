@@ -25,7 +25,8 @@ const NewProject = () => {
         const { success, data, msg } = await response.json();
 
         if (success) {
-          // TODO: Why is this not sending the url request after setting it in the browser bar? Or is it, but not connecting the socket for some reason? Or something with the username prop? Test
+          // TODO: Why is this not sending the url request after setting it in the browser bar? Or is it, but not connecting the socket for some reason? Or something with the username prop?
+          //       Test, just to know. Then just move this entire thing to a separate component outside of Workspace, since all it does is create a project and re-direct to Workspace.
           navigate(`./${data._id}`);
         } else {
           throw new Error(msg || "Invalid response");

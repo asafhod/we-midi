@@ -6,6 +6,7 @@ const DEFAULT_COLORS: number[] = [9, 8, 7, 6, 5, 4, 3, 2, 1]; // also defaults m
 export const ADMIN_COLOR: number = DEFAULT_COLORS.length + 1;
 export const DEFAULT_PPQ: number = 480;
 export const DEFAULT_VOLUME: number = -16;
+export const MAX_PROJECT_NAME_LENGTH: number = 45;
 
 // define Note interface
 export interface Note {

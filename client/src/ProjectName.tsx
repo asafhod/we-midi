@@ -89,7 +89,7 @@ const ProjectNameEditor = ({ projectName, editing, setEditing, loading, setLoadi
         type="text"
         name="project-name-input"
         className="project-name-input"
-        maxLength={15}
+        maxLength={45}
         value={newProjectName}
         onChange={(e) => setNewProjectName(e.target.value)}
         readOnly={loading}

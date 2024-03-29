@@ -1,6 +1,7 @@
 import { Routes, Route } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import { WithAuthenticatorProps, withAuthenticator } from "@aws-amplify/ui-react";
+import logoutIcon from "./assets/icons/logout.svg";
 import ProjectsList from "./ProjectsList";
 import Workspace from "./Workspace";
 
@@ -19,11 +20,9 @@ const ProtectedApp = ({ signOut, user }: WithAuthenticatorProps) => {
   return (
     <>
       <div className="user-panel">
-        {/* TODO: Make the username/logout button look nice. Maybe a dropdown? */}
-        {user?.username || "User"}
-        <button className="logout-btn" type="button" onClick={logout}>
-          Logout
-        </button>
+        {/* {user?.username || "User"} */}
+        {"WWWWWWWWWWWWWWWWWWWWWWWWW"}
+        <img className="logout-btn" onClick={logout} src={logoutIcon} alt="Logout" height="20px" width="20px" />
       </div>
       <Routes>
         <Route path="/dashboard" element={<ProjectsList username={user?.username} />} />
