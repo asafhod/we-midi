@@ -1,19 +1,3 @@
 # We-Midi
 
-Placeholder text
-
-# Documentation
-
-Placeholder text
-
-### Rate Limiting
-
-Placeholder text
-
-# Install
-
-Placeholder text
-
-# Running the App
-
-Placeholder text
+We-Midi is a platform which allows multiple collaborators to work on a MIDI music project simultaneously in real-time
